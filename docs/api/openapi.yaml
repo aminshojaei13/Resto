@@ -1,0 +1,152 @@
+openapi: 3.0.3
+info:
+  title: Calcuapp SaaS Platform REST API
+  description: Multi-tenant Point of Sale (POS), Inventory Stock Management, Double-Entry Financial Accounting, and Sales Management REST API.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+paths:
+  /auth/login:
+    post:
+      summary: User Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, example: "alex.mercer@calcuapp.com" }
+                password: { type: string, example: "password123" }
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, example: "Bearer" }
+
+  /organizations:
+    get:
+      summary: List Organizations & Stores
+      responses:
+        '200':
+          description: Array of organizations
+
+  /organizations/{orgId}/stores:
+    get:
+      summary: List Stores for Tenant
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of stores
+
+  /products:
+    get:
+      summary: Search and List Catalog Products
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+        - name: query
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of catalog products
+
+  /products/barcode/{barcode}:
+    get:
+      summary: Lookup Product by Barcode
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product details
+
+  /inventory/adjust:
+    post:
+      summary: Adjust Stock Level at Warehouse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [org_id, warehouse_id, product_id, delta, reason]
+              properties:
+                org_id: { type: string }
+                warehouse_id: { type: string }
+                product_id: { type: string }
+                delta: { type: integer }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Stock adjusted successfully
+
+  /orders/checkout:
+    post:
+      summary: Create Sales Order and Process POS Checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [org_id, store_id, warehouse_id, items, payment_method]
+              properties:
+                org_id: { type: string }
+                store_id: { type: string }
+                warehouse_id: { type: string }
+                customer_id: { type: string }
+                customer_name: { type: string }
+                payment_method: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id: { type: string }
+                      product_name: { type: string }
+                      sku: { type: string }
+                      price: { type: number }
+                      quantity: { type: integer }
+      responses:
+        '201':
+          description: Sales order completed successfully
+
+  /customers:
+    get:
+      summary: List Customers
+      responses:
+        '200':
+          description: List of customer profiles
+
+  /accounting/journal:
+    get:
+      summary: Fetch General Ledger Journal Entries
+      responses:
+        '200':
+          description: General ledger entries
+
+  /accounting/summary:
+    get:
+      summary: Fetch Executive Revenue & Financial Summary
+      responses:
+        '200':
+          description: Financial metrics summary

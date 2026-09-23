@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: calcuapp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: calcuapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: calcuapp_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    container_name: calcuapp_backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: calcuapp
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespassword
+      CACHE_STORE: redis
+      REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/var/www/html
+
+  nginx:
+    image: nginx:alpine
+    container_name: calcuapp_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./infrastructure/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

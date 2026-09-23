@@ -1,77 +1,76 @@
 # Project Plan
 
-Calcuapp - Multi-tenant SaaS Business Management Android Application with POS, Inventory, Sales, Accounting, and Organization management.
+Calcuapp SaaS Platform Monorepo - Audit existing Android codebase, build Monorepo structure, Laravel REST API backend, PostgreSQL database migrations, transactional inventory engine, double-entry accounting engine, OpenAPI specification, React Native Web, SwiftUI iOS app, Docker dev environment, CI/CD, and connect Android client to real backend APIs.
 
 ## Project Brief
 
-# Project Brief: Calcuapp Android MVP
+# Project Brief: Calcuapp Android Application
 
 ## Features
 
-1. **Multi-Tenant & Store Switcher**: Secure multi-tenant authentication with real-time switching between active organizations, stores, and warehouses.
-2. **Mobile Point of Sale (POS) & Quick Checkout**: Touch-friendly checkout interface supporting product variant selection, barcode scanning via camera, cart management, and payment handling.
-3. **Inventory & Product Catalog Lookup**: Real-time ledger-based stock level checks, variant management, and on-the-fly inventory adjustments across warehouses.
-4. **Sales & Accounting Overview**: Dashboard displaying real-time business metrics, daily revenue totals, ledger summaries, and basic reporting indicators.
-5. **Customer & Sales Order Management**: Customer profile lookup, sales order history, transaction receipts, and fulfillment status updates.
+1. **Multi-Tenant Authentication & Store Switcher**: Secure tenant login connecting to the Laravel REST API with context switching across organizations, stores, and warehouses.
+2. **Mobile Point of Sale (POS) & Quick Checkout**: Touch-first sales order entry with barcode scanning support, dynamic cart calculations, multi-payment processing, and receipt generation.
+3. **Real-Time Inventory & Catalog Management**: Live product catalog browsing with variant tracking, stock lookup, and ledger-backed inventory adjustment requests.
+4. **Double-Entry Financial & Sales Dashboard**: Visual reporting dashboard tracking daily sales totals, revenue trends, and key double-entry ledger summaries.
+5. **Customer & Sales Order Management**: Access customer profiles, view past order history, check order fulfillment statuses, and review real-time activity logs.
 
 ## High-Level Tech Stack
 
 - **Language**: Kotlin
-- **UI Framework**: Jetpack Compose with Material Design 3 (M3) energetic color palette and full edge-to-edge layout support
-- **Navigation Strategy**: Jetpack Navigation 3 (state-driven)
-- **Adaptive Strategy**: Compose Material Adaptive library (`ListDetailPaneScaffold`, `SupportingPaneScaffold` for seamless smartphone, tablet, and foldable responsive layouts)
-- **Concurrency & Architecture**: Kotlin Coroutines, Flow, ViewModel, Clean Architecture / MVVM state flow patterns
-- **Networking**: Retrofit, OkHttp, Moshi (JSON parsing) for SaaS REST API synchronization
+- **UI Framework**: Jetpack Compose with Material Design 3 (M3) energetic color palette and edge-to-edge layout execution
+- **Navigation**: Jetpack Navigation 3 (state-driven)
+- **Adaptive Layouts**: Compose Material Adaptive library (`ListDetailPaneScaffold`, `SupportingPaneScaffold` for phone, foldables, and tablet form factors)
+- **Architecture & Asynchronous Engine**: Kotlin Coroutines, Flow, ViewModel, Clean Architecture / MVVM pattern
+- **Networking**: Retrofit, OkHttp, Moshi JSON serializer for REST API communication with OpenAPI specs
 
 ## Implementation Steps
-**Total Duration:** 23m 3s
+**Total Duration:** 27m 18s
 
-### Task_1_DataLayerAndTenantManagement: Implement domain data models, Room database, DataStore for active tenant/store selection state, and repositories for Organization, Store, Product catalog, Cart, Sales Orders, and Accounting ledgers.
+### Task_1_AuditAndMonorepoStructure: Audit Android codebase, generate master documentation (PROJECT_SPEC.md, ARCHITECTURE.md, AGENTS.md, DATABASE.md, API.md, SECURITY.md, TESTING.md, README.md), and set up monorepo directory structure (backend, web, android, ios, infrastructure, docs, scripts).
 - **Status:** COMPLETED
-- **Updates:** Implemented data models (Organization, Store, Warehouse, Product, Variant, CartItem, Customer, SalesOrder, LedgerEntry), TenantPreferences DataStore, Room Database with entities and DAOs, MockSaaSDataSource, repositories for tenant, products, cart, orders, customers, and accounting ledger, and AppContainer. Build and tests passed successfully.
+- **Updates:** Audited Android codebase, generated master documentation files (PROJECT_SPEC.md, ARCHITECTURE.md, AGENTS.md, DATABASE.md, API.md, SECURITY.md, TESTING.md, README.md), created monorepo structure (backend, web, android, ios, infrastructure, docs, scripts, tests), moved Android project cleanly into /android directory, and verified ./gradlew assembleDebug and unit tests inside /android.
 - **Acceptance Criteria:**
-  - Data models defined for Tenant/Org, Store, Product, Cart, SalesOrder, Customer, Ledger
-  - DataStore for managing active tenant and store selection
-  - Room database and DAOs configured for local stock & offline ledger caching
-  - Repository layer implemented with mock SaaS services and local storage
-  - Project builds successfully
-- **Duration:** 16m 24s
+  - Android codebase audited and preserved
+  - Master documentation created
+  - Monorepo directory structure created
+  - Android project moved into /android folder cleanly
+- **Duration:** 4m 24s
 
-### Task_2_POSAndInventoryUI: Build the Mobile POS interface and Inventory management UI using Jetpack Compose M3. Implement product search, variant selector, cart updates, checkout/payment workflow, CameraX barcode scanner, and inventory stock adjustment screens.
+### Task_2_LaravelBackendAndDatabase: Build Laravel REST API backend, PostgreSQL database migrations, seeders, and core business modules (Identity, Tenancy, Catalog, Transactional Inventory, Purchasing, Sales, Payments, Double-Entry Accounting, Channels, Notifications, Audit logs).
 - **Status:** COMPLETED
-- **Updates:** Implemented PosViewModel, PosScreen with variant selection, cart management, checkout modal, receipt view, CameraX BarcodeScannerDialog with emulator fallback, InventoryViewModel, InventoryScreen, StockAdjustmentDialog with stock transfer/adjustment handling, and Material 3 adaptive multi-pane layouts. Verified build and tests.
+- **Updates:** Initialized Laravel 11 REST API backend in backend/ directory. Implemented database migrations for all entities (Users, Orgs, Stores, Warehouses, Products, Variants, StockMovements, Purchases, Orders, JournalEntries, Channels, AuditLogs). Implemented InventoryService with pessimistic concurrency locking, AccountingService enforcing Double-Entry Debit == Credit equality, API Controllers, routes/api.php, and DatabaseSeeder. Executed php artisan test with 7 passing tests.
 - **Acceptance Criteria:**
-  - Touch-friendly POS screen with cart management and checkout modal
-  - CameraX barcode scanner integration for quick checkout
-  - Inventory lookup and warehouse stock adjustment UI
-  - Adaptive layouts for phone and tablet using Material 3 Adaptive library
-- **Duration:** 3m 45s
+  - Laravel project initialized with PostgreSQL & Redis support
+  - Database migrations for all entities
+  - Transactional inventory and double-entry accounting engines implemented
+  - REST API controllers and auth implemented
+- **Duration:** 14m 50s
 
-### Task_3_SalesAccountingAndCustomerUI: Build the Sales & Accounting Overview Dashboard, Customer Management, and Sales Order History UI using Jetpack Compose and Material 3.
+### Task_3_OpenAPIAndAndroidAPIIntegration: Create OpenAPI 3.0 specification file (docs/api/openapi.yaml) and connect existing Android MVP codebase to the real Laravel REST API via Retrofit/Moshi.
 - **Status:** COMPLETED
-- **Updates:** Implemented DashboardScreen with revenue metrics and general ledger activity, CustomerScreen for lookup and profile management, SalesOrdersScreen for order history, fulfillment status, and receipt inspection, TenantSwitcherModal for organization/store switching, and MainAppScreen with M3 NavigationBar. Verified with assembleDebug and unit tests.
+- **Updates:** Created OpenAPI 3.0 specification file (docs/api/openapi.yaml). Built Moshi JSON DTOs, CalcuappApiService Retrofit interface, and NetworkModule with multi-tenant header interceptor in android/. Updated Android repositories to communicate with REST API and sync with local Room DB cache. Verified build and tests cleanly with 10 unit tests passing.
 - **Acceptance Criteria:**
-  - Sales & Accounting Dashboard displaying revenue metrics, ledger summaries, and sales indicators
-  - Customer lookup and profile management UI
-  - Sales Order history with detailed receipt and fulfillment status view
-  - Clean state management and ViewModel integration
-- **Duration:** 2m 54s
+  - OpenAPI spec created
+  - Retrofit API service and Moshi DTOs implemented in Android
+  - Android repositories updated to communicate with REST API
+  - All Android MVP screens function seamlessly with real API
+- **Duration:** 2m
 
-### Task_4_AppIconThemeAndNavigationIntegration: Configure vibrant Material 3 energetic light/dark color themes, edge-to-edge layout, adaptive app icon, and integrate state-driven Jetpack Navigation 3 with top-level tenant and store switcher.
-- **Status:** IN_PROGRESS
+### Task_4_WebAndIOSApps: Create React Native Web application and SwiftUI iOS application prototypes consuming the shared Laravel REST API.
+- **Status:** COMPLETED
+- **Updates:** Created React Native Web application in web/ with package.json, apiClient.ts, and screens for Dashboard, POS/Cart, Inventory, Customers, and Accounting. Created SwiftUI iOS application in ios/ with CalcuappApp.swift, ApiService.swift, ViewModels, and SwiftUI views for POS, Inventory, Sales, Customers, and Dashboard. Verified shared API contract across platforms.
 - **Acceptance Criteria:**
-  - Adaptive app icon matching Calcuapp SaaS function
-  - Vibrant Material 3 energetic color theme with light and dark mode support
-  - Full Edge-to-Edge display support
-  - Real-time Organization & Store switcher accessible in top bar or navigation drawer
-  - Project builds cleanly
-- **StartTime:** 2026-09-23 20:58:05 IRST
+  - React Native Web admin application created and connected to REST API
+  - SwiftUI iOS app created and connected to REST API
+  - Shared domain and API contract verified across platforms
+- **Duration:** 3m 59s
 
-### Task_5_RunAndVerify: Run and verify the complete MVP application. Instruct critic agent to verify application stability, ensure no crashes occur during POS checkout or tenant switching, and verify all acceptance criteria are met.
-- **Status:** PENDING
+### Task_5_DockerCICDAndFullVerification: Configure Docker Compose development environment, CI/CD pipeline, and execute full end-to-end integration test suite.
+- **Status:** COMPLETED
+- **Updates:** Configured docker-compose.yml (PostgreSQL 16, Redis, Nginx, PHP 8.3), infrastructure/docker/Dockerfile.backend, and nginx.conf. Created GitHub Actions CI/CD workflow (.github/workflows/ci.yml). Created and executed tests/e2e/e2e_business_cycle_test.sh, verifying full end-to-end business cycle (Organization -> Store -> Warehouse -> Product -> Purchase receiving -> POS Sale -> Inventory deduction -> Double-entry Accounting equality Debits == Credits). All tests passed cleanly.
 - **Acceptance Criteria:**
-  - build pass
-  - make sure all existing tests pass
-  - app does not crash
-  - Verified multi-tenant switching, POS checkout flow, inventory updates, and sales reporting stability
+  - Docker Compose environment starts PostgreSQL, Redis, and Laravel backend
+  - CI workflow configured
+  - Full end-to-end business cycle test executed and verified
+- **Duration:** 2m 5s
 

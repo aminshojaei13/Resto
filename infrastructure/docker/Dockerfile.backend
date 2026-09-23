@@ -1,0 +1,29 @@
+FROM php:8.3-fpm-alpine
+
+# Install system dependencies & PHP extensions
+RUN apk add --no-gradient --no-cache \
+    curl \
+    git \
+    libpng-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    postgresql-dev \
+    oniguruma-dev
+
+RUN docker-php-ext-install pdo pdo_pgsql mbstring bcmath
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Copy application files
+COPY backend/ .
+
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+RUN chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 9000
+CMD ["php-fpm"]
