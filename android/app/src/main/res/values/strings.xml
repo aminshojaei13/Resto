@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calcuapp</string>
+    <string name="pos_title">Mobile POS</string>
+    <string name="inventory_title">Inventory &amp; Products</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_pos">POS</string>
+    <string name="nav_inventory">Inventory</string>
+    <string name="nav_orders">Orders</string>
+    <string name="nav_customers">Customers</string>
+    <string name="nav_accounting">Accounting</string>
+
+    <!-- POS Screen -->
+    <string name="search_product_hint">Search product name, SKU, barcode...</string>
+    <string name="all_categories">All Categories</string>
+    <string name="current_order">Current Order</string>
+    <string name="walk_in_customer">Walk-in Customer</string>
+    <string name="clear_cart">Clear All</string>
+    <string name="cart_empty">Cart is empty</string>
+    <string name="select_from_catalog">Select products from catalog or scan barcode</string>
+    <string name="subtotal">Subtotal</string>
+    <string name="discount">Discount</string>
+    <string name="tax">Tax (8%)</string>
+    <string name="total">Total</string>
+    <string name="checkout">Checkout</string>
+    <string name="add_to_cart">Add to Cart</string>
+    <string name="out_of_stock">Out of Stock</string>
+
+    <!-- Payment & Checkout -->
+    <string name="checkout_payment">Checkout &amp; Payment</string>
+    <string name="payment_method">Select Payment Method</string>
+    <string name="cash">Cash</string>
+    <string name="card">Card / POS Terminal</string>
+    <string name="mobile_pay">Mobile / QR Payment</string>
+    <string name="store_credit">Store Credit / Account</string>
+    <string name="cash_tendered">Cash Tendered ($)</string>
+    <string name="change_due">Change Due</string>
+    <string name="order_notes">Order Notes / Transaction Ref</string>
+    <string name="complete_sale">Complete Sale</string>
+    <string name="exact">Exact</string>
+
+    <!-- Receipt -->
+    <string name="payment_successful">Payment Successful!</string>
+    <string name="official_receipt">OFFICIAL RECEIPT</string>
+    <string name="total_paid">TOTAL PAID</string>
+    <string name="print">Print</string>
+    <string name="new_sale">New Sale</string>
+
+    <!-- Inventory -->
+    <string name="total_skus">Total SKUs</string>
+    <string name="units_in_stock">Units in Stock</string>
+    <string name="low_stock_alerts">Low Stock Alerts</string>
+    <string name="adjust_stock">Adjust Stock</string>
+    <string name="target_warehouse">Target Warehouse</string>
+    <string name="add_stock">+ Add Stock</string>
+    <string name="reduce_stock">- Reduce Stock</string>
+    <string name="quantity_delta">Quantity Delta</string>
+    <string name="adjustment_reason">Adjustment Reason</string>
+    <string name="save_adjustment">Save Adjustment</string>
+
+    <!-- Dashboard & Accounting -->
+    <string name="executive_dashboard">Sales &amp; Accounting Overview</string>
+    <string name="total_revenue">Total Revenue</string>
+    <string name="today_revenue">Today\'s Revenue</string>
+    <string name="net_profit">Net Operating Profit</string>
+    <string name="total_expenses">Total Expenses</string>
+    <string name="inventory_value">Inventory Asset Value</string>
+    <string name="general_ledger">General Ledger Activity Log</string>
+    <string name="new_entry">New Entry</string>
+
+    <!-- Customers -->
+    <string name="customers_crm">Customer CRM &amp; Profiles</string>
+    <string name="search_customer">Search customers by name, phone, email...</string>
+    <string name="add_customer">Add New Customer Profile</string>
+    <string name="loyalty_points">Loyalty Points Balance</string>
+    <string name="total_spent">Total Spent</string>
+
+    <!-- Language & Tenant Switcher -->
+    <string name="switch_tenant">Switch Tenant &amp; Store</string>
+    <string name="select_language">Select App Language</string>
+    <string name="persian">Persian (RTL)</string>
+    <string name="english">English (LTR)</string>
+    <string name="currency_unit">USD</string>
+</resources>
