@@ -100,7 +100,7 @@ export const PosPage: React.FC = () => {
 
       {/* Live Cart Sidebar */}
       <div style={{ flex: 1, backgroundColor: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Current Cart ({cart.reduce((s, i) => sum + i.quantity, 0)})</h3>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Current Cart ({cart.reduce((s, i) => s + i.quantity, 0)})</h3>
 
         {cart.length === 0 ? (
           <p style={{ color: '#888', textAlign: 'center', padding: '40px 0' }}>Cart is empty</p>

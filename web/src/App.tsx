@@ -9,30 +9,36 @@ import { AccountingPage } from './pages/AccountingPage';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('pos');
-  const [activeOrgName, setActiveOrgName] = useState('Apex Retail Group');
-  const [activeStoreName, setActiveStoreName] = useState('Apex Flagship');
+  const [language, setLanguage] = useState<'fa' | 'en'>('fa');
+  const [activeOrgName, setActiveOrgName] = useState('گروه بازرگانی اپکس (Apex Retail)');
+  const [activeStoreName, setActiveStoreName] = useState('شعبه مرکزی (Downtown)');
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
 
+  const isRtl = language === 'fa';
+
   return (
-    <div style={{ backgroundColor: '#FEFBFD', minHeight: '100vh' }}>
+    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ backgroundColor: '#FEFBFD', minHeight: '100vh', direction: isRtl ? 'rtl' : 'ltr' }}>
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        language={language}
+        setLanguage={setLanguage}
         activeOrgName={activeOrgName}
         activeStoreName={activeStoreName}
         onOpenTenantModal={() => setIsTenantModalOpen(true)}
       />
 
       <main style={{ maxWidth: '1280px', margin: '0 auto' }}>
-        {activeTab === 'pos' && <PosPage />}
-        {activeTab === 'inventory' && <InventoryPage />}
-        {activeTab === 'dashboard' && <DashboardPage />}
-        {activeTab === 'customers' && <CustomersPage />}
-        {activeTab === 'accounting' && <AccountingPage />}
+        {activeTab === 'pos' && <PosPage language={language} />}
+        {activeTab === 'inventory' && <InventoryPage language={language} />}
+        {activeTab === 'dashboard' && <DashboardPage language={language} />}
+        {activeTab === 'customers' && <CustomersPage language={language} />}
+        {activeTab === 'accounting' && <AccountingPage language={language} />}
       </main>
 
       {isTenantModalOpen && (
         <TenantModal
+          language={language}
           onClose={() => setIsTenantModalOpen(false)}
           onSelectTenant={(org, store) => {
             setActiveOrgName(org);

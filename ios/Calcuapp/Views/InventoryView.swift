@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InventoryView: View {
     @ObservedObject var viewModel: InventoryViewModel
+    var isPersian: Bool = true
     
     var body: some View {
         List(viewModel.products) { product in
@@ -10,7 +11,7 @@ struct InventoryView: View {
                     Text(product.name)
                         .font(.headline)
                     Spacer()
-                    Text("Stock: 22 pcs")
+                    Text(isPersian ? "موجودی: ۲۲ عدد" : "Stock: 22 pcs")
                         .font(.caption)
                         .bold()
                         .padding(.horizontal, 8)
@@ -24,7 +25,7 @@ struct InventoryView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text(String(format: "$%.2f", product.price))
+                    Text(isPersian ? "\(Int(product.price * 50000).formatted()) تومان" : String(format: "$%.2f", product.price))
                         .font(.subheadline)
                         .bold()
                         .foregroundColor(.blue)

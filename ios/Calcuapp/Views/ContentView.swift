@@ -5,36 +5,37 @@ struct ContentView: View {
     @StateObject private var inventoryVM = InventoryViewModel()
     @StateObject private var dashboardVM = DashboardViewModel()
     @State private var isTenantSwitchPresented = false
+    @State private var isPersian = true
     
     var body: some View {
         NavigationView {
             TabView {
-                PosView(viewModel: posVM)
+                PosView(viewModel: posVM, isPersian: isPersian)
                     .tabItem {
-                        Label("POS", systemImage: "cart.fill")
+                        Label(isPersian ? "فروشگاه" : "POS", systemImage: "cart.fill")
                     }
                 
-                InventoryView(viewModel: inventoryVM)
+                InventoryView(viewModel: inventoryVM, isPersian: isPersian)
                     .tabItem {
-                        Label("Inventory", systemImage: "shippingbox.fill")
+                        Label(isPersian ? "موجودی انبار" : "Inventory", systemImage: "shippingbox.fill")
                     }
                 
-                DashboardView(viewModel: dashboardVM)
+                DashboardView(viewModel: dashboardVM, isPersian: isPersian)
                     .tabItem {
-                        Label("Dashboard", systemImage: "chart.bar.fill")
+                        Label(isPersian ? "داشبورد" : "Dashboard", systemImage: "chart.bar.fill")
                     }
                 
-                CustomerView()
+                CustomerView(isPersian: isPersian)
                     .tabItem {
-                        Label("Customers", systemImage: "person.2.fill")
+                        Label(isPersian ? "مشتریان" : "Customers", systemImage: "person.2.fill")
                     }
                 
-                OrdersView()
+                OrdersView(isPersian: isPersian)
                     .tabItem {
-                        Label("Orders", systemImage: "doc.plaintext.fill")
+                        Label(isPersian ? "سفارشات" : "Orders", systemImage: "doc.plaintext.fill")
                     }
             }
-            .navigationTitle("Calcuapp SaaS")
+            .navigationTitle(isPersian ? "کلکو‌اپ (POS و حسابداری)" : "Calcuapp SaaS")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { isTenantSwitchPresented = true }) {
@@ -43,31 +44,41 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $isTenantSwitchPresented) {
-                TenantSwitchSheet()
+                TenantSwitchSheet(isPersian: $isPersian)
             }
         }
+        .environment(\.layoutDirection, isPersian ? .rightToLeft : .leftToRight)
     }
 }
 
 struct TenantSwitchSheet: View {
+    @Binding var isPersian: Bool
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Active Tenant")) {
-                    Text("Apex Retail Group • Main Store")
+                Section(header: Text(isPersian ? "تنظیمات زبان" : "App Language")) {
+                    Toggle(isOn: $isPersian) {
+                        Text(isPersian ? "فارسی (راست‌چین - RTL)" : "Persian (RTL)")
+                            .bold()
+                    }
+                }
+                
+                Section(header: Text(isPersian ? "فروشگاه و سازمان فعال" : "Active Tenant")) {
+                    Text("گروه بازرگانی اپکس (Apex Retail) • شعبه مرکزی")
                         .bold()
                         .foregroundColor(.blue)
-                    Text("BraveBoy Electronics • Metro Store")
+                    Text("الکترونیک براف بوی (BraveBoy) • شعبه مترو")
                 }
             }
-            .navigationTitle("Switch Store Context")
+            .navigationTitle(isPersian ? "تنظیمات شعبه و زبان" : "Switch Store Context")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(isPersian ? "تایید" : "Done") { dismiss() }
                 }
             }
         }
+        .environment(\.layoutDirection, isPersian ? .rightToLeft : .leftToRight)
     }
 }

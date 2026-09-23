@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">کلکو‌اپ</string>
+    <string name="pos_title">صندوق فروشگاهی (POS)</string>
+    <string name="inventory_title">انبار و کالاها</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_pos">فروشگاه</string>
+    <string name="nav_inventory">موجودی انبار</string>
+    <string name="nav_orders">سفارشات</string>
+    <string name="nav_customers">مشتریان</string>
+    <string name="nav_accounting">حسابداری</string>
+
+    <!-- POS Screen -->
+    <string name="search_product_hint">جستجوی کالا، بارکد یا کد SKU...</string>
+    <string name="all_categories">همه دسته‌بندی‌ها</string>
+    <string name="current_order">سفارش جاری</string>
+    <string name="walk_in_customer">مشتری حضوری</string>
+    <string name="clear_cart">پاک کردن سبد</string>
+    <string name="cart_empty">سبد خرید خالی است</string>
+    <string name="select_from_catalog">کالاها را از لیست یا اسکنر اضافه کنید</string>
+    <string name="subtotal">جمع کل</string>
+    <string name="discount">تخفیف</string>
+    <string name="tax">مالیات (۸٪)</string>
+    <string name="total">مبلغ قابل پرداخت</string>
+    <string name="checkout">تسویه حساب</string>
+    <string name="add_to_cart">افزودن به سبد</string>
+    <string name="out_of_stock">اتمام موجودی</string>
+
+    <!-- Payment & Checkout -->
+    <string name="checkout_payment">تسویه و پرداخت</string>
+    <string name="payment_method">روش پرداخت</string>
+    <string name="cash">نقد</string>
+    <string name="card">کارت‌خوان (POS)</string>
+    <string name="mobile_pay">پرداخت همراه / QR</string>
+    <string name="store_credit">اعتبار مشتری</string>
+    <string name="cash_tendered">مبلغ دریافتی</string>
+    <string name="change_due">باقی‌مانده / مابقی</string>
+    <string name="order_notes">توضیحات سفارش</string>
+    <string name="complete_sale">تکمیل فروش</string>
+    <string name="exact">دقیق</string>
+
+    <!-- Receipt -->
+    <string name="payment_successful">پرداخت با موفقیت انجام شد!</string>
+    <string name="official_receipt">رسید رسمی فروش</string>
+    <string name="total_paid">مجموع پرداختی</string>
+    <string name="print">چاپ فاکتور</string>
+    <string name="new_sale">فروش جدید</string>
+
+    <!-- Inventory -->
+    <string name="total_skus">تعداد کل کالاها</string>
+    <string name="units_in_stock">موجودی کل</string>
+    <string name="low_stock_alerts">هشدار کمبود موجودی</string>
+    <string name="adjust_stock">اصلاح موجودی</string>
+    <string name="target_warehouse">انبار مقصد</string>
+    <string name="add_stock">+ افزایش موجودی</string>
+    <string name="reduce_stock">- کاهش موجودی</string>
+    <string name="quantity_delta">تعداد تغییر</string>
+    <string name="adjustment_reason">علت تغییر موجودی</string>
+    <string name="save_adjustment">ثبت تغییرات</string>
+
+    <!-- Dashboard & Accounting -->
+    <string name="executive_dashboard">داشبورد درآمد و حسابداری</string>
+    <string name="total_revenue">کل درآمد</string>
+    <string name="today_revenue">درآمد امروز</string>
+    <string name="net_profit">سود خالص عملیاتی</string>
+    <string name="total_expenses">کل هزینه‌ها</string>
+    <string name="inventory_value">ارزش ریالی انبار</string>
+    <string name="general_ledger">دفتر کل و اسناد حسابداری</string>
+    <string name="new_entry">ثبت سند جدید</string>
+
+    <!-- Customers -->
+    <string name="customers_crm">مدیریت مشتریان و باشگاه مشتریان</string>
+    <string name="search_customer">جستجوی مشتری با نام یا شماره...</string>
+    <string name="add_customer">افزودن مشتری جدید</string>
+    <string name="loyalty_points">امتیاز باشگاه مشتریان</string>
+    <string name="total_spent">مجموع خرید</string>
+
+    <!-- Language & Tenant Switcher -->
+    <string name="switch_tenant">تغییر فروشگاه / زبان</string>
+    <string name="select_language">انتخاب زبان برنامه</string>
+    <string name="persian">فارسی (راست‌چین)</string>
+    <string name="english">English (LTR)</string>
+    <string name="currency_unit">تومان</string>
+</resources>

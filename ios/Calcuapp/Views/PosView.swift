@@ -2,11 +2,14 @@ import SwiftUI
 
 struct PosView: View {
     @ObservedObject var viewModel: PosViewModel
+    var isPersian: Bool = true
+    
+    var currencySymbol: String { isPersian ? "تومان" : "$" }
     
     var body: some View {
         VStack {
             // Search Bar
-            TextField("Search catalog...", text: $viewModel.searchQuery)
+            TextField(isPersian ? "جستجوی کالا و بارکد..." : "Search catalog...", text: $viewModel.searchQuery)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
             
@@ -23,8 +26,8 @@ struct PosView: View {
                                 .foregroundColor(.secondary)
                             Spacer()
                             HStack {
-                                Text(String(format: "$%.2f", product.price))
-                                    .font(.title3)
+                                Text(isPersian ? "\(Int(product.price * 50000).formatted()) \(currencySymbol)" : String(format: "$%.2f", product.price))
+                                    .font(.subheadline)
                                     .bold()
                                     .foregroundColor(.blue)
                                 Spacer()
@@ -46,17 +49,17 @@ struct PosView: View {
             if !viewModel.cart.isEmpty {
                 VStack(spacing: 12) {
                     HStack {
-                        Text("Cart Items (\(viewModel.cart.reduce(0) { $0 + $1.quantity }))")
+                        Text(isPersian ? "سبد خرید (\(viewModel.cart.reduce(0) { $0 + $1.quantity }))" : "Cart Items (\(viewModel.cart.reduce(0) { $0 + $1.quantity }))")
                             .font(.headline)
                         Spacer()
-                        Text(String(format: "$%.2f", viewModel.totalAmount))
+                        Text(isPersian ? "\(Int(viewModel.totalAmount * 50000).formatted()) \(currencySymbol)" : String(format: "$%.2f", viewModel.totalAmount))
                             .font(.title2)
                             .bold()
                             .foregroundColor(.blue)
                     }
                     
                     Button(action: { viewModel.isCheckoutPresented = true }) {
-                        Text("Checkout")
+                        Text(isPersian ? "تسویه و پرداخت" : "Checkout")
                             .font(.headline)
                             .bold()
                             .foregroundColor(.white)
@@ -75,19 +78,20 @@ struct PosView: View {
             await viewModel.loadProducts()
         }
         .sheet(isPresented: $viewModel.isCheckoutPresented) {
-            CheckoutSheet(viewModel: viewModel)
+            CheckoutSheet(viewModel: viewModel, isPersian: isPersian)
         }
     }
 }
 
 struct CheckoutSheet: View {
     @ObservedObject var viewModel: PosViewModel
+    var isPersian: Bool = true
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Order Items")) {
+                Section(header: Text(isPersian ? "اقلام سفارش" : "Order Items")) {
                     ForEach(viewModel.cart) { item in
                         HStack {
                             Text(item.product.name)
@@ -98,25 +102,25 @@ struct CheckoutSheet: View {
                     }
                 }
                 
-                Section(header: Text("Payment Total")) {
+                Section(header: Text(isPersian ? "مجموع پرداختی" : "Payment Total")) {
                     HStack {
-                        Text("Grand Total")
+                        Text(isPersian ? "مبلغ قابل پرداخت" : "Grand Total")
                             .bold()
                         Spacer()
-                        Text(String(format: "$%.2f", viewModel.totalAmount))
+                        Text(isPersian ? "\(Int(viewModel.totalAmount * 50000).formatted()) تومان" : String(format: "$%.2f", viewModel.totalAmount))
                             .font(.title3)
                             .bold()
                             .foregroundColor(.blue)
                     }
                 }
             }
-            .navigationTitle("POS Checkout")
+            .navigationTitle(isPersian ? "تسویه حساب فاکتور" : "POS Checkout")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(isPersian ? "انصراف" : "Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Complete Sale") {
+                    Button(isPersian ? "تکمیل فروش" : "Complete Sale") {
                         viewModel.clearCart()
                         dismiss()
                     }
@@ -124,5 +128,6 @@ struct CheckoutSheet: View {
                 }
             }
         }
+        .environment(\.layoutDirection, isPersian ? .rightToLeft : .leftToRight)
     }
 }
