@@ -22,7 +22,31 @@ export const apiClient = {
     try {
       const res = await fetch(`${BASE_URL}/organizations`, { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch organizations');
-      return await res.json();
+      const data = await res.json();
+      return (data || []).map((org: any) => ({
+        id: org.id,
+        name: org.name,
+        code: org.code,
+        logoUrl: org.logo_url ?? org.logoUrl,
+        currencySymbol: org.currency_symbol ?? org.currencySymbol ?? '$',
+        currencyCode: org.currency_code ?? org.currencyCode ?? 'USD',
+        subscriptionTier: org.subscription_tier ?? org.subscriptionTier ?? 'PRO',
+        stores: (org.stores || []).map((store: any) => ({
+          id: store.id,
+          organizationId: store.organization_id ?? store.organizationId,
+          name: store.name,
+          code: store.code,
+          address: store.address,
+          phone: store.phone,
+          warehouses: (store.warehouses || []).map((wh: any) => ({
+            id: wh.id,
+            storeId: wh.store_id ?? wh.storeId,
+            organizationId: wh.organization_id ?? wh.organizationId,
+            name: wh.name,
+            code: wh.code,
+          })),
+        })),
+      }));
     } catch {
       // Return fallback mock data if backend server is not running
       return [
@@ -77,7 +101,21 @@ export const apiClient = {
 
       const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch products');
-      return await res.json();
+      const data = await res.json();
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        organizationId: p.organization_id ?? p.organizationId ?? activeOrgId,
+        sku: p.sku,
+        barcode: p.barcode,
+        name: p.name,
+        description: p.description,
+        price: Number(p.price ?? 0),
+        costPrice: Number(p.cost_price ?? p.costPrice ?? 0),
+        category: p.category,
+        unit: p.unit ?? 'pcs',
+        imageUrl: p.image_url ?? p.imageUrl,
+        stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? { wh_apex_1a: 20 },
+      }));
     } catch {
       return [
         {
@@ -147,9 +185,36 @@ export const apiClient = {
       const res = await fetch(`${BASE_URL}/orders/checkout`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId }),
+        body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId, warehouse_id: 'wh_apex_1a' }),
       });
-      return await res.json();
+      if (!res.ok) throw new Error('Checkout failed');
+      const data = await res.json();
+      return {
+        id: data.id,
+        orderNumber: data.order_number ?? data.orderNumber,
+        organizationId: data.organization_id ?? data.organizationId,
+        storeId: data.store_id ?? data.storeId,
+        warehouseId: data.warehouse_id ?? data.warehouseId,
+        customerId: data.customer_id ?? data.customerId,
+        customerName: data.customer_name ?? data.customerName,
+        items: (data.items || []).map((i: any) => ({
+          productId: i.product_id ?? i.productId,
+          productName: i.product_name ?? i.productName,
+          sku: i.sku,
+          unitPrice: Number(i.unit_price ?? i.price ?? 0),
+          quantity: Number(i.quantity ?? 1),
+          totalPrice: Number(i.total_price ?? 0),
+        })),
+        subtotal: Number(data.subtotal ?? 0),
+        discountAmount: Number(data.discount_amount ?? data.discountAmount ?? 0),
+        taxAmount: Number(data.tax_amount ?? data.taxAmount ?? 0),
+        totalAmount: Number(data.total_amount ?? data.totalAmount ?? 0),
+        paymentMethod: data.payment_method ?? data.paymentMethod,
+        paymentStatus: data.payment_status ?? data.paymentStatus,
+        fulfillmentStatus: data.fulfillment_status ?? data.fulfillmentStatus,
+        notes: data.notes,
+        createdAt: data.created_at ?? data.createdAt ?? new Date().toISOString(),
+      };
     } catch {
       return {
         id: 'ord_' + Date.now(),
@@ -174,7 +239,18 @@ export const apiClient = {
   getCustomers: async (): Promise<Customer[]> => {
     try {
       const res = await fetch(`${BASE_URL}/customers?org_id=${activeOrgId}`, { headers: getHeaders() });
-      return await res.json();
+      if (!res.ok) throw new Error('Failed to fetch customers');
+      const data = await res.json();
+      return (data || []).map((c: any) => ({
+        id: c.id,
+        organizationId: c.organization_id ?? c.organizationId ?? activeOrgId,
+        name: c.name,
+        email: c.email ?? '',
+        phone: c.phone ?? '',
+        address: c.address ?? '',
+        totalPurchases: Number(c.total_purchases ?? c.totalPurchases ?? 0),
+        loyaltyPoints: Number(c.loyalty_points ?? c.loyaltyPoints ?? 0),
+      }));
     } catch {
       return [
         { id: 'cust_1', organizationId: activeOrgId, name: 'Sarah Connor', email: 'sarah@example.com', phone: '+1 (555) 234-5678', totalPurchases: 3548.5, loyaltyPoints: 350 },
@@ -186,7 +262,19 @@ export const apiClient = {
   getJournalEntries: async (): Promise<LedgerEntry[]> => {
     try {
       const res = await fetch(`${BASE_URL}/accounting/journal?org_id=${activeOrgId}`, { headers: getHeaders() });
-      return await res.json();
+      if (!res.ok) throw new Error('Failed to fetch journal entries');
+      const data = await res.json();
+      return (data || []).map((e: any) => ({
+        id: e.id,
+        organizationId: e.organization_id ?? e.organizationId ?? activeOrgId,
+        storeId: e.store_id ?? e.storeId ?? activeStoreId,
+        entryNumber: e.entry_number ?? e.entryNumber ?? e.id,
+        type: e.type ?? 'CREDIT',
+        category: e.category ?? 'SALES',
+        amount: Number(e.amount ?? 0),
+        description: e.description ?? '',
+        createdAt: e.created_at ?? e.createdAt ?? new Date().toISOString(),
+      }));
     } catch {
       return [
         { id: 'leg_1', organizationId: activeOrgId, storeId: activeStoreId, entryNumber: 'LEDG-2025-001', type: 'CREDIT', category: 'SALES', amount: 1603.78, description: 'Sales Order #ORD-2025-1001 payment', createdAt: new Date().toISOString() },
@@ -198,7 +286,14 @@ export const apiClient = {
   getAccountingSummary: async (): Promise<AccountingSummary> => {
     try {
       const res = await fetch(`${BASE_URL}/accounting/summary?org_id=${activeOrgId}`, { headers: getHeaders() });
-      return await res.json();
+      if (!res.ok) throw new Error('Failed to fetch accounting summary');
+      const data = await res.json();
+      return {
+        totalRevenue: Number(data.total_revenue ?? data.totalRevenue ?? 0),
+        todayRevenue: Number(data.today_revenue ?? data.todayRevenue ?? 0),
+        totalSalesCount: Number(data.total_sales_count ?? data.totalSalesCount ?? 0),
+        todaySalesCount: Number(data.today_sales_count ?? data.todaySalesCount ?? 0),
+      };
     } catch {
       return { totalRevenue: 2940.82, todayRevenue: 1603.78, totalSalesCount: 14, todaySalesCount: 3 };
     }
