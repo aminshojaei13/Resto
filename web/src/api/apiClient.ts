@@ -48,7 +48,6 @@ export const apiClient = {
         })),
       }));
     } catch {
-      // Return fallback mock data if backend server is not running
       return [
         {
           id: 'org_apex',
@@ -66,25 +65,6 @@ export const apiClient = {
               warehouses: [
                 { id: 'wh_apex_1a', storeId: 'store_apex_1', organizationId: 'org_apex', name: 'Main Warehouse', code: 'WH-MAIN' },
                 { id: 'wh_apex_1b', storeId: 'store_apex_1', organizationId: 'org_apex', name: 'Express Storage Hub', code: 'WH-EXP' },
-              ],
-            },
-          ],
-        },
-        {
-          id: 'org_braveboy',
-          name: 'BraveBoy Electronics',
-          code: 'BBE',
-          currencySymbol: '$',
-          currencyCode: 'USD',
-          subscriptionTier: 'PRO',
-          stores: [
-            {
-              id: 'store_bb_1',
-              organizationId: 'org_braveboy',
-              name: 'Tech Hub Metro',
-              code: 'BBE-MTR',
-              warehouses: [
-                { id: 'wh_bb_1', storeId: 'store_bb_1', organizationId: 'org_braveboy', name: 'Metro Depot', code: 'WH-BB1' },
               ],
             },
           ],
@@ -144,21 +124,54 @@ export const apiClient = {
           unit: 'pcs',
           stockQuantityByWarehouse: { wh_apex_1a: 45, wh_apex_1b: 18 },
         },
-        {
-          id: 'prod_3',
-          organizationId: activeOrgId,
-          sku: 'APX-MOB-003',
-          barcode: '880609123403',
-          name: 'Apex Phone 15 Pro',
-          description: 'Flagship smartphone with triple lens camera and 120Hz AMOLED display.',
-          price: 999.0,
-          costPrice: 620.0,
-          category: 'Smartphones',
-          unit: 'pcs',
-          stockQuantityByWarehouse: { wh_apex_1a: 18, wh_apex_1b: 9 },
-        },
       ];
     }
+  },
+
+  createProduct: async (productData: any): Promise<Product> => {
+    const res = await fetch(`${BASE_URL}/products`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...productData, org_id: activeOrgId }),
+    });
+    if (!res.ok) throw new Error('Failed to create product');
+    const p = await res.json();
+    return {
+      id: p.id,
+      organizationId: p.organization_id,
+      sku: p.sku,
+      barcode: p.barcode,
+      name: p.name,
+      description: p.description,
+      price: Number(p.price),
+      costPrice: Number(p.cost_price),
+      category: p.category,
+      unit: p.unit || 'pcs',
+      stockQuantityByWarehouse: { wh_apex_1a: 0 },
+    };
+  },
+
+  updateProduct: async (id: string, productData: any): Promise<Product> => {
+    const res = await fetch(`${BASE_URL}/products/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(productData),
+    });
+    if (!res.ok) throw new Error('Failed to update product');
+    const p = await res.json();
+    return {
+      id: p.id,
+      organizationId: p.organization_id,
+      sku: p.sku,
+      barcode: p.barcode,
+      name: p.name,
+      description: p.description,
+      price: Number(p.price),
+      costPrice: Number(p.cost_price),
+      category: p.category,
+      unit: p.unit || 'pcs',
+      stockQuantityByWarehouse: { wh_apex_1a: 0 },
+    };
   },
 
   adjustStock: async (productId: string, warehouseId: string, delta: number, reason: string) => {
@@ -181,59 +194,39 @@ export const apiClient = {
   },
 
   checkout: async (payload: any): Promise<SalesOrder> => {
-    try {
-      const res = await fetch(`${BASE_URL}/orders/checkout`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId, warehouse_id: 'wh_apex_1a' }),
-      });
-      if (!res.ok) throw new Error('Checkout failed');
-      const data = await res.json();
-      return {
-        id: data.id,
-        orderNumber: data.order_number ?? data.orderNumber,
-        organizationId: data.organization_id ?? data.organizationId,
-        storeId: data.store_id ?? data.storeId,
-        warehouseId: data.warehouse_id ?? data.warehouseId,
-        customerId: data.customer_id ?? data.customerId,
-        customerName: data.customer_name ?? data.customerName,
-        items: (data.items || []).map((i: any) => ({
-          productId: i.product_id ?? i.productId,
-          productName: i.product_name ?? i.productName,
-          sku: i.sku,
-          unitPrice: Number(i.unit_price ?? i.price ?? 0),
-          quantity: Number(i.quantity ?? 1),
-          totalPrice: Number(i.total_price ?? 0),
-        })),
-        subtotal: Number(data.subtotal ?? 0),
-        discountAmount: Number(data.discount_amount ?? data.discountAmount ?? 0),
-        taxAmount: Number(data.tax_amount ?? data.taxAmount ?? 0),
-        totalAmount: Number(data.total_amount ?? data.totalAmount ?? 0),
-        paymentMethod: data.payment_method ?? data.paymentMethod,
-        paymentStatus: data.payment_status ?? data.paymentStatus,
-        fulfillmentStatus: data.fulfillment_status ?? data.fulfillmentStatus,
-        notes: data.notes,
-        createdAt: data.created_at ?? data.createdAt ?? new Date().toISOString(),
-      };
-    } catch {
-      return {
-        id: 'ord_' + Date.now(),
-        orderNumber: 'ORD-2025-' + Math.floor(Math.random() * 9000 + 1000),
-        organizationId: activeOrgId,
-        storeId: activeStoreId,
-        warehouseId: 'wh_apex_1a',
-        customerName: payload.customer_name || 'Walk-in Customer',
-        items: payload.items,
-        subtotal: 1000,
-        discountAmount: 0,
-        taxAmount: 80,
-        totalAmount: 1080,
-        paymentMethod: payload.payment_method,
-        paymentStatus: 'PAID',
-        fulfillmentStatus: 'COMPLETED',
-        createdAt: new Date().toISOString(),
-      };
-    }
+    const res = await fetch(`${BASE_URL}/orders/checkout`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId, warehouse_id: 'wh_apex_1a' }),
+    });
+    if (!res.ok) throw new Error('Checkout failed');
+    const data = await res.json();
+    return {
+      id: data.id,
+      orderNumber: data.order_number ?? data.orderNumber,
+      organizationId: data.organization_id ?? data.organizationId,
+      storeId: data.store_id ?? data.storeId,
+      warehouseId: data.warehouse_id ?? data.warehouseId,
+      customerId: data.customer_id ?? data.customerId,
+      customerName: data.customer_name ?? data.customerName,
+      items: (data.items || []).map((i: any) => ({
+        productId: i.product_id ?? i.productId,
+        productName: i.product_name ?? i.productName,
+        sku: i.sku,
+        unitPrice: Number(i.unit_price ?? i.price ?? 0),
+        quantity: Number(i.quantity ?? 1),
+        totalPrice: Number(i.total_price ?? 0),
+      })),
+      subtotal: Number(data.subtotal ?? 0),
+      discountAmount: Number(data.discount_amount ?? data.discountAmount ?? 0),
+      taxAmount: Number(data.tax_amount ?? data.taxAmount ?? 0),
+      totalAmount: Number(data.total_amount ?? data.totalAmount ?? 0),
+      paymentMethod: data.payment_method ?? data.paymentMethod,
+      paymentStatus: data.payment_status ?? data.paymentStatus,
+      fulfillmentStatus: data.fulfillment_status ?? data.fulfillmentStatus,
+      notes: data.notes,
+      createdAt: data.created_at ?? data.createdAt ?? new Date().toISOString(),
+    };
   },
 
   getCustomers: async (): Promise<Customer[]> => {
@@ -254,9 +247,107 @@ export const apiClient = {
     } catch {
       return [
         { id: 'cust_1', organizationId: activeOrgId, name: 'Sarah Connor', email: 'sarah@example.com', phone: '+1 (555) 234-5678', totalPurchases: 3548.5, loyaltyPoints: 350 },
-        { id: 'cust_2', organizationId: activeOrgId, name: 'John Smith', email: 'john@techcorp.io', phone: '+1 (555) 987-6543', totalPurchases: 1899.9, loyaltyPoints: 180 },
       ];
     }
+  },
+
+  createCustomer: async (customerData: any): Promise<Customer> => {
+    const res = await fetch(`${BASE_URL}/customers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...customerData, org_id: activeOrgId }),
+    });
+    if (!res.ok) throw new Error('Failed to create customer');
+    const c = await res.json();
+    return {
+      id: c.id,
+      organizationId: c.organization_id,
+      name: c.name,
+      email: c.email || '',
+      phone: c.phone || '',
+      address: c.address || '',
+      totalPurchases: Number(c.total_purchases || 0),
+      loyaltyPoints: Number(c.loyalty_points || 0),
+    };
+  },
+
+  updateCustomer: async (id: string, customerData: any): Promise<Customer> => {
+    const res = await fetch(`${BASE_URL}/customers/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(customerData),
+    });
+    if (!res.ok) throw new Error('Failed to update customer');
+    const c = await res.json();
+    return {
+      id: c.id,
+      organizationId: c.organization_id,
+      name: c.name,
+      email: c.email || '',
+      phone: c.phone || '',
+      address: c.address || '',
+      totalPurchases: Number(c.total_purchases || 0),
+      loyaltyPoints: Number(c.loyalty_points || 0),
+    };
+  },
+
+  getSuppliers: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/suppliers?org_id=${activeOrgId}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch suppliers');
+      return await res.json();
+    } catch {
+      return [
+        { id: 'sup_1', name: 'TechImport Global Co.', email: 'sales@techimport.com', phone: '+1 (800) 555-0199', address: '500 Logistics Way, San Jose, CA' },
+      ];
+    }
+  },
+
+  createSupplier: async (data: any) => {
+    const res = await fetch(`${BASE_URL}/suppliers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...data, org_id: activeOrgId }),
+    });
+    return await res.json();
+  },
+
+  updateSupplier: async (id: string, data: any) => {
+    const res = await fetch(`${BASE_URL}/suppliers/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  },
+
+  getPurchases: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/purchases?org_id=${activeOrgId}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch purchases');
+      return await res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  getExpenses: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/expenses?org_id=${activeOrgId}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch expenses');
+      return await res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  createExpense: async (data: any) => {
+    const res = await fetch(`${BASE_URL}/expenses`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...data, store_id: activeStoreId }),
+    });
+    return await res.json();
   },
 
   getJournalEntries: async (): Promise<LedgerEntry[]> => {
@@ -271,14 +362,13 @@ export const apiClient = {
         entryNumber: e.entry_number ?? e.entryNumber ?? e.id,
         type: e.type ?? 'CREDIT',
         category: e.category ?? 'SALES',
-        amount: Number(e.amount ?? 0),
+        amount: Number(e.amount ?? e.total_debit ?? 0),
         description: e.description ?? '',
         createdAt: e.created_at ?? e.createdAt ?? new Date().toISOString(),
       }));
     } catch {
       return [
         { id: 'leg_1', organizationId: activeOrgId, storeId: activeStoreId, entryNumber: 'LEDG-2025-001', type: 'CREDIT', category: 'SALES', amount: 1603.78, description: 'Sales Order #ORD-2025-1001 payment', createdAt: new Date().toISOString() },
-        { id: 'leg_2', organizationId: activeOrgId, storeId: activeStoreId, entryNumber: 'LEDG-2025-002', type: 'DEBIT', category: 'EXPENSE', amount: 350.0, description: 'Store Utility Bill', createdAt: new Date().toISOString() },
       ];
     }
   },

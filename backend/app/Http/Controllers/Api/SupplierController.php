@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class CustomerController extends Controller
+class SupplierController extends Controller
 {
     public function index(Request $request)
     {
         $orgId = $request->get('org_id') ?? 'org_apex';
         $query = $request->query('query');
 
-        $builder = Customer::where('organization_id', $orgId);
+        $builder = Supplier::where('organization_id', $orgId);
 
         if ($query) {
             $builder->where(function($q) use ($query) {
@@ -29,8 +29,8 @@ class CustomerController extends Controller
 
     public function show(string $id)
     {
-        $customer = Customer::with(['addresses'])->findOrFail($id);
-        return response()->json($customer);
+        $supplier = Supplier::with(['purchases.items'])->findOrFail($id);
+        return response()->json($supplier);
     }
 
     public function store(Request $request)
@@ -44,7 +44,7 @@ class CustomerController extends Controller
             'address' => 'nullable|string',
         ]);
 
-        $customer = Customer::create([
+        $supplier = Supplier::create([
             'id' => (string) Str::uuid(),
             'organization_id' => $orgId,
             'name' => $request->name,
@@ -53,12 +53,12 @@ class CustomerController extends Controller
             'address' => $request->address ?? '',
         ]);
 
-        return response()->json($customer, 201);
+        return response()->json($supplier, 201);
     }
 
     public function update(Request $request, string $id)
     {
-        $customer = Customer::findOrFail($id);
+        $supplier = Supplier::findOrFail($id);
 
         $request->validate([
             'name' => 'sometimes|required|string',
@@ -67,15 +67,15 @@ class CustomerController extends Controller
             'address' => 'nullable|string',
         ]);
 
-        $customer->update($request->only(['name', 'email', 'phone', 'address', 'total_purchases', 'loyalty_points']));
+        $supplier->update($request->only(['name', 'email', 'phone', 'address']));
 
-        return response()->json($customer);
+        return response()->json($supplier);
     }
 
     public function destroy(string $id)
     {
-        $customer = Customer::findOrFail($id);
-        $customer->delete();
-        return response()->json(['message' => 'Customer deleted/archived successfully']);
+        $supplier = Supplier::findOrFail($id);
+        $supplier->delete();
+        return response()->json(['message' => 'Supplier deleted/archived successfully']);
     }
 }

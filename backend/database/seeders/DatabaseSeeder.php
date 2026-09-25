@@ -5,12 +5,22 @@ namespace Database\Seeders;
 use App\Models\Account;
 use App\Models\ChartOfAccounts;
 use App\Models\Customer;
+use App\Models\Expense;
+use App\Models\JournalEntry;
+use App\Models\JournalEntryLine;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Organization;
+use App\Models\OrganizationMembership;
+use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
+use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
@@ -30,6 +40,15 @@ class DatabaseSeeder extends Seeder
             'phone' => '+1 (555) 019-2834',
             'password' => Hash::make('password123'),
             'role' => 'Owner',
+        ]);
+
+        $cashier = User::create([
+            'id' => 'usr_cashier_1',
+            'name' => 'Elena Rostova',
+            'email' => 'elena@calcuapp.com',
+            'phone' => '+1 (555) 019-9988',
+            'password' => Hash::make('password123'),
+            'role' => 'Cashier',
         ]);
 
         // 2. Organizations
@@ -53,6 +72,28 @@ class DatabaseSeeder extends Seeder
             'subscription_tier' => 'PRO',
         ]);
 
+        // Memberships
+        OrganizationMembership::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => 'org_apex',
+            'user_id' => 'usr_admin_1',
+            'role' => 'Owner',
+        ]);
+
+        OrganizationMembership::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => 'org_apex',
+            'user_id' => 'usr_cashier_1',
+            'role' => 'Cashier',
+        ]);
+
+        OrganizationMembership::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => 'org_braveboy',
+            'user_id' => 'usr_admin_1',
+            'role' => 'Owner',
+        ]);
+
         // 3. Stores & Warehouses
         $storeApex1 = Store::create([
             'id' => 'store_apex_1',
@@ -61,6 +102,15 @@ class DatabaseSeeder extends Seeder
             'code' => 'APX-DT',
             'address' => '100 Market St, San Francisco, CA',
             'phone' => '+1 (555) 019-2834',
+        ]);
+
+        $storeApex2 = Store::create([
+            'id' => 'store_apex_2',
+            'organization_id' => 'org_apex',
+            'name' => 'Apex Express (Northside)',
+            'code' => 'APX-NS',
+            'address' => '450 North Blvd, San Francisco, CA',
+            'phone' => '+1 (555) 019-3311',
         ]);
 
         $whApex1a = Warehouse::create([
@@ -81,7 +131,85 @@ class DatabaseSeeder extends Seeder
             'address' => '120 Market St, San Francisco',
         ]);
 
-        // 4. Products & Stock
+        // 4. Chart of Accounts & Accounts
+        $coaAssets = ChartOfAccounts::create([
+            'id' => 'coa_asset',
+            'organization_id' => 'org_apex',
+            'code' => '1000',
+            'name' => 'Assets',
+            'type' => 'ASSET',
+        ]);
+
+        $coaLiab = ChartOfAccounts::create([
+            'id' => 'coa_liability',
+            'organization_id' => 'org_apex',
+            'code' => '2000',
+            'name' => 'Liabilities',
+            'type' => 'LIABILITY',
+        ]);
+
+        $coaRev = ChartOfAccounts::create([
+            'id' => 'coa_revenue',
+            'organization_id' => 'org_apex',
+            'code' => '4000',
+            'name' => 'Revenue',
+            'type' => 'REVENUE',
+        ]);
+
+        $coaExp = ChartOfAccounts::create([
+            'id' => 'coa_expense',
+            'organization_id' => 'org_apex',
+            'code' => '5000',
+            'name' => 'Expenses',
+            'type' => 'EXPENSE',
+        ]);
+
+        $cashAcc = Account::create([
+            'id' => 'acc_1010',
+            'organization_id' => 'org_apex',
+            'chart_of_account_id' => 'coa_asset',
+            'code' => '1010',
+            'name' => 'Cash / POS Drawer',
+            'balance' => 15000.00,
+        ]);
+
+        $inventoryAcc = Account::create([
+            'id' => 'acc_1200',
+            'organization_id' => 'org_apex',
+            'chart_of_account_id' => 'coa_asset',
+            'code' => '1200',
+            'name' => 'Inventory Asset',
+            'balance' => 25000.00,
+        ]);
+
+        $payableAcc = Account::create([
+            'id' => 'acc_2010',
+            'organization_id' => 'org_apex',
+            'chart_of_account_id' => 'coa_liability',
+            'code' => '2010',
+            'name' => 'Accounts Payable',
+            'balance' => 5000.00,
+        ]);
+
+        $salesAcc = Account::create([
+            'id' => 'acc_4010',
+            'organization_id' => 'org_apex',
+            'chart_of_account_id' => 'coa_revenue',
+            'code' => '4010',
+            'name' => 'Sales Revenue',
+            'balance' => 35000.00,
+        ]);
+
+        $expAcc = Account::create([
+            'id' => 'acc_5010',
+            'organization_id' => 'org_apex',
+            'chart_of_account_id' => 'coa_expense',
+            'code' => '5010',
+            'name' => 'Operating Expense',
+            'balance' => 4500.00,
+        ]);
+
+        // 5. Products & Stock
         $probook = Product::create([
             'id' => 'prod_1',
             'organization_id' => 'org_apex',
@@ -126,7 +254,69 @@ class DatabaseSeeder extends Seeder
             'quantity' => 45,
         ]);
 
-        // 5. Customers
+        $monitor = Product::create([
+            'id' => 'prod_3',
+            'organization_id' => 'org_apex',
+            'sku' => 'APX-DIS-003',
+            'barcode' => '880609123403',
+            'name' => 'UltraWide 34" Curved Display',
+            'description' => '144Hz 4K IPS panel monitor with USB-C Hub.',
+            'price' => 599.99,
+            'cost_price' => 380.00,
+            'category' => 'Electronics',
+            'unit' => 'pcs',
+            'image_url' => 'https://picsum.photos/id/1060/300/300',
+        ]);
+
+        WarehouseStock::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => 'org_apex',
+            'warehouse_id' => 'wh_apex_1a',
+            'product_id' => 'prod_3',
+            'quantity' => 12,
+        ]);
+
+        // 6. Suppliers & Purchasing
+        $sup1 = Supplier::create([
+            'id' => 'sup_1',
+            'organization_id' => 'org_apex',
+            'name' => 'TechImport Global Co.',
+            'email' => 'sales@techimport.com',
+            'phone' => '+1 (800) 555-0199',
+            'address' => '500 Logistics Way, San Jose, CA',
+        ]);
+
+        $sup2 = Supplier::create([
+            'id' => 'sup_2',
+            'organization_id' => 'org_apex',
+            'name' => 'ElectroComponents Inc.',
+            'email' => 'orders@electrocomponents.com',
+            'phone' => '+1 (800) 555-0288',
+            'address' => '12 Industrial Park, Austin, TX',
+        ]);
+
+        $po1 = Purchase::create([
+            'id' => 'po_1001',
+            'organization_id' => 'org_apex',
+            'store_id' => 'store_apex_1',
+            'warehouse_id' => 'wh_apex_1a',
+            'supplier_id' => 'sup_1',
+            'purchase_number' => 'PO-2025-1001',
+            'total_amount' => 8500.00,
+            'status' => 'RECEIVED',
+            'payment_status' => 'PAID',
+        ]);
+
+        PurchaseItem::create([
+            'id' => (string) Str::uuid(),
+            'purchase_id' => 'po_1001',
+            'product_id' => 'prod_1',
+            'quantity' => 10,
+            'unit_cost' => 850.00,
+            'total_cost' => 8500.00,
+        ]);
+
+        // 7. Customers & Orders
         $sarah = Customer::create([
             'id' => 'cust_1',
             'organization_id' => 'org_apex',
@@ -138,7 +328,17 @@ class DatabaseSeeder extends Seeder
             'loyalty_points' => 160,
         ]);
 
-        // 6. Orders
+        $john = Customer::create([
+            'id' => 'cust_2',
+            'organization_id' => 'org_apex',
+            'name' => 'John Wick',
+            'email' => 'john.wick@example.com',
+            'phone' => '+1 (555) 999-0000',
+            'address' => '1 Continental Hotel, New York, NY',
+            'total_purchases' => 249.99,
+            'loyalty_points' => 25,
+        ]);
+
         $order = Order::create([
             'id' => 'ord_1001',
             'order_number' => 'ORD-2025-1001',
@@ -168,6 +368,19 @@ class DatabaseSeeder extends Seeder
             'discount_percent' => 5.0,
             'tax_amount' => 98.80,
             'total_price' => 1333.79,
+        ]);
+
+        // 8. Expenses
+        Expense::create([
+            'id' => 'exp_1001',
+            'organization_id' => 'org_apex',
+            'store_id' => 'store_apex_1',
+            'category' => 'Store Utilities',
+            'amount' => 450.00,
+            'payment_method' => 'BANK_TRANSFER',
+            'date' => date('Y-m-d'),
+            'notes' => 'Monthly electricity bill for Apex Flagship',
+            'user_id' => 'usr_admin_1',
         ]);
     }
 }

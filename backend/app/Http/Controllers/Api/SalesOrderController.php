@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -45,15 +46,16 @@ class SalesOrderController extends Controller
 
     public function checkout(Request $request)
     {
+        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+
         $request->validate([
-            'org_id' => 'required',
             'store_id' => 'required',
             'warehouse_id' => 'required',
             'items' => 'required|array|min:1',
             'payment_method' => 'required',
         ]);
 
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $orgId) {
             $orderNumber = 'ORD-' . date('Y') . '-' . rand(1000, 9999);
             $subtotal = 0.0;
             $discountTotal = 0.0;
@@ -63,7 +65,7 @@ class SalesOrderController extends Controller
             $order = Order::create([
                 'id' => (string) Str::uuid(),
                 'order_number' => $orderNumber,
-                'organization_id' => $request->org_id,
+                'organization_id' => $orgId,
                 'store_id' => $request->store_id,
                 'warehouse_id' => $request->warehouse_id,
                 'customer_id' => $request->customer_id,
@@ -106,7 +108,7 @@ class SalesOrderController extends Controller
 
                 // Deduct stock in warehouse
                 $this->inventoryService->adjustStock(
-                    $request->org_id,
+                    $orgId,
                     $request->warehouse_id,
                     $item['product_id'],
                     $item['variant_id'] ?? null,
@@ -125,7 +127,7 @@ class SalesOrderController extends Controller
             // Record Payment
             Payment::create([
                 'id' => (string) Str::uuid(),
-                'organization_id' => $request->org_id,
+                'organization_id' => $orgId,
                 'order_id' => $order->id,
                 'amount' => $grandTotal,
                 'payment_method' => $request->payment_method,
@@ -133,9 +135,101 @@ class SalesOrderController extends Controller
             ]);
 
             // Double-entry accounting entry
-            $this->accountingService->recordSaleJournal($request->org_id, $request->store_id, $order);
+            $this->accountingService->recordSaleJournal($orgId, $request->store_id, $order);
 
             return response()->json($order->load('items'), 201);
+        });
+    }
+
+    public function cancel(Request $request, string $id)
+    {
+        $order = Order::with('items')->findOrFail($id);
+
+        if ($order->fulfillment_status === 'CANCELLED') {
+            return response()->json(['message' => 'Order is already cancelled'], 422);
+        }
+
+        return DB::transaction(function () use ($order) {
+            foreach ($order->items as $item) {
+                // Restore stock
+                $this->inventoryService->adjustStock(
+                    $order->organization_id,
+                    $order->warehouse_id,
+                    $item->product_id,
+                    $item->product_variant_id,
+                    $item->quantity,
+                    "Order #{$order->order_number} cancellation restock",
+                    $order->id
+                );
+            }
+
+            $order->fulfillment_status = 'CANCELLED';
+            $order->save();
+
+            return response()->json(['message' => 'Order cancelled and stock restored successfully', 'order' => $order]);
+        });
+    }
+
+    public function refund(Request $request, string $id)
+    {
+        $order = Order::with('items')->findOrFail($id);
+
+        if ($order->payment_status === 'REFUNDED') {
+            return response()->json(['message' => 'Order is already refunded'], 422);
+        }
+
+        return DB::transaction(function () use ($order) {
+            foreach ($order->items as $item) {
+                // Restore stock
+                $this->inventoryService->adjustStock(
+                    $order->organization_id,
+                    $order->warehouse_id,
+                    $item->product_id,
+                    $item->product_variant_id,
+                    $item->quantity,
+                    "Order #{$order->order_number} refund restock",
+                    $order->id
+                );
+            }
+
+            $order->payment_status = 'REFUNDED';
+            $order->fulfillment_status = 'CANCELLED';
+            $order->save();
+
+            // Reversal journal entry: Dr Sales Revenue (4010), Cr Cash (1010)
+            $salesAccount = Account::firstOrCreate(
+                ['organization_id' => $order->organization_id, 'code' => '4010'],
+                ['id' => (string) Str::uuid(), 'chart_of_account_id' => 'coa_revenue', 'name' => 'Sales Revenue', 'balance' => 0]
+            );
+
+            $cashAccount = Account::firstOrCreate(
+                ['organization_id' => $order->organization_id, 'code' => '1010'],
+                ['id' => (string) Str::uuid(), 'chart_of_account_id' => 'coa_asset', 'name' => 'Cash / POS Drawer', 'balance' => 0]
+            );
+
+            $this->accountingService->postJournalEntry(
+                $order->organization_id,
+                $order->store_id,
+                "Sales Refund for Order #{$order->order_number}",
+                [
+                    [
+                        'account_id' => $salesAccount->id,
+                        'type' => 'DEBIT',
+                        'amount' => $order->total_amount,
+                        'description' => "Revenue reversal for Order #{$order->order_number}"
+                    ],
+                    [
+                        'account_id' => $cashAccount->id,
+                        'type' => 'CREDIT',
+                        'amount' => $order->total_amount,
+                        'description' => "Cash refund paid out for Order #{$order->order_number}"
+                    ]
+                ],
+                'SalesRefund',
+                $order->id
+            );
+
+            return response()->json(['message' => 'Order refunded, stock restored, and accounting entry reversed successfully', 'order' => $order]);
         });
     }
 }

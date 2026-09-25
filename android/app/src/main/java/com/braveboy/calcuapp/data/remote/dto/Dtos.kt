@@ -73,6 +73,41 @@ data class ProductDto(
 )
 
 @JsonClass(generateAdapter = true)
+data class SupplierDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "email") val email: String?,
+    @Json(name = "phone") val phone: String?,
+    @Json(name = "address") val address: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class PurchaseDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "purchase_number") val purchaseNumber: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "store_id") val storeId: String,
+    @Json(name = "warehouse_id") val warehouseId: String,
+    @Json(name = "supplier_id") val supplierId: String,
+    @Json(name = "total_amount") val totalAmount: Double,
+    @Json(name = "status") val status: String,
+    @Json(name = "payment_status") val paymentStatus: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ExpenseDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "store_id") val storeId: String,
+    @Json(name = "category") val category: String,
+    @Json(name = "amount") val amount: Double,
+    @Json(name = "payment_method") val paymentMethod: String,
+    @Json(name = "date") val date: String,
+    @Json(name = "notes") val notes: String?
+)
+
+@JsonClass(generateAdapter = true)
 data class StockAdjustRequestDto(
     @Json(name = "org_id") val orgId: String,
     @Json(name = "warehouse_id") val warehouseId: String,
