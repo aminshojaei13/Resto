@@ -17,9 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Person
@@ -33,7 +33,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +70,7 @@ fun CustomerScreen(
     val customers by viewModel.customers.collectAsState()
     val isAddCustomerDialogOpen by viewModel.isAddCustomerDialogOpen.collectAsState()
     val selectedCustomerForDetail by viewModel.selectedCustomerForDetail.collectAsState()
+    val selectedCustomerForEdit by viewModel.selectedCustomerForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -162,7 +162,8 @@ fun CustomerScreen(
                     items(customers, key = { it.id }) { customer ->
                         CustomerCard(
                             customer = customer,
-                            onClick = { viewModel.selectCustomerForDetail(customer) }
+                            onClick = { viewModel.selectCustomerForDetail(customer) },
+                            onEditClick = { viewModel.openEditCustomer(customer) }
                         )
                     }
                 }
@@ -184,7 +185,19 @@ fun CustomerScreen(
     selectedCustomerForDetail?.let { customer ->
         CustomerDetailDialog(
             customer = customer,
+            onEditClick = { viewModel.openEditCustomer(customer) },
             onDismiss = { viewModel.selectCustomerForDetail(null) }
+        )
+    }
+
+    // Edit Customer Dialog (Pre-Populated)
+    selectedCustomerForEdit?.let { customer ->
+        EditCustomerDialog(
+            customer = customer,
+            onSubmit = { updatedCustomer ->
+                viewModel.updateCustomer(updatedCustomer)
+            },
+            onDismiss = { viewModel.closeEditCustomer() }
         )
     }
 }
@@ -192,7 +205,8 @@ fun CustomerScreen(
 @Composable
 fun CustomerCard(
     customer: Customer,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEditClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
@@ -270,34 +284,19 @@ fun CustomerCard(
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEditClick) {
                     Icon(
-                        imageVector = Icons.Rounded.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "Edit Customer Profile",
                         tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = "${customer.loyaltyPoints} pts",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = "$${String.format("%.2f", customer.totalPurchases)}",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Total Spent",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -402,8 +401,114 @@ fun AddCustomerDialog(
 }
 
 @Composable
+fun EditCustomerDialog(
+    customer: Customer,
+    onSubmit: (updatedCustomer: Customer) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(customer.name) }
+    var email by remember { mutableStateOf(customer.email) }
+    var phone by remember { mutableStateOf(customer.phone) }
+    var address by remember { mutableStateOf(customer.address) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Edit Customer Profile",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Full Name *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone Number") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email Address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Physical Address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Cancel")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (name.isNotBlank()) {
+                                onSubmit(
+                                    customer.copy(
+                                        name = name.trim(),
+                                        email = email.trim(),
+                                        phone = phone.trim(),
+                                        address = address.trim()
+                                    )
+                                )
+                            }
+                        },
+                        enabled = name.isNotBlank(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save Changes")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CustomerDetailDialog(
     customer: Customer,
+    onEditClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -516,8 +621,22 @@ fun CustomerDetailDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Close")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Edit Profile")
+                    }
+
+                    Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Close")
+                    }
                 }
             }
         }

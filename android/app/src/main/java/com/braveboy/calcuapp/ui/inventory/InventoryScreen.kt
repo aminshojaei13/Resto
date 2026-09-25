@@ -20,9 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,11 +43,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.model.Warehouse
 
@@ -64,6 +66,7 @@ fun InventoryScreen(
     val products by viewModel.products.collectAsState()
     val warehouses by viewModel.warehouses.collectAsState()
     val selectedProductForAdjustment by viewModel.selectedProductForAdjustment.collectAsState()
+    val selectedProductForEdit by viewModel.selectedProductForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -222,6 +225,7 @@ fun InventoryScreen(
                     InventoryItemCard(
                         product = product,
                         warehouses = warehouses,
+                        onEditProductClick = { viewModel.openEditProduct(product) },
                         onAdjustStockClick = { viewModel.openStockAdjustment(product) }
                     )
                 }
@@ -241,12 +245,24 @@ fun InventoryScreen(
             onDismiss = { viewModel.closeStockAdjustment() }
         )
     }
+
+    // Edit Product Dialog (Pre-Populated)
+    selectedProductForEdit?.let { product ->
+        EditProductDialog(
+            product = product,
+            onSubmit = { updatedProduct ->
+                viewModel.updateProduct(updatedProduct)
+            },
+            onDismiss = { viewModel.closeEditProduct() }
+        )
+    }
 }
 
 @Composable
 fun InventoryItemCard(
     product: Product,
     warehouses: List<Warehouse>,
+    onEditProductClick: () -> Unit,
     onAdjustStockClick: () -> Unit
 ) {
     val totalStock = product.getTotalStock()
@@ -376,18 +392,178 @@ fun InventoryItemCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedButton(
-                onClick = onAdjustStockClick,
-                modifier = Modifier.align(Alignment.End),
-                shape = MaterialTheme.shapes.medium
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                IconButton(onClick = onEditProductClick) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "Edit Product Details",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                OutlinedButton(
+                    onClick = onAdjustStockClick,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Adjust Stock")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditProductDialog(
+    product: Product,
+    onSubmit: (updatedProduct: Product) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(product.name) }
+    var sku by remember { mutableStateOf(product.sku) }
+    var barcode by remember { mutableStateOf(product.barcode) }
+    var description by remember { mutableStateOf(product.description) }
+    var priceStr by remember { mutableStateOf(product.price.toString()) }
+    var costPriceStr by remember { mutableStateOf(product.costPrice.toString()) }
+    var category by remember { mutableStateOf(product.category) }
+    var unit by remember { mutableStateOf(product.unit) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Edit Product Details",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Adjust Stock")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Product Name *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = sku,
+                        onValueChange = { sku = it },
+                        label = { Text("SKU *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = barcode,
+                        onValueChange = { barcode = it },
+                        label = { Text("Barcode") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = priceStr,
+                        onValueChange = { priceStr = it },
+                        label = { Text("Selling Price *") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = costPriceStr,
+                        onValueChange = { costPriceStr = it },
+                        label = { Text("Cost Price") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = { category = it },
+                        label = { Text("Category") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = unit,
+                        onValueChange = { unit = it },
+                        label = { Text("Unit") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Cancel")
+                    }
+
+                    Button(
+                        onClick = {
+                            val priceVal = priceStr.toDoubleOrNull() ?: product.price
+                            val costVal = costPriceStr.toDoubleOrNull() ?: product.costPrice
+                            if (name.isNotBlank() && sku.isNotBlank()) {
+                                onSubmit(
+                                    product.copy(
+                                        name = name.trim(),
+                                        sku = sku.trim(),
+                                        barcode = barcode.trim(),
+                                        description = description.trim(),
+                                        price = priceVal,
+                                        costPrice = costVal,
+                                        category = category.trim(),
+                                        unit = unit.trim()
+                                    )
+                                )
+                            }
+                        },
+                        enabled = name.isNotBlank() && sku.isNotBlank(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save Changes")
+                    }
+                }
             }
         }
     }

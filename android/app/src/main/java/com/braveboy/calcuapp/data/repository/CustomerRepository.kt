@@ -3,6 +3,9 @@ package com.braveboy.calcuapp.data.repository
 import com.braveboy.calcuapp.data.local.db.dao.CustomerDao
 import com.braveboy.calcuapp.data.local.db.entity.toEntity
 import com.braveboy.calcuapp.data.model.Customer
+import com.braveboy.calcuapp.data.remote.CalcuappApiService
+import com.braveboy.calcuapp.data.remote.NetworkModule
+import com.braveboy.calcuapp.data.remote.dto.CustomerDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -11,10 +14,12 @@ interface CustomerRepository {
     fun searchCustomers(orgId: String, query: String): Flow<List<Customer>>
     fun getCustomerById(id: String): Flow<Customer?>
     suspend fun addCustomer(customer: Customer)
+    suspend fun updateCustomer(customer: Customer)
 }
 
 class CustomerRepositoryImpl(
-    private val customerDao: CustomerDao
+    private val customerDao: CustomerDao,
+    private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : CustomerRepository {
 
     override fun getCustomers(orgId: String): Flow<List<Customer>> {
@@ -35,6 +40,43 @@ class CustomerRepositoryImpl(
     }
 
     override suspend fun addCustomer(customer: Customer) {
+        try {
+            apiService.addCustomer(
+                CustomerDto(
+                    id = customer.id,
+                    organizationId = customer.orgId,
+                    name = customer.name,
+                    email = customer.email,
+                    phone = customer.phone,
+                    address = customer.address,
+                    totalPurchases = customer.totalPurchases,
+                    loyaltyPoints = customer.loyaltyPoints
+                )
+            )
+        } catch (e: Exception) {
+            // Offline fallback
+        }
+        customerDao.insertCustomer(customer.toEntity())
+    }
+
+    override suspend fun updateCustomer(customer: Customer) {
+        try {
+            apiService.updateCustomer(
+                id = customer.id,
+                customer = CustomerDto(
+                    id = customer.id,
+                    organizationId = customer.orgId,
+                    name = customer.name,
+                    email = customer.email,
+                    phone = customer.phone,
+                    address = customer.address,
+                    totalPurchases = customer.totalPurchases,
+                    loyaltyPoints = customer.loyaltyPoints
+                )
+            )
+        } catch (e: Exception) {
+            // Offline fallback
+        }
         customerDao.insertCustomer(customer.toEntity())
     }
 }
