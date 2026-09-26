@@ -1067,6 +1067,50 @@ paths:
         '200':
           description: Expense deleted successfully
 
+  /messages:
+    get:
+      summary: List Imported Social Orders & Messages History
+      tags: [Social Messages]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of imported social message records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportedMessage'
+
+  /messages/parse:
+    post:
+      summary: Parse Raw Social Message into Order Preview
+      description: >
+        Deterministically parses raw message text copied from Instagram, Telegram, or WhatsApp.
+        Matches catalog items by SKU/Name and matches or creates customer profiles.
+      tags: [Social Messages]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [raw_text]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                raw_text: { type: string, example: "CALCUAPP_ORDER\nCustomer: Ali Rezaei\nPhone: +1 (555) 888-9999\nSKU: APX-LAP-001\nQuantity: 2\nAddress: Tehran, Freedom Square\nPayment: Cash" }
+                source: { type: string, example: "manual_paste" }
+      responses:
+        '200':
+          description: Parsed order preview with matched catalog items and customer profile
+
   /accounting/accounts:
     get:
       summary: List Chart of Accounts & Balances
@@ -1462,6 +1506,18 @@ components:
         code: { type: string, example: "1010" }
         name: { type: string, example: "Cash / POS Drawer" }
         balance: { type: number, example: 15000.00 }
+
+    ImportedMessage:
+      type: object
+      properties:
+        id: { type: string, example: "msg_1001" }
+        organization_id: { type: string, example: "org_apex" }
+        source: { type: string, example: "manual_paste" }
+        raw_text: { type: string }
+        status: { type: string, enum: [PARSED, CONVERTED, FAILED], example: "PARSED" }
+        customer_id: { type: string, example: "cust_1" }
+        order_id: { type: string }
+        created_at: { type: string }
 
     JournalEntry:
       type: object
