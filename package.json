@@ -1,0 +1,8 @@
+{
+  "name": "calcuapp-root",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix web start",
+    "build": "npm --prefix web build"
+  }
+}

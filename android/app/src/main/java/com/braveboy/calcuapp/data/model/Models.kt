@@ -143,6 +143,16 @@ data class Customer(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class Supplier(
+    val id: String = UUID.randomUUID().toString(),
+    val orgId: String,
+    val name: String,
+    val email: String = "",
+    val phone: String = "",
+    val address: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class OrderItem(
     val productId: String,
     val variantId: String? = null,

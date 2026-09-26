@@ -16,6 +16,7 @@ import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.model.ProductVariant
 import com.braveboy.calcuapp.data.model.SalesOrder
 import com.braveboy.calcuapp.data.model.Store
+import com.braveboy.calcuapp.data.model.Supplier
 import com.braveboy.calcuapp.data.model.Warehouse
 
 @Entity(tableName = "organizations")
@@ -190,6 +191,37 @@ fun Customer.toEntity() = CustomerEntity(
     address = address,
     totalPurchases = totalPurchases,
     loyaltyPoints = loyaltyPoints,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "suppliers")
+data class SupplierEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val createdAt: Long
+) {
+    fun toDomain() = Supplier(
+        id = id,
+        orgId = orgId,
+        name = name,
+        email = email,
+        phone = phone,
+        address = address,
+        createdAt = createdAt
+    )
+}
+
+fun Supplier.toEntity() = SupplierEntity(
+    id = id,
+    orgId = orgId,
+    name = name,
+    email = email,
+    phone = phone,
+    address = address,
     createdAt = createdAt
 )
 

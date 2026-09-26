@@ -1,4 +1,4 @@
-import { AccountingSummary, Customer, LedgerEntry, Organization, Product, SalesOrder, Store, Warehouse } from '../types';
+import { AccountingSummary, Customer, LedgerEntry, Organization, Product, SalesOrder, Store, Supplier, Warehouse } from '../types';
 
 const BASE_URL = 'http://localhost:8000/api/v1';
 
@@ -291,33 +291,93 @@ export const apiClient = {
     };
   },
 
-  getSuppliers: async (): Promise<any[]> => {
+  getSuppliers: async (query?: string): Promise<Supplier[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/suppliers?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/suppliers`);
+      url.searchParams.append('org_id', activeOrgId);
+      if (query) url.searchParams.append('query', query);
+
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch suppliers');
-      return await res.json();
+      const data = await res.json();
+      return (data || []).map((s: any) => ({
+        id: s.id,
+        organizationId: s.organization_id ?? s.organizationId ?? activeOrgId,
+        name: s.name,
+        email: s.email || '',
+        phone: s.phone || '',
+        address: s.address || '',
+        purchases: s.purchases || [],
+        createdAt: s.created_at || s.createdAt,
+      }));
     } catch {
       return [
-        { id: 'sup_1', name: 'TechImport Global Co.', email: 'sales@techimport.com', phone: '+1 (800) 555-0199', address: '500 Logistics Way, San Jose, CA' },
+        { id: 'sup_1', organizationId: activeOrgId, name: 'TechImport Global Co.', email: 'sales@techimport.com', phone: '+1 (800) 555-0199', address: '500 Logistics Way, San Jose, CA' },
+        { id: 'sup_2', organizationId: activeOrgId, name: 'ElectroComponents Inc.', email: 'orders@electrocomponents.com', phone: '+1 (800) 555-0288', address: '12 Industrial Park, Austin, TX' },
       ];
     }
   },
 
-  createSupplier: async (data: any) => {
+  getSupplierById: async (id: string): Promise<Supplier> => {
+    const res = await fetch(`${BASE_URL}/suppliers/${id}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch supplier details');
+    const s = await res.json();
+    return {
+      id: s.id,
+      organizationId: s.organization_id ?? s.organizationId ?? activeOrgId,
+      name: s.name,
+      email: s.email || '',
+      phone: s.phone || '',
+      address: s.address || '',
+      purchases: s.purchases || [],
+      createdAt: s.created_at || s.createdAt,
+    };
+  },
+
+  createSupplier: async (data: any): Promise<Supplier> => {
     const res = await fetch(`${BASE_URL}/suppliers`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ ...data, org_id: activeOrgId }),
     });
-    return await res.json();
+    if (!res.ok) throw new Error('Failed to create supplier');
+    const s = await res.json();
+    return {
+      id: s.id,
+      organizationId: s.organization_id,
+      name: s.name,
+      email: s.email || '',
+      phone: s.phone || '',
+      address: s.address || '',
+      purchases: [],
+    };
   },
 
-  updateSupplier: async (id: string, data: any) => {
+  updateSupplier: async (id: string, data: any): Promise<Supplier> => {
     const res = await fetch(`${BASE_URL}/suppliers/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error('Failed to update supplier');
+    const s = await res.json();
+    return {
+      id: s.id,
+      organizationId: s.organization_id,
+      name: s.name,
+      email: s.email || '',
+      phone: s.phone || '',
+      address: s.address || '',
+      purchases: s.purchases || [],
+    };
+  },
+
+  deleteSupplier: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/suppliers/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to delete supplier');
     return await res.json();
   },
 

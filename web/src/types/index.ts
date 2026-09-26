@@ -66,6 +66,17 @@ export interface Customer {
   loyaltyPoints: number;
 }
 
+export interface Supplier {
+  id: string;
+  organizationId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  purchases?: any[];
+  createdAt?: string;
+}
+
 export interface OrderItem {
   productId: string;
   productName: string;

@@ -17,6 +17,7 @@ import com.braveboy.calcuapp.data.remote.dto.SupplierDto
 import com.braveboy.calcuapp.data.remote.dto.WarehouseDto
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -85,6 +86,12 @@ interface CalcuappApiService {
 
     @POST("suppliers")
     suspend fun addSupplier(@Body supplier: SupplierDto): Response<SupplierDto>
+
+    @PUT("suppliers/{id}")
+    suspend fun updateSupplier(@Path("id") id: String, @Body supplier: SupplierDto): Response<SupplierDto>
+
+    @DELETE("suppliers/{id}")
+    suspend fun deleteSupplier(@Path("id") id: String): Response<Map<String, Any>>
 
     @GET("purchases")
     suspend fun getPurchases(@Query("org_id") orgId: String): Response<List<PurchaseDto>>

@@ -11,6 +11,7 @@ import com.braveboy.calcuapp.data.local.db.entity.OrganizationEntity
 import com.braveboy.calcuapp.data.local.db.entity.ProductEntity
 import com.braveboy.calcuapp.data.local.db.entity.SalesOrderEntity
 import com.braveboy.calcuapp.data.local.db.entity.StoreEntity
+import com.braveboy.calcuapp.data.local.db.entity.SupplierEntity
 import com.braveboy.calcuapp.data.local.db.entity.WarehouseEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -81,6 +82,27 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE id = :id")
     fun getCustomerById(id: String): Flow<CustomerEntity?>
+}
+
+@Dao
+interface SupplierDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSuppliers(suppliers: List<SupplierEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSupplier(supplier: SupplierEntity)
+
+    @Query("SELECT * FROM suppliers WHERE orgId = :orgId ORDER BY name ASC")
+    fun getSuppliersByOrg(orgId: String): Flow<List<SupplierEntity>>
+
+    @Query("SELECT * FROM suppliers WHERE orgId = :orgId AND (name LIKE '%' || :query || '%' OR phone LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%')")
+    fun searchSuppliers(orgId: String, query: String): Flow<List<SupplierEntity>>
+
+    @Query("SELECT * FROM suppliers WHERE id = :id")
+    fun getSupplierById(id: String): Flow<SupplierEntity?>
+
+    @Query("DELETE FROM suppliers WHERE id = :id")
+    suspend fun deleteSupplier(id: String)
 }
 
 @Dao

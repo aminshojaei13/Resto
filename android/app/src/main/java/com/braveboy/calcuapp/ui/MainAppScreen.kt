@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
@@ -38,6 +39,8 @@ import com.braveboy.calcuapp.ui.orders.SalesOrdersScreen
 import com.braveboy.calcuapp.ui.orders.SalesOrdersViewModel
 import com.braveboy.calcuapp.ui.pos.PosScreen
 import com.braveboy.calcuapp.ui.pos.PosViewModel
+import com.braveboy.calcuapp.ui.supplier.SupplierScreen
+import com.braveboy.calcuapp.ui.supplier.SupplierViewModel
 import com.braveboy.calcuapp.ui.tenant.TenantSwitcherModal
 
 enum class MainDestination(
@@ -49,6 +52,7 @@ enum class MainDestination(
     INVENTORY("Inventory", "انبار", Icons.Rounded.Inventory),
     ORDERS("Orders", "سفارشات", Icons.Rounded.ReceiptLong),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
+    SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
     ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
 }
 
@@ -85,6 +89,13 @@ fun MainAppScreen(
         factory = CustomerViewModel.Factory(
             appContainer.tenantRepository,
             appContainer.customerRepository
+        )
+    )
+
+    val supplierViewModel: SupplierViewModel = viewModel(
+        factory = SupplierViewModel.Factory(
+            appContainer.tenantRepository,
+            appContainer.supplierRepository
         )
     )
 
@@ -138,6 +149,9 @@ fun MainAppScreen(
                     }
                     MainDestination.CUSTOMERS -> {
                         CustomerScreen(viewModel = customerViewModel)
+                    }
+                    MainDestination.SUPPLIERS -> {
+                        SupplierScreen(viewModel = supplierViewModel)
                     }
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(viewModel = dashboardViewModel)
