@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.ReceiptLong
@@ -34,6 +35,8 @@ import com.braveboy.calcuapp.ui.customer.CustomerScreen
 import com.braveboy.calcuapp.ui.customer.CustomerViewModel
 import com.braveboy.calcuapp.ui.dashboard.DashboardScreen
 import com.braveboy.calcuapp.ui.dashboard.DashboardViewModel
+import com.braveboy.calcuapp.ui.expenses.ExpensesScreen
+import com.braveboy.calcuapp.ui.expenses.ExpensesViewModel
 import com.braveboy.calcuapp.ui.inventory.InventoryScreen
 import com.braveboy.calcuapp.ui.inventory.InventoryViewModel
 import com.braveboy.calcuapp.ui.orders.SalesOrdersScreen
@@ -57,6 +60,7 @@ enum class MainDestination(
     PURCHASES("Purchases", "خرید", Icons.Rounded.ShoppingBag),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
     SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
+    EXPENSES("Expenses", "هزینه‌ها", Icons.Rounded.Payments),
     ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
 }
 
@@ -109,6 +113,13 @@ fun MainAppScreen(
             appContainer.purchaseRepository,
             appContainer.supplierRepository,
             appContainer.productRepository
+        )
+    )
+
+    val expensesViewModel: ExpensesViewModel = viewModel(
+        factory = ExpensesViewModel.Factory(
+            appContainer.tenantRepository,
+            appContainer.expenseRepository
         )
     )
 
@@ -168,6 +179,9 @@ fun MainAppScreen(
                     }
                     MainDestination.SUPPLIERS -> {
                         SupplierScreen(viewModel = supplierViewModel)
+                    }
+                    MainDestination.EXPENSES -> {
+                        ExpensesScreen(viewModel = expensesViewModel)
                     }
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(viewModel = dashboardViewModel)

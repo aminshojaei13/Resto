@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.braveboy.calcuapp.data.model.CartItem
 import com.braveboy.calcuapp.data.model.Customer
+import com.braveboy.calcuapp.data.model.Expense
 import com.braveboy.calcuapp.data.model.FulfillmentStatus
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
@@ -270,6 +271,46 @@ fun Purchase.toEntity() = PurchaseEntity(
     totalAmount = totalAmount,
     status = status,
     paymentStatus = paymentStatus,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "expenses")
+data class ExpenseEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val storeId: String,
+    val category: String,
+    val amount: Double,
+    val paymentMethod: String,
+    val date: String,
+    val notes: String,
+    val userId: String?,
+    val createdAt: Long
+) {
+    fun toDomain() = Expense(
+        id = id,
+        orgId = orgId,
+        storeId = storeId,
+        category = category,
+        amount = amount,
+        paymentMethod = paymentMethod,
+        date = date,
+        notes = notes,
+        userId = userId,
+        createdAt = createdAt
+    )
+}
+
+fun Expense.toEntity() = ExpenseEntity(
+    id = id,
+    orgId = orgId,
+    storeId = storeId,
+    category = category,
+    amount = amount,
+    paymentMethod = paymentMethod,
+    date = date,
+    notes = notes,
+    userId = userId,
     createdAt = createdAt
 )
 

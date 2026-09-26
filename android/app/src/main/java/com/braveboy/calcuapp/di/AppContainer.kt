@@ -7,6 +7,8 @@ import com.braveboy.calcuapp.data.repository.CartRepository
 import com.braveboy.calcuapp.data.repository.CartRepositoryImpl
 import com.braveboy.calcuapp.data.repository.CustomerRepository
 import com.braveboy.calcuapp.data.repository.CustomerRepositoryImpl
+import com.braveboy.calcuapp.data.repository.ExpenseRepository
+import com.braveboy.calcuapp.data.repository.ExpenseRepositoryImpl
 import com.braveboy.calcuapp.data.repository.LedgerRepository
 import com.braveboy.calcuapp.data.repository.LedgerRepositoryImpl
 import com.braveboy.calcuapp.data.repository.ProductRepository
@@ -36,6 +38,7 @@ class AppContainer(private val context: Context) {
             productDao = database.productDao(),
             customerDao = database.customerDao(),
             supplierDao = database.supplierDao(),
+            expenseDao = database.expenseDao(),
             salesOrderDao = database.salesOrderDao(),
             ledgerDao = database.ledgerDao(),
             tenantPreferences = tenantPreferences
@@ -80,6 +83,12 @@ class AppContainer(private val context: Context) {
     val purchaseRepository: PurchaseRepository by lazy {
         PurchaseRepositoryImpl(
             purchaseDao = database.purchaseDao()
+        )
+    }
+
+    val expenseRepository: ExpenseRepository by lazy {
+        ExpenseRepositoryImpl(
+            expenseDao = database.expenseDao()
         )
     }
 

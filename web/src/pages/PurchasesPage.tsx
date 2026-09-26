@@ -294,7 +294,7 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight 600, marginBottom: '4px' }}>{isFa ? 'انبار مقصد تحویل *' : 'Target Warehouse *'}</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'انبار مقصد تحویل *' : 'Target Warehouse *'}</label>
                   <select
                     value={selectedWarehouseId}
                     onChange={(e) => setSelectedWarehouseId(e.target.value)}

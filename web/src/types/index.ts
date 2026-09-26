@@ -103,6 +103,19 @@ export interface Purchase {
   createdAt?: string;
 }
 
+export interface Expense {
+  id: string;
+  organizationId: string;
+  storeId: string;
+  category: string;
+  amount: number;
+  paymentMethod: string;
+  date: string;
+  notes?: string;
+  userId?: string;
+  createdAt?: string;
+}
+
 export interface OrderItem {
   productId: string;
   productName: string;

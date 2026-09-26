@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { SuppliersPage } from './pages/SuppliersPage';
 import { PurchasesPage } from './pages/PurchasesPage';
+import { ExpensesPage } from './pages/ExpensesPage';
 import { AccountingPage } from './pages/AccountingPage';
 import { EmptyState } from './components/EmptyState';
 
@@ -34,6 +35,8 @@ export const App: React.FC = () => {
         return <SuppliersPage language={language} />;
       case 'customers':
         return <CustomersPage language={language} />;
+      case 'expenses':
+        return <ExpensesPage language={language} />;
       case 'accounting':
       case 'reports':
         return <AccountingPage language={language} />;

@@ -1,6 +1,7 @@
 package com.braveboy.calcuapp.data.mock
 
 import com.braveboy.calcuapp.data.model.Customer
+import com.braveboy.calcuapp.data.model.Expense
 import com.braveboy.calcuapp.data.model.FulfillmentStatus
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
@@ -229,6 +230,29 @@ object MockSaaSDataSource {
             email = "orders@electrocomponents.com",
             phone = "+1 (800) 555-0288",
             address = "12 Industrial Park, Austin, TX"
+        )
+    )
+
+    val expenses: List<Expense> = listOf(
+        Expense(
+            id = "exp_1001",
+            orgId = "org_apex",
+            storeId = "store_apex_1",
+            category = "Store Utilities",
+            amount = 450.00,
+            paymentMethod = "BANK_TRANSFER",
+            date = "2025-01-15",
+            notes = "Monthly electricity bill for Apex Flagship Store"
+        ),
+        Expense(
+            id = "exp_1002",
+            orgId = "org_apex",
+            storeId = "store_apex_1",
+            category = "Marketing & Ads",
+            amount = 250.00,
+            paymentMethod = "CASH",
+            date = "2025-01-20",
+            notes = "Social media campaign ad spend"
         )
     )
 

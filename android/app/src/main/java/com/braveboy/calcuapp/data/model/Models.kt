@@ -178,6 +178,19 @@ data class Purchase(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class Expense(
+    val id: String = UUID.randomUUID().toString(),
+    val orgId: String,
+    val storeId: String,
+    val category: String,
+    val amount: Double,
+    val paymentMethod: String = "CASH",
+    val date: String = "",
+    val notes: String = "",
+    val userId: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class OrderItem(
     val productId: String,
     val variantId: String? = null,

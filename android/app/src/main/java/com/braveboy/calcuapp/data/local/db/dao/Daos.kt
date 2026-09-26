@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.braveboy.calcuapp.data.local.db.entity.CartItemEntity
 import com.braveboy.calcuapp.data.local.db.entity.CustomerEntity
+import com.braveboy.calcuapp.data.local.db.entity.ExpenseEntity
 import com.braveboy.calcuapp.data.local.db.entity.LedgerEntryEntity
 import com.braveboy.calcuapp.data.local.db.entity.OrganizationEntity
 import com.braveboy.calcuapp.data.local.db.entity.ProductEntity
@@ -122,6 +123,24 @@ interface PurchaseDao {
 
     @Query("SELECT * FROM purchases WHERE id = :id")
     suspend fun getPurchaseByIdDirect(id: String): PurchaseEntity?
+}
+
+@Dao
+interface ExpenseDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<ExpenseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpense(expense: ExpenseEntity)
+
+    @Query("SELECT * FROM expenses WHERE orgId = :orgId ORDER BY date DESC, createdAt DESC")
+    fun getExpensesByOrg(orgId: String): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM expenses WHERE id = :id")
+    fun getExpenseById(id: String): Flow<ExpenseEntity?>
+
+    @Query("DELETE FROM expenses WHERE id = :id")
+    suspend fun deleteExpense(id: String)
 }
 
 @Dao
