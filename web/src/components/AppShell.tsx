@@ -88,11 +88,11 @@ export const AppShell: React.FC<AppShellProps> = ({
               fontSize: '18px',
             }}
           >
-            C
+            R
           </div>
           <div>
             <div style={{ color: '#FFF', fontWeight: 700, fontSize: '16px', letterSpacing: '-0.01em' }}>
-              {isFa ? 'کلکو‌اپ' : 'Calcuapp'}
+              {isFa ? 'رسـتو' : 'Resto'}
             </div>
             <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>
               {isFa ? 'مدیریت یکپارچه کسب‌وکار' : 'Commerce OS'}

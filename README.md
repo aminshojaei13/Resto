@@ -1,6 +1,6 @@
-# Calcuapp SaaS Platform Monorepo
+# Resto SaaS Platform Monorepo
 
-Calcuapp is an enterprise-grade multi-tenant Point of Sale (POS), Inventory Management, Double-Entry Financial Accounting, and Sales Management SaaS platform.
+Resto is an enterprise-grade multi-tenant Point of Sale (POS), Inventory Management, Double-Entry Financial Accounting, and Sales Management SaaS platform.
 
 ## Monorepo Architecture
 

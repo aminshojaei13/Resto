@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Calcuapp SaaS Platform REST API
+  title: Resto SaaS Platform REST API
   description: >
     Multi-tenant Point of Sale (POS), Inventory Stock Management, Double-Entry Financial Accounting,
     Purchasing & Goods Receiving, Supplier Management, Operating Expenses, and Sales Platform REST API.

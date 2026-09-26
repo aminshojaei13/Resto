@@ -1,8 +1,8 @@
 {
-    "name": "calcuapp/backend",
+    "name": "resto/backend",
     "type": "project",
-    "description": "Calcuapp SaaS REST API Backend & Double-Entry Accounting Engine",
-    "keywords": ["framework", "laravel", "saas", "pos", "accounting", "inventory"],
+    "description": "Resto SaaS REST API Backend & Double-Entry Accounting Engine",
+    "keywords": ["framework", "laravel", "saas", "pos", "accounting", "inventory", "resto"],
     "license": "MIT",
     "require": {
         "php": "^8.2",

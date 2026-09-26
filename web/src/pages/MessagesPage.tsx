@@ -16,7 +16,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
 
   const isFa = language === 'fa';
 
-  const sampleTemplate = `CALCUAPP_ORDER
+  const sampleTemplate = `RESTO_ORDER
 Customer: Ali Rezaei
 Phone: +1 (555) 888-9999
 SKU: APX-LAP-001

@@ -1,7 +1,7 @@
 {
-  "name": "calcuapp-web",
+  "name": "resto-web",
   "version": "1.0.0",
-  "description": "Calcuapp SaaS React Native Web POS & Admin Dashboard",
+  "description": "Resto SaaS React Admin & POS Dashboard",
   "private": true,
   "dependencies": {
     "react": "18.2.0",

@@ -72,7 +72,7 @@ fun MessagesScreen(
         }
     }
 
-    val sampleTemplate = "CALCUAPP_ORDER\nCustomer: Ali Rezaei\nPhone: +1 (555) 888-9999\nSKU: APX-LAP-001\nQuantity: 2\nAddress: Tehran, Freedom Square\nPayment: Cash"
+    val sampleTemplate = "RESTO_ORDER\nCustomer: Ali Rezaei\nPhone: +1 (555) 888-9999\nSKU: APX-LAP-001\nQuantity: 2\nAddress: Tehran, Freedom Square\nPayment: Cash"
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
