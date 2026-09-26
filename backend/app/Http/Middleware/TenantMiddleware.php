@@ -12,8 +12,13 @@ class TenantMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip tenant enforcement for auth login endpoint
-        if ($request->is('api/v1/auth/login')) {
+        $user = $request->user();
+
+        // Skip tenant enforcement for public endpoints or platform admin
+        if ($request->is('api/v1/auth/login') ||
+            $request->is('api/v1/business-applications*') ||
+            $request->is('api/v1/platform*') ||
+            ($user && $user->is_platform_admin)) {
             return $next($request);
         }
 
@@ -26,7 +31,6 @@ class TenantMiddleware
         }
 
         // Server-side membership authorization check
-        $user = $request->user();
         if ($user) {
             $isMember = OrganizationMembership::where('organization_id', $tenantId)
                 ->where('user_id', $user->id)

@@ -111,19 +111,6 @@ export const apiClient = {
           unit: 'pcs',
           stockQuantityByWarehouse: { wh_apex_1a: 22, wh_apex_1b: 7 },
         },
-        {
-          id: 'prod_2',
-          organizationId: activeOrgId,
-          sku: 'APX-AUD-002',
-          barcode: '880609123402',
-          name: 'NoiseCancel Studio Headphones',
-          description: 'Active noise cancelling wireless headphones with 30-hour battery life.',
-          price: 249.99,
-          costPrice: 120.0,
-          category: 'Audio',
-          unit: 'pcs',
-          stockQuantityByWarehouse: { wh_apex_1a: 45, wh_apex_1b: 18 },
-        },
       ];
     }
   },
@@ -313,7 +300,6 @@ export const apiClient = {
     } catch {
       return [
         { id: 'sup_1', organizationId: activeOrgId, name: 'TechImport Global Co.', email: 'sales@techimport.com', phone: '+1 (800) 555-0199', address: '500 Logistics Way, San Jose, CA' },
-        { id: 'sup_2', organizationId: activeOrgId, name: 'ElectroComponents Inc.', email: 'orders@electrocomponents.com', phone: '+1 (800) 555-0288', address: '12 Industrial Park, Austin, TX' },
       ];
     }
   },
@@ -444,15 +430,14 @@ export const apiClient = {
       items: (p.items || []).map((i: any) => ({
         id: i.id,
         productId: i.product_id ?? i.productId,
-        productName: i.product?.name || i.product_id,
-        quantity: Number(i.quantity ?? 1),
-        unitCost: Number(i.unit_cost ?? i.unitCost ?? 0),
-        totalCost: Number(i.total_cost ?? i.totalCost ?? 0),
+        quantity: Number(i.quantity),
+        unitCost: Number(i.unit_cost),
+        totalCost: Number(i.total_cost),
       })),
-      totalAmount: Number(p.total_amount ?? p.totalAmount ?? 0),
-      status: p.status ?? 'ORDERED',
-      paymentStatus: p.payment_status ?? p.paymentStatus ?? 'UNPAID',
-      createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString(),
+      totalAmount: Number(p.total_amount),
+      status: p.status,
+      paymentStatus: p.payment_status,
+      createdAt: p.created_at,
     };
   },
 
@@ -624,6 +609,68 @@ export const apiClient = {
     } catch {
       return [];
     }
+  },
+
+  // SaaS Business Applications & Onboarding (P5)
+  registerBusiness: async (data: any): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/business-applications`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to submit business application');
+    return await res.json();
+  },
+
+  getPlatformApplications: async (status?: string): Promise<any[]> => {
+    try {
+      const url = new URL(`${BASE_URL}/platform/business-applications`);
+      if (status) url.searchParams.append('status', status);
+
+      const res = await fetch(url.toString(), { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch platform business applications');
+      return await res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  approvePlatformApplication: async (id: string): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/platform/business-applications/${id}/approve`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to approve application');
+    return await res.json();
+  },
+
+  rejectPlatformApplication: async (id: string, reason: string): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/platform/business-applications/${id}/reject`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) throw new Error('Failed to reject application');
+    return await res.json();
+  },
+
+  getTenantOnboarding: async (): Promise<any> => {
+    try {
+      const res = await fetch(`${BASE_URL}/tenant/onboarding`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch tenant onboarding status');
+      return await res.json();
+    } catch {
+      return { onboarding_status: 'IN_PROGRESS' };
+    }
+  },
+
+  completeOnboarding: async (): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/tenant/onboarding/complete`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to complete onboarding');
+    return await res.json();
   },
 
   getJournalEntries: async (): Promise<LedgerEntry[]> => {

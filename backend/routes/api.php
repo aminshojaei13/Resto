@@ -8,15 +8,32 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\MessageImportController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\Platform\PlatformApplicationController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\Public\BusinessApplicationController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\SalesOrderController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\Tenant\OnboardingController;
 use App\Http\Middleware\IdempotencyMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware([TenantMiddleware::class, IdempotencyMiddleware::class])->group(function () {
+    // Public SaaS Registration
+    Route::post('/business-applications', [BusinessApplicationController::class, 'store']);
+    Route::get('/business-applications/{id}/status', [BusinessApplicationController::class, 'showStatus']);
+
+    // Platform Admin Review & Provisioning
+    Route::get('/platform/business-applications', [PlatformApplicationController::class, 'index']);
+    Route::get('/platform/business-applications/{id}', [PlatformApplicationController::class, 'show']);
+    Route::post('/platform/business-applications/{id}/approve', [PlatformApplicationController::class, 'approve']);
+    Route::post('/platform/business-applications/{id}/reject', [PlatformApplicationController::class, 'reject']);
+
+    // Tenant Onboarding
+    Route::get('/tenant/onboarding', [OnboardingController::class, 'show']);
+    Route::post('/tenant/onboarding/complete', [OnboardingController::class, 'complete']);
+
     // Auth & Profile
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::get('/auth/profile', [AuthController::class, 'profile']);

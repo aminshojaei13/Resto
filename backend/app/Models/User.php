@@ -15,11 +15,15 @@ class User extends Authenticatable
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'name', 'email', 'phone', 'password', 'role'
+        'id', 'name', 'email', 'phone', 'password', 'role', 'is_platform_admin'
     ];
 
     protected $hidden = [
         'password', 'remember_token',
+    ];
+
+    protected $casts = [
+        'is_platform_admin' => 'boolean',
     ];
 
     public function memberships()

@@ -36,6 +36,8 @@ export const AppShell: React.FC<AppShellProps> = ({
     { id: 'customers', label: isFa ? 'مشتریان (CRM)' : 'Customers CRM', icon: '👥' },
     { id: 'expenses', label: isFa ? 'هزینه‌ها' : 'Expenses', icon: '💸' },
     { id: 'messages', label: isFa ? 'ورود پیام‌های سفارش' : 'Message Import', icon: '📩' },
+    { id: 'public_register', label: isFa ? 'ثبت‌نام آنلاین سازمان' : 'SaaS Business Register', icon: '🌐' },
+    { id: 'platform_admin', label: isFa ? 'مدیریت پلتفرم (Platform Admin)' : 'Platform Admin', icon: '🛡️' },
     { id: 'accounting', label: isFa ? 'دفتر کل حسابداری' : 'Double-Entry Ledger', icon: '⚖️' },
     { id: 'reports', label: isFa ? 'گزارش‌های مالی' : 'Financial Reports', icon: '📈' },
     { id: 'settings', label: isFa ? 'تنظیمات کسب‌وکار' : 'Settings', icon: '⚙️' },
@@ -214,7 +216,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
             <span style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
-              {navItems.find((n) => n.id === activeTab)?.label || 'Calcuapp'}
+              {navItems.find((n) => n.id === activeTab)?.label || 'Resto'}
             </span>
             <span
               style={{

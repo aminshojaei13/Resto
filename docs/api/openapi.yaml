@@ -1067,6 +1067,107 @@ paths:
         '200':
           description: Expense deleted successfully
 
+  /business-applications:
+    post:
+      summary: Public SaaS Business Application Registration
+      tags: [SaaS Onboarding]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_name, owner_name, email]
+              properties:
+                business_name: { type: string, example: "Grand Coffee Roasters" }
+                owner_name: { type: string, example: "Reza Alavi" }
+                email: { type: string, example: "reza@grandcoffee.com" }
+                phone: { type: string, example: "+1 (555) 333-4444" }
+                business_type: { type: string, example: "RESTAURANT" }
+                city: { type: string, example: "Tehran" }
+                address: { type: string, example: "Valiasr St, Tehran" }
+      responses:
+        '201':
+          description: Application submitted and pending review
+
+  /business-applications/{id}/status:
+    get:
+      summary: Get Business Application Status
+      tags: [SaaS Onboarding]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current application status
+
+  /platform/business-applications:
+    get:
+      summary: List Business Applications (Platform Admin)
+      tags: [Platform Admin]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+      responses:
+        '200':
+          description: List of business applications
+
+  /platform/business-applications/{id}/approve:
+    post:
+      summary: Transactionally Approve Business Application & Provision Tenant
+      tags: [Platform Admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Application approved and tenant provisioned
+
+  /platform/business-applications/{id}/reject:
+    post:
+      summary: Reject Business Application
+      tags: [Platform Admin]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, example: "Incomplete business documentation." }
+      responses:
+        '200':
+          description: Application rejected
+
+  /tenant/onboarding:
+    get:
+      summary: Get Tenant Onboarding Status
+      tags: [SaaS Onboarding]
+      responses:
+        '200':
+          description: Tenant onboarding status and resource counts
+
+  /tenant/onboarding/complete:
+    post:
+      summary: Mark Tenant Onboarding as Completed
+      tags: [SaaS Onboarding]
+      responses:
+        '200':
+          description: Tenant onboarding completed
+
   /messages:
     get:
       summary: List Imported Social Orders & Messages History

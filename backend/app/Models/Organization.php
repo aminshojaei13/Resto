@@ -10,7 +10,7 @@ class Organization extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'name', 'code', 'logo_url', 'currency_symbol', 'currency_code', 'subscription_tier'
+        'id', 'name', 'code', 'logo_url', 'currency_symbol', 'currency_code', 'subscription_tier', 'business_type', 'onboarding_status'
     ];
 
     public function stores()

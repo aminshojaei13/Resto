@@ -10,6 +10,8 @@ import { PurchasesPage } from './pages/PurchasesPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { AccountingPage } from './pages/AccountingPage';
+import { PublicRegisterPage } from './pages/PublicRegisterPage';
+import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { EmptyState } from './components/EmptyState';
 
 export const App: React.FC = () => {
@@ -40,6 +42,10 @@ export const App: React.FC = () => {
         return <ExpensesPage language={language} />;
       case 'messages':
         return <MessagesPage language={language} />;
+      case 'public_register':
+        return <PublicRegisterPage language={language} />;
+      case 'platform_admin':
+        return <PlatformAdminPage language={language} />;
       case 'accounting':
       case 'reports':
         return <AccountingPage language={language} />;
