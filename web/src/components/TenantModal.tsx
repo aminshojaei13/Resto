@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient, setTenantContext } from '../api/apiClient';
 import { Organization } from '../types';
+import { theme } from '../theme/tokens';
 
 interface TenantModalProps {
   language: 'fa' | 'en';
@@ -23,31 +24,112 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ backgroundColor: '#FFF', borderRadius: '16px', padding: '24px', width: '450px', maxWidth: '90%' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 'bold' }}>
-          {isFa ? 'تغییر فروشگاه و شعب' : 'Switch Tenant & Store Branch'}
-        </h3>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        direction: isFa ? 'rtl' : 'ltr',
+        fontFamily: theme.typography.fontFamily,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.borderRadius.xl,
+          padding: theme.spacing['2xl'],
+          width: '460px',
+          maxWidth: '92%',
+          boxShadow: theme.shadows.lg,
+          border: `1px solid ${theme.colors.border}`,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
+            {isFa ? 'تغییر شعبه و سازمان فعال' : 'Switch Organization & Store Context'}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '18px',
+              color: theme.colors.textMuted,
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg, maxHeight: '360px', overflowY: 'auto' }}>
           {organizations.map((org) => (
-            <div key={org.id} style={{ border: '1px solid #E0E0E0', borderRadius: '8px', padding: '12px' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '8px', color: '#005AC1' }}>{org.name}</div>
+            <div
+              key={org.id}
+              style={{
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.lg,
+                padding: theme.spacing.lg,
+                backgroundColor: theme.colors.background,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: theme.spacing.md, color: theme.colors.primaryDark }}>
+                🏢 {org.name}
+              </div>
               {org.stores?.map((store) => (
                 <button
                   key={store.id}
                   onClick={() => handleSelect(org, store.id, store.name)}
-                  style={{ width: '100%', textAlign: 'left', backgroundColor: '#F8F9FA', border: '1px solid #DDD', borderRadius: '6px', padding: '8px 12px', margin: '4px 0', cursor: 'pointer', fontWeight: '500' }}
+                  style={{
+                    width: '100%',
+                    textAlign: isFa ? 'right' : 'left',
+                    backgroundColor: theme.colors.surface,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.md,
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    margin: `${theme.spacing.xs} 0`,
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    color: theme.colors.textPrimary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'border-color 0.15s ease',
+                  }}
                 >
-                  🏪 {store.name}
+                  <span>🏪 {store.name}</span>
+                  <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'انتخاب' : 'Select'}</span>
                 </button>
               ))}
             </div>
           ))}
         </div>
 
-        <button onClick={onClose} style={{ marginTop: '16px', width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#EEE', cursor: 'pointer', fontWeight: 'bold' }}>
-          {isFa ? 'بستن' : 'Close'}
+        <button
+          onClick={onClose}
+          style={{
+            marginTop: theme.spacing.xl,
+            width: '100%',
+            padding: theme.spacing.md,
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.border}`,
+            backgroundColor: theme.colors.background,
+            color: theme.colors.textPrimary,
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '14px',
+          }}
+        >
+          {isFa ? 'انصراف' : 'Cancel'}
         </button>
       </div>
     </div>
