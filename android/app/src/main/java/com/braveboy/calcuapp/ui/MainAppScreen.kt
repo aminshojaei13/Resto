@@ -10,6 +10,7 @@ import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -39,6 +40,8 @@ import com.braveboy.calcuapp.ui.orders.SalesOrdersScreen
 import com.braveboy.calcuapp.ui.orders.SalesOrdersViewModel
 import com.braveboy.calcuapp.ui.pos.PosScreen
 import com.braveboy.calcuapp.ui.pos.PosViewModel
+import com.braveboy.calcuapp.ui.purchases.PurchasesScreen
+import com.braveboy.calcuapp.ui.purchases.PurchasesViewModel
 import com.braveboy.calcuapp.ui.supplier.SupplierScreen
 import com.braveboy.calcuapp.ui.supplier.SupplierViewModel
 import com.braveboy.calcuapp.ui.tenant.TenantSwitcherModal
@@ -51,6 +54,7 @@ enum class MainDestination(
     POS("POS", "فروشگاه", Icons.Rounded.PointOfSale),
     INVENTORY("Inventory", "انبار", Icons.Rounded.Inventory),
     ORDERS("Orders", "سفارشات", Icons.Rounded.ReceiptLong),
+    PURCHASES("Purchases", "خرید", Icons.Rounded.ShoppingBag),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
     SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
     ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
@@ -96,6 +100,15 @@ fun MainAppScreen(
         factory = SupplierViewModel.Factory(
             appContainer.tenantRepository,
             appContainer.supplierRepository
+        )
+    )
+
+    val purchasesViewModel: PurchasesViewModel = viewModel(
+        factory = PurchasesViewModel.Factory(
+            appContainer.tenantRepository,
+            appContainer.purchaseRepository,
+            appContainer.supplierRepository,
+            appContainer.productRepository
         )
     )
 
@@ -146,6 +159,9 @@ fun MainAppScreen(
                     }
                     MainDestination.ORDERS -> {
                         SalesOrdersScreen(viewModel = salesOrdersViewModel)
+                    }
+                    MainDestination.PURCHASES -> {
+                        PurchasesScreen(viewModel = purchasesViewModel)
                     }
                     MainDestination.CUSTOMERS -> {
                         CustomerScreen(viewModel = customerViewModel)

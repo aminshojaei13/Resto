@@ -153,6 +153,31 @@ data class Supplier(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class PurchaseItem(
+    val id: String = UUID.randomUUID().toString(),
+    val purchaseId: String = "",
+    val productId: String,
+    val productName: String = "",
+    val quantity: Int,
+    val unitCost: Double,
+    val totalCost: Double = quantity * unitCost
+)
+
+data class Purchase(
+    val id: String = UUID.randomUUID().toString(),
+    val purchaseNumber: String,
+    val orgId: String,
+    val storeId: String,
+    val warehouseId: String,
+    val supplierId: String,
+    val supplierName: String = "Supplier",
+    val items: List<PurchaseItem>,
+    val totalAmount: Double,
+    val status: String = "ORDERED",
+    val paymentStatus: String = "UNPAID",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class OrderItem(
     val productId: String,
     val variantId: String? = null,

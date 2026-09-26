@@ -96,6 +96,15 @@ interface CalcuappApiService {
     @GET("purchases")
     suspend fun getPurchases(@Query("org_id") orgId: String): Response<List<PurchaseDto>>
 
+    @POST("purchases")
+    suspend fun createPurchase(@Body payload: Map<String, @JvmSuppressWildcards Any>): Response<PurchaseDto>
+
+    @POST("purchases/{id}/receive")
+    suspend fun receivePurchase(@Path("id") id: String): Response<Map<String, Any>>
+
+    @POST("purchases/{id}/pay")
+    suspend fun payPurchase(@Path("id") id: String, @Query("amount") amount: Double, @Query("payment_method") method: String): Response<Map<String, Any>>
+
     @GET("expenses")
     suspend fun getExpenses(@Query("org_id") orgId: String): Response<List<ExpenseDto>>
 

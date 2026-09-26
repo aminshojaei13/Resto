@@ -77,6 +77,32 @@ export interface Supplier {
   createdAt?: string;
 }
 
+export interface PurchaseItem {
+  id?: string;
+  purchaseId?: string;
+  productId: string;
+  productName?: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface Purchase {
+  id: string;
+  purchaseNumber: string;
+  organizationId: string;
+  storeId: string;
+  warehouseId: string;
+  supplierId: string;
+  supplierName?: string;
+  supplier?: Supplier;
+  items: PurchaseItem[];
+  totalAmount: number;
+  status: 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+  paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID';
+  createdAt?: string;
+}
+
 export interface OrderItem {
   productId: string;
   productName: string;

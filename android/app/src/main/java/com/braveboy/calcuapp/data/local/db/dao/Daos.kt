@@ -9,6 +9,7 @@ import com.braveboy.calcuapp.data.local.db.entity.CustomerEntity
 import com.braveboy.calcuapp.data.local.db.entity.LedgerEntryEntity
 import com.braveboy.calcuapp.data.local.db.entity.OrganizationEntity
 import com.braveboy.calcuapp.data.local.db.entity.ProductEntity
+import com.braveboy.calcuapp.data.local.db.entity.PurchaseEntity
 import com.braveboy.calcuapp.data.local.db.entity.SalesOrderEntity
 import com.braveboy.calcuapp.data.local.db.entity.StoreEntity
 import com.braveboy.calcuapp.data.local.db.entity.SupplierEntity
@@ -103,6 +104,24 @@ interface SupplierDao {
 
     @Query("DELETE FROM suppliers WHERE id = :id")
     suspend fun deleteSupplier(id: String)
+}
+
+@Dao
+interface PurchaseDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPurchases(purchases: List<PurchaseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPurchase(purchase: PurchaseEntity)
+
+    @Query("SELECT * FROM purchases WHERE orgId = :orgId ORDER BY createdAt DESC")
+    fun getPurchasesByOrg(orgId: String): Flow<List<PurchaseEntity>>
+
+    @Query("SELECT * FROM purchases WHERE id = :id")
+    fun getPurchaseById(id: String): Flow<PurchaseEntity?>
+
+    @Query("SELECT * FROM purchases WHERE id = :id")
+    suspend fun getPurchaseByIdDirect(id: String): PurchaseEntity?
 }
 
 @Dao

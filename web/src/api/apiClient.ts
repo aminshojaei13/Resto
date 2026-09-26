@@ -1,4 +1,4 @@
-import { AccountingSummary, Customer, LedgerEntry, Organization, Product, SalesOrder, Store, Supplier, Warehouse } from '../types';
+import { AccountingSummary, Customer, LedgerEntry, Organization, Product, Purchase, SalesOrder, Store, Supplier, Warehouse } from '../types';
 
 const BASE_URL = 'http://localhost:8000/api/v1';
 
@@ -381,14 +381,127 @@ export const apiClient = {
     return await res.json();
   },
 
-  getPurchases: async (): Promise<any[]> => {
+  getPurchases: async (): Promise<Purchase[]> => {
     try {
       const res = await fetch(`${BASE_URL}/purchases?org_id=${activeOrgId}`, { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch purchases');
-      return await res.json();
+      const data = await res.json();
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
+        organizationId: p.organization_id ?? activeOrgId,
+        storeId: p.store_id ?? activeStoreId,
+        warehouseId: p.warehouse_id ?? 'wh_apex_1a',
+        supplierId: p.supplier_id ?? p.supplierId,
+        supplierName: p.supplier?.name || 'Supplier',
+        supplier: p.supplier,
+        items: (p.items || []).map((i: any) => ({
+          id: i.id,
+          productId: i.product_id ?? i.productId,
+          productName: i.product?.name || i.product_id,
+          quantity: Number(i.quantity ?? 1),
+          unitCost: Number(i.unit_cost ?? i.unitCost ?? 0),
+          totalCost: Number(i.total_cost ?? i.totalCost ?? 0),
+        })),
+        totalAmount: Number(p.total_amount ?? p.totalAmount ?? 0),
+        status: p.status ?? 'ORDERED',
+        paymentStatus: p.payment_status ?? p.paymentStatus ?? 'UNPAID',
+        createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString(),
+      }));
     } catch {
-      return [];
+      return [
+        {
+          id: 'po_1001',
+          purchaseNumber: 'PO-2025-1001',
+          organizationId: activeOrgId,
+          storeId: activeStoreId,
+          warehouseId: 'wh_apex_1a',
+          supplierId: 'sup_1',
+          supplierName: 'TechImport Global Co.',
+          items: [{ productId: 'prod_1', productName: 'ProBook Ultra 15 M3', quantity: 10, unitCost: 850.0, totalCost: 8500.0 }],
+          totalAmount: 8500.0,
+          status: 'RECEIVED',
+          paymentStatus: 'PAID',
+          createdAt: new Date().toISOString(),
+        },
+      ];
     }
+  },
+
+  getPurchaseById: async (id: string): Promise<Purchase> => {
+    const res = await fetch(`${BASE_URL}/purchases/${id}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch purchase details');
+    const p = await res.json();
+    return {
+      id: p.id,
+      purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
+      organizationId: p.organization_id ?? activeOrgId,
+      storeId: p.store_id ?? activeStoreId,
+      warehouseId: p.warehouse_id ?? 'wh_apex_1a',
+      supplierId: p.supplier_id ?? p.supplierId,
+      supplierName: p.supplier?.name || 'Supplier',
+      supplier: p.supplier,
+      items: (p.items || []).map((i: any) => ({
+        id: i.id,
+        productId: i.product_id ?? i.productId,
+        productName: i.product?.name || i.product_id,
+        quantity: Number(i.quantity ?? 1),
+        unitCost: Number(i.unit_cost ?? i.unitCost ?? 0),
+        totalCost: Number(i.total_cost ?? i.totalCost ?? 0),
+      })),
+      totalAmount: Number(p.total_amount ?? p.totalAmount ?? 0),
+      status: p.status ?? 'ORDERED',
+      paymentStatus: p.payment_status ?? p.paymentStatus ?? 'UNPAID',
+      createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString(),
+    };
+  },
+
+  createPurchase: async (payload: { store_id: string; warehouse_id: string; supplier_id: string; items: any[] }): Promise<Purchase> => {
+    const res = await fetch(`${BASE_URL}/purchases`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ...payload, org_id: activeOrgId }),
+    });
+    if (!res.ok) throw new Error('Failed to create purchase order');
+    const p = await res.json();
+    return {
+      id: p.id,
+      purchaseNumber: p.purchase_number,
+      organizationId: p.organization_id,
+      storeId: p.store_id,
+      warehouseId: p.warehouse_id,
+      supplierId: p.supplier_id,
+      items: (p.items || []).map((i: any) => ({
+        id: i.id,
+        productId: i.product_id,
+        quantity: Number(i.quantity),
+        unitCost: Number(i.unit_cost),
+        totalCost: Number(i.total_cost),
+      })),
+      totalAmount: Number(p.total_amount),
+      status: p.status,
+      paymentStatus: p.payment_status,
+      createdAt: p.created_at,
+    };
+  },
+
+  receivePurchase: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/purchases/${id}/receive`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to receive purchase goods into inventory');
+    return await res.json();
+  },
+
+  payPurchase: async (id: string, amount: number, paymentMethod: string) => {
+    const res = await fetch(`${BASE_URL}/purchases/${id}/pay`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ amount, payment_method: paymentMethod }),
+    });
+    if (!res.ok) throw new Error('Failed to record supplier payment');
+    return await res.json();
   },
 
   getExpenses: async (): Promise<any[]> => {

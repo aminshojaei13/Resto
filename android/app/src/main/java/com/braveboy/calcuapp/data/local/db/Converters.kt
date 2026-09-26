@@ -8,6 +8,7 @@ import com.braveboy.calcuapp.data.model.OrderItem
 import com.braveboy.calcuapp.data.model.PaymentMethod
 import com.braveboy.calcuapp.data.model.PaymentStatus
 import com.braveboy.calcuapp.data.model.ProductVariant
+import com.braveboy.calcuapp.data.model.PurchaseItem
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -71,6 +72,26 @@ class Converters {
         if (value.isBlank()) return emptyList()
         val type = Types.newParameterizedType(List::class.java, OrderItem::class.java)
         val adapter = moshi.adapter<List<OrderItem>>(type)
+        return try {
+            adapter.fromJson(value) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
+    fun fromPurchaseItemList(value: List<PurchaseItem>?): String {
+        if (value == null) return "[]"
+        val type = Types.newParameterizedType(List::class.java, PurchaseItem::class.java)
+        val adapter = moshi.adapter<List<PurchaseItem>>(type)
+        return adapter.toJson(value)
+    }
+
+    @TypeConverter
+    fun toPurchaseItemList(value: String): List<PurchaseItem> {
+        if (value.isBlank()) return emptyList()
+        val type = Types.newParameterizedType(List::class.java, PurchaseItem::class.java)
+        val adapter = moshi.adapter<List<PurchaseItem>>(type)
         return try {
             adapter.fromJson(value) ?: emptyList()
         } catch (e: Exception) {

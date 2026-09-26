@@ -9,6 +9,7 @@ import com.braveboy.calcuapp.data.local.db.dao.CartDao
 import com.braveboy.calcuapp.data.local.db.dao.CustomerDao
 import com.braveboy.calcuapp.data.local.db.dao.LedgerDao
 import com.braveboy.calcuapp.data.local.db.dao.ProductDao
+import com.braveboy.calcuapp.data.local.db.dao.PurchaseDao
 import com.braveboy.calcuapp.data.local.db.dao.SalesOrderDao
 import com.braveboy.calcuapp.data.local.db.dao.SupplierDao
 import com.braveboy.calcuapp.data.local.db.dao.TenantDao
@@ -17,6 +18,7 @@ import com.braveboy.calcuapp.data.local.db.entity.CustomerEntity
 import com.braveboy.calcuapp.data.local.db.entity.LedgerEntryEntity
 import com.braveboy.calcuapp.data.local.db.entity.OrganizationEntity
 import com.braveboy.calcuapp.data.local.db.entity.ProductEntity
+import com.braveboy.calcuapp.data.local.db.entity.PurchaseEntity
 import com.braveboy.calcuapp.data.local.db.entity.SalesOrderEntity
 import com.braveboy.calcuapp.data.local.db.entity.StoreEntity
 import com.braveboy.calcuapp.data.local.db.entity.SupplierEntity
@@ -30,6 +32,7 @@ import com.braveboy.calcuapp.data.local.db.entity.WarehouseEntity
         ProductEntity::class,
         CustomerEntity::class,
         SupplierEntity::class,
+        PurchaseEntity::class,
         SalesOrderEntity::class,
         LedgerEntryEntity::class,
         CartItemEntity::class
@@ -44,6 +47,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
     abstract fun customerDao(): CustomerDao
     abstract fun supplierDao(): SupplierDao
+    abstract fun purchaseDao(): PurchaseDao
     abstract fun salesOrderDao(): SalesOrderDao
     abstract fun ledgerDao(): LedgerDao
     abstract fun cartDao(): CartDao
