@@ -81,16 +81,16 @@ class SalesOrderController extends Controller
             ]);
 
             foreach ($request->items as $item) {
-                $itemSubtotal = $item['price'] * $item['quantity'];
-                $itemDiscount = $itemSubtotal * (($item['discount_percent'] ?? 0) / 100.0);
-                $itemTaxable = $itemSubtotal - $itemDiscount;
-                $itemTax = $itemTaxable * ($item['tax_rate'] ?? 0.08);
-                $itemTotal = $itemTaxable + $itemTax;
+                $itemSubtotal = round($item['price'] * $item['quantity'], 2);
+                $itemDiscount = round($itemSubtotal * (($item['discount_percent'] ?? 0) / 100.0), 2);
+                $itemTaxable = round($itemSubtotal - $itemDiscount, 2);
+                $itemTax = round($itemTaxable * ($item['tax_rate'] ?? 0.08), 2);
+                $itemTotal = round($itemTaxable + $itemTax, 2);
 
-                $subtotal += $itemSubtotal;
-                $discountTotal += $itemDiscount;
-                $taxTotal += $itemTax;
-                $grandTotal += $itemTotal;
+                $subtotal = round($subtotal + $itemSubtotal, 2);
+                $discountTotal = round($discountTotal + $itemDiscount, 2);
+                $taxTotal = round($taxTotal + $itemTax, 2);
+                $grandTotal = round($grandTotal + $itemTotal, 2);
 
                 OrderItem::create([
                     'id' => (string) Str::uuid(),
@@ -99,7 +99,7 @@ class SalesOrderController extends Controller
                     'product_variant_id' => $item['variant_id'] ?? null,
                     'product_name' => $item['product_name'],
                     'sku' => $item['sku'],
-                    'unit_price' => $item['price'],
+                    'unit_price' => round($item['price'], 2),
                     'quantity' => $item['quantity'],
                     'discount_percent' => $item['discount_percent'] ?? 0,
                     'tax_amount' => $itemTax,

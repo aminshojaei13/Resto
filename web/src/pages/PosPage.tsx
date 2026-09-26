@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import { CartItem, Customer, Product, SalesOrder } from '../types';
+import { formatMoney, moneyAdd, moneyMultiply, moneyRound } from '../util/money';
 
 interface PosPageProps {
   language?: 'fa' | 'en';
@@ -50,9 +51,9 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
     });
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08;
-  const grandTotal = subtotal + tax;
+  const subtotal = moneyRound(cart.reduce((sum, item) => sum + moneyMultiply(item.price, item.quantity), 0));
+  const tax = moneyMultiply(subtotal, 0.08);
+  const grandTotal = moneyAdd(subtotal, tax);
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -97,7 +98,7 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
               <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666' }}>{isFa ? 'کد SKU:' : 'SKU:'} {p.sku}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#005AC1' }}>
-                  {isFa ? `${p.price.toLocaleString('fa-IR')} تومان` : `$${p.price.toFixed(2)}`}
+                  {formatMoney(p.price, isFa)}
                 </span>
                 <button style={{ backgroundColor: '#D8E2FF', color: '#001A41', border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer' }}>
                   {isFa ? '+ افزودن' : '+ Add'}
@@ -123,11 +124,11 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
                 <div>
                   <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.productName}</div>
                   <div style={{ fontSize: '12px', color: '#666' }}>
-                    {isFa ? `${item.price.toLocaleString('fa-IR')} تومان` : `$${item.price.toFixed(2)} ea`}
+                    {formatMoney(item.price, isFa)} ea
                   </div>
                 </div>
                 <div style={{ fontWeight: 'bold', color: '#005AC1' }}>
-                  x{item.quantity} = {isFa ? `${(item.price * item.quantity).toLocaleString('fa-IR')} تومان` : `$${(item.price * item.quantity).toFixed(2)}`}
+                  x{item.quantity} = {formatMoney(moneyMultiply(item.price, item.quantity), isFa)}
                 </div>
               </div>
             ))}
@@ -137,15 +138,15 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
         <div style={{ marginTop: '20px', borderTop: '2px solid #EEE', paddingTop: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
             <span>{isFa ? 'جمع کل' : 'Subtotal'}</span>
-            <span>{isFa ? `${subtotal.toLocaleString('fa-IR')} تومان` : `$${subtotal.toFixed(2)}`}</span>
+            <span>{formatMoney(subtotal, isFa)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
             <span>{isFa ? 'مالیات (۸٪)' : 'Tax (8%)'}</span>
-            <span>{isFa ? `${tax.toLocaleString('fa-IR')} تومان` : `$${tax.toFixed(2)}`}</span>
+            <span>{formatMoney(tax, isFa)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20px', fontWeight: 'bold', color: '#005AC1', margin: '12px 0' }}>
             <span>{isFa ? 'مبلغ قابل پرداخت' : 'Total'}</span>
-            <span>{isFa ? `${grandTotal.toLocaleString('fa-IR')} تومان` : `$${grandTotal.toFixed(2)}`}</span>
+            <span>{formatMoney(grandTotal, isFa)}</span>
           </div>
 
           <button
@@ -153,11 +154,10 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
             disabled={cart.length === 0}
             style={{ width: '100%', backgroundColor: cart.length > 0 ? '#005AC1' : '#CCC', color: '#FFF', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
           >
-            {isFa ? `تسویه و ثبت فاکتور (${grandTotal.toLocaleString('fa-IR')} تومان)` : `Checkout ($${grandTotal.toFixed(2)})`}
+            {isFa ? `تسویه و ثبت فاکتور (${formatMoney(grandTotal, true)})` : `Checkout (${formatMoney(grandTotal, false)})`}
           </button>
         </div>
       </div>
     </div>
   );
 };
-

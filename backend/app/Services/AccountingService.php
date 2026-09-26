@@ -13,7 +13,7 @@ use Exception;
 class AccountingService
 {
     /**
-     * Posts a double-entry journal entry enforcing Debit == Credit.
+     * Posts a double-entry journal entry enforcing Debit == Credit with exact monetary rounding.
      */
     public function postJournalEntry(
         string $orgId,
@@ -27,12 +27,16 @@ class AccountingService
         $totalCredit = 0.0;
 
         foreach ($lines as $line) {
+            $lineAmount = round((float) $line['amount'], 2);
             if ($line['type'] === 'DEBIT') {
-                $totalDebit += (float) $line['amount'];
+                $totalDebit += $lineAmount;
             } else if ($line['type'] === 'CREDIT') {
-                $totalCredit += (float) $line['amount'];
+                $totalCredit += $lineAmount;
             }
         }
+
+        $totalDebit = round($totalDebit, 2);
+        $totalCredit = round($totalCredit, 2);
 
         // Strict Double-Entry Check
         if (abs($totalDebit - $totalCredit) > 0.001) {
@@ -56,12 +60,14 @@ class AccountingService
             ]);
 
             foreach ($lines as $line) {
+                $lineAmount = round((float) $line['amount'], 2);
+
                 JournalEntryLine::create([
                     'id' => (string) Str::uuid(),
                     'journal_entry_id' => $entry->id,
                     'account_id' => $line['account_id'],
                     'type' => $line['type'],
-                    'amount' => $line['amount'],
+                    'amount' => $lineAmount,
                     'description' => $line['description'] ?? $description,
                 ]);
 
@@ -69,9 +75,9 @@ class AccountingService
                 $account = Account::find($line['account_id']);
                 if ($account) {
                     if ($line['type'] === 'DEBIT') {
-                        $account->balance += $line['amount'];
+                        $account->balance = round($account->balance + $lineAmount, 2);
                     } else {
-                        $account->balance -= $line['amount'];
+                        $account->balance = round($account->balance - $lineAmount, 2);
                     }
                     $account->save();
                 }
@@ -101,13 +107,13 @@ class AccountingService
             [
                 'account_id' => $cashAccount->id,
                 'type' => 'DEBIT',
-                'amount' => $order->total_amount,
+                'amount' => round($order->total_amount, 2),
                 'description' => "Cash received for Order #{$order->order_number}"
             ],
             [
                 'account_id' => $salesAccount->id,
                 'type' => 'CREDIT',
-                'amount' => $order->total_amount,
+                'amount' => round($order->total_amount, 2),
                 'description' => "Sales Revenue for Order #{$order->order_number}"
             ]
         ];
