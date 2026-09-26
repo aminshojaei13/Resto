@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\MessageImportController;
 use App\Http\Controllers\Api\OrganizationController;
@@ -20,6 +21,9 @@ use App\Http\Middleware\TenantMiddleware;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware([TenantMiddleware::class, IdempotencyMiddleware::class])->group(function () {
+    // Health Check
+    Route::get('/health', [HealthController::class, 'check']);
+
     // Public SaaS Registration
     Route::post('/business-applications', [BusinessApplicationController::class, 'store']);
     Route::get('/business-applications/{id}/status', [BusinessApplicationController::class, 'showStatus']);

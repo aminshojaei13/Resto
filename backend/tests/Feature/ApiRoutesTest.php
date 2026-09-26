@@ -16,6 +16,13 @@ class ApiRoutesTest extends TestCase
         $this->seed(DatabaseSeeder::class);
     }
 
+    public function test_health_endpoint(): void
+    {
+        $response = $this->getJson('/api/v1/health');
+        $response->assertStatus(200)
+                 ->assertJsonFragment(['status' => 'healthy']);
+    }
+
     public function test_organizations_endpoint(): void
     {
         $response = $this->getJson('/api/v1/organizations');

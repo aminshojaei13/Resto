@@ -14,8 +14,9 @@ class TenantMiddleware
     {
         $user = $request->user();
 
-        // Skip tenant enforcement for public endpoints or platform admin
-        if ($request->is('api/v1/auth/login') ||
+        // Skip tenant enforcement for public endpoints, health checks or platform admin
+        if ($request->is('api/v1/health') ||
+            $request->is('api/v1/auth/login') ||
             $request->is('api/v1/business-applications*') ||
             $request->is('api/v1/platform*') ||
             ($user && $user->is_platform_admin)) {
