@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.Message
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
@@ -19,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +41,8 @@ import com.braveboy.calcuapp.ui.expenses.ExpensesScreen
 import com.braveboy.calcuapp.ui.expenses.ExpensesViewModel
 import com.braveboy.calcuapp.ui.inventory.InventoryScreen
 import com.braveboy.calcuapp.ui.inventory.InventoryViewModel
+import com.braveboy.calcuapp.ui.messages.MessagesScreen
+import com.braveboy.calcuapp.ui.messages.MessagesViewModel
 import com.braveboy.calcuapp.ui.orders.SalesOrdersScreen
 import com.braveboy.calcuapp.ui.orders.SalesOrdersViewModel
 import com.braveboy.calcuapp.ui.pos.PosScreen
@@ -61,13 +65,15 @@ enum class MainDestination(
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
     SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
     EXPENSES("Expenses", "هزینه‌ها", Icons.Rounded.Payments),
+    MESSAGES("Messages", "ورود پیام‌ها", Icons.Rounded.Message),
     ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
 }
 
 @Composable
 fun MainAppScreen(
     appContainer: AppContainer,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialSharedText: String? = null
 ) {
     var currentDestination by remember { mutableStateOf(MainDestination.POS) }
     var isTenantSwitcherOpen by remember { mutableStateOf(false) }
@@ -75,6 +81,12 @@ fun MainAppScreen(
     val tenantState by appContainer.tenantRepository.getTenantState().collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
     val layoutDirection = if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+    LaunchedEffect(initialSharedText) {
+        if (!initialSharedText.isNullOrBlank()) {
+            currentDestination = MainDestination.MESSAGES
+        }
+    }
 
     val posViewModel: PosViewModel = viewModel(
         factory = PosViewModel.Factory(
@@ -120,6 +132,15 @@ fun MainAppScreen(
         factory = ExpensesViewModel.Factory(
             appContainer.tenantRepository,
             appContainer.expenseRepository
+        )
+    )
+
+    val messagesViewModel: MessagesViewModel = viewModel(
+        factory = MessagesViewModel.Factory(
+            appContainer.tenantRepository,
+            appContainer.messageRepository,
+            appContainer.salesOrderRepository,
+            appContainer.customerRepository
         )
     )
 
@@ -182,6 +203,12 @@ fun MainAppScreen(
                     }
                     MainDestination.EXPENSES -> {
                         ExpensesScreen(viewModel = expensesViewModel)
+                    }
+                    MainDestination.MESSAGES -> {
+                        MessagesScreen(
+                            viewModel = messagesViewModel,
+                            initialSharedText = initialSharedText
+                        )
                     }
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(viewModel = dashboardViewModel)

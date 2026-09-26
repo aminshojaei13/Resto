@@ -1,5 +1,6 @@
 package com.braveboy.calcuapp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,10 +18,18 @@ class MainActivity : ComponentActivity() {
 
         val appContainer = (application as CalcuappApplication).appContainer
 
+        var sharedText: String? = null
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+
         setContent {
             CalcuappTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainAppScreen(appContainer = appContainer)
+                    MainAppScreen(
+                        appContainer = appContainer,
+                        initialSharedText = sharedText
+                    )
                 }
             }
         }

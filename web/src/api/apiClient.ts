@@ -606,6 +606,26 @@ export const apiClient = {
     return await res.json();
   },
 
+  parseMessage: async (rawText: string, source = 'manual_paste'): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/messages/parse`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ raw_text: rawText, source, org_id: activeOrgId }),
+    });
+    if (!res.ok) throw new Error('Failed to parse order message');
+    return await res.json();
+  },
+
+  getImportedMessages: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/messages?org_id=${activeOrgId}`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch imported messages');
+      return await res.json();
+    } catch {
+      return [];
+    }
+  },
+
   getJournalEntries: async (): Promise<LedgerEntry[]> => {
     try {
       const res = await fetch(`${BASE_URL}/accounting/journal?org_id=${activeOrgId}`, { headers: getHeaders() });

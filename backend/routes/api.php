@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\MessageImportController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
@@ -81,6 +82,10 @@ Route::prefix('v1')->middleware([TenantMiddleware::class, IdempotencyMiddleware:
     Route::post('/expenses', [ExpenseController::class, 'store']);
     Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
     Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
+
+    // Social Messages Import
+    Route::get('/messages', [MessageImportController::class, 'index']);
+    Route::post('/messages/parse', [MessageImportController::class, 'parse']);
 
     // Financial Accounting & Ledger
     Route::get('/accounting/accounts', [AccountingController::class, 'accounts']);

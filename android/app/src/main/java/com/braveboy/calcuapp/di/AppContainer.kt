@@ -11,6 +11,8 @@ import com.braveboy.calcuapp.data.repository.ExpenseRepository
 import com.braveboy.calcuapp.data.repository.ExpenseRepositoryImpl
 import com.braveboy.calcuapp.data.repository.LedgerRepository
 import com.braveboy.calcuapp.data.repository.LedgerRepositoryImpl
+import com.braveboy.calcuapp.data.repository.MessageRepository
+import com.braveboy.calcuapp.data.repository.MessageRepositoryImpl
 import com.braveboy.calcuapp.data.repository.ProductRepository
 import com.braveboy.calcuapp.data.repository.ProductRepositoryImpl
 import com.braveboy.calcuapp.data.repository.PurchaseRepository
@@ -90,6 +92,10 @@ class AppContainer(private val context: Context) {
         ExpenseRepositoryImpl(
             expenseDao = database.expenseDao()
         )
+    }
+
+    val messageRepository: MessageRepository by lazy {
+        MessageRepositoryImpl()
     }
 
     val ledgerRepository: LedgerRepository by lazy {

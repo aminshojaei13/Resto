@@ -111,6 +111,12 @@ interface CalcuappApiService {
     @POST("expenses")
     suspend fun addExpense(@Body expense: ExpenseDto): Response<ExpenseDto>
 
+    @POST("messages/parse")
+    suspend fun parseMessage(@Query("raw_text") rawText: String, @Query("source") source: String): Response<Map<String, Any>>
+
+    @GET("messages")
+    suspend fun getImportedMessages(@Query("org_id") orgId: String): Response<List<Map<String, Any>>>
+
     @GET("accounting/journal")
     suspend fun getJournalEntries(@Query("org_id") orgId: String): Response<List<JournalEntryDto>>
 

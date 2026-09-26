@@ -35,7 +35,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     { id: 'suppliers', label: isFa ? 'تامین‌کنندگان' : 'Suppliers', icon: '🏢' },
     { id: 'customers', label: isFa ? 'مشتریان (CRM)' : 'Customers CRM', icon: '👥' },
     { id: 'expenses', label: isFa ? 'هزینه‌ها' : 'Expenses', icon: '💸' },
-    { id: 'payments', label: isFa ? 'پرداخت‌ها' : 'Payments', icon: '💳' },
+    { id: 'messages', label: isFa ? 'ورود پیام‌های سفارش' : 'Message Import', icon: '📩' },
     { id: 'accounting', label: isFa ? 'دفتر کل حسابداری' : 'Double-Entry Ledger', icon: '⚖️' },
     { id: 'reports', label: isFa ? 'گزارش‌های مالی' : 'Financial Reports', icon: '📈' },
     { id: 'settings', label: isFa ? 'تنظیمات کسب‌وکار' : 'Settings', icon: '⚙️' },
