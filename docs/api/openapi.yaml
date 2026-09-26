@@ -1,15 +1,24 @@
 openapi: 3.0.3
 info:
   title: Calcuapp SaaS Platform REST API
-  description: Multi-tenant Point of Sale (POS), Inventory Stock Management, Double-Entry Financial Accounting, and Sales Management REST API.
+  description: >
+    Multi-tenant Point of Sale (POS), Inventory Stock Management, Double-Entry Financial Accounting,
+    Purchasing & Goods Receiving, Supplier Management, Operating Expenses, and Sales Platform REST API.
   version: 1.0.0
 servers:
   - url: http://localhost:8000/api/v1
     description: Local Development Server
+
+security:
+  - BearerAuth: []
+    TenantHeader: []
+
 paths:
   /auth/login:
     post:
-      summary: User Authentication
+      summary: User Authentication & Token Generation
+      tags: [Auth]
+      security: []
       requestBody:
         required: true
         content:
@@ -28,19 +37,124 @@ paths:
               schema:
                 type: object
                 properties:
-                  access_token: { type: string }
+                  access_token: { type: string, example: "1|QWERTYUIOP..." }
                   token_type: { type: string, example: "Bearer" }
+                  user:
+                    type: object
+                    properties:
+                      id: { type: string, example: "usr_admin_1" }
+                      name: { type: string, example: "Alex Mercer" }
+                      email: { type: string, example: "alex.mercer@calcuapp.com" }
+                      role: { type: string, example: "Owner" }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/profile:
+    get:
+      summary: Get Authenticated User Profile
+      tags: [Auth]
+      responses:
+        '200':
+          description: Current user profile and assigned organizations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, example: "usr_admin_1" }
+                  name: { type: string, example: "Alex Mercer" }
+                  email: { type: string, example: "alex.mercer@calcuapp.com" }
+                  role: { type: string, example: "Owner" }
+                  organizations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Organization'
 
   /organizations:
     get:
       summary: List Organizations & Stores
+      tags: [Organizations]
       responses:
         '200':
-          description: Array of organizations
+          description: List of accessible organizations with stores and warehouses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+    post:
+      summary: Create Organization / Tenant
+      tags: [Organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, code]
+              properties:
+                name: { type: string, example: "Apex Retail Group" }
+                code: { type: string, example: "APEX" }
+                currency_symbol: { type: string, example: "$" }
+                currency_code: { type: string, example: "USD" }
+                subscription_tier: { type: string, example: "ENTERPRISE" }
+      responses:
+        '201':
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  /organizations/{id}:
+    get:
+      summary: Get Organization Details
+      tags: [Organizations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    put:
+      summary: Update Organization Details
+      tags: [Organizations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, example: "Apex Retail Group International" }
+                currency_symbol: { type: string, example: "$" }
+                currency_code: { type: string, example: "USD" }
+      responses:
+        '200':
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
 
   /organizations/{orgId}/stores:
     get:
       summary: List Stores for Tenant
+      tags: [Organizations]
       parameters:
         - name: orgId
           in: path
@@ -48,11 +162,142 @@ paths:
           schema: { type: string }
       responses:
         '200':
-          description: Array of stores
+          description: Array of stores belonging to organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Store'
+
+  /stores:
+    post:
+      summary: Create Store
+      tags: [Organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, name, code]
+              properties:
+                organization_id: { type: string, example: "org_apex" }
+                name: { type: string, example: "Apex Flagship Store (Downtown)" }
+                code: { type: string, example: "APX-DT" }
+                address: { type: string, example: "100 Market St, San Francisco, CA" }
+                phone: { type: string, example: "+1 (555) 019-2834" }
+      responses:
+        '201':
+          description: Store created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+
+  /stores/{id}:
+    put:
+      summary: Update Store Details
+      tags: [Organizations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                code: { type: string }
+                address: { type: string }
+                phone: { type: string }
+      responses:
+        '200':
+          description: Store updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Store'
+
+  /stores/{storeId}/warehouses:
+    get:
+      summary: List Warehouses for Store
+      tags: [Organizations]
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of warehouses belonging to store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Warehouse'
+
+  /warehouses:
+    post:
+      summary: Create Warehouse
+      tags: [Organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, store_id, name, code]
+              properties:
+                organization_id: { type: string, example: "org_apex" }
+                store_id: { type: string, example: "store_apex_1" }
+                name: { type: string, example: "Main Warehouse" }
+                code: { type: string, example: "WH-MAIN" }
+                address: { type: string, example: "100 Market St B1, San Francisco" }
+      responses:
+        '201':
+          description: Warehouse created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Warehouse'
+
+  /warehouses/{id}:
+    put:
+      summary: Update Warehouse Details
+      tags: [Organizations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                code: { type: string }
+                address: { type: string }
+      responses:
+        '200':
+          description: Warehouse updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Warehouse'
 
   /products:
     get:
       summary: Search and List Catalog Products
+      tags: [Catalog]
       parameters:
         - name: org_id
           in: query
@@ -65,23 +310,407 @@ paths:
           schema: { type: string }
       responses:
         '200':
-          description: List of catalog products
+          description: List of catalog products with variants and stock
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      summary: Create Product
+      tags: [Catalog]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku, barcode, name, price, cost_price, category]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                sku: { type: string, example: "APX-LAP-001" }
+                barcode: { type: string, example: "880609123401" }
+                name: { type: string, example: "ProBook Ultra 15 M3" }
+                description: { type: string, example: "High-performance laptop featuring 16GB RAM, 512GB SSD." }
+                price: { type: number, example: 1299.99 }
+                cost_price: { type: number, example: 850.00 }
+                category: { type: string, example: "Electronics" }
+                unit: { type: string, example: "pcs" }
+                image_url: { type: string }
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
 
   /products/barcode/{barcode}:
     get:
       summary: Lookup Product by Barcode
+      tags: [Catalog]
       parameters:
         - name: barcode
           in: path
           required: true
           schema: { type: string }
+        - name: org_id
+          in: query
+          schema: { type: string }
       responses:
         '200':
           description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /products/{id}:
+    get:
+      summary: Get Product Details
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Detailed product model with variants and stock breakdown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    put:
+      summary: Update Product Master Data
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                sku: { type: string }
+                barcode: { type: string }
+                description: { type: string }
+                price: { type: number }
+                cost_price: { type: number }
+                category: { type: string }
+                unit: { type: string }
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    delete:
+      summary: Delete or Archive Product
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product deleted or archived successfully
+
+  /products/{id}/variants:
+    post:
+      summary: Create Product Variant
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku, barcode, name, price, cost_price]
+              properties:
+                sku: { type: string, example: "APX-LAP-001-SLV" }
+                barcode: { type: string, example: "8806091234011" }
+                name: { type: string, example: "Silver - 512GB" }
+                price: { type: number, example: 1299.99 }
+                cost_price: { type: number, example: 850.00 }
+      responses:
+        '201':
+          description: Variant created successfully
+
+  /variants/{id}:
+    put:
+      summary: Update Product Variant
+      tags: [Catalog]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                sku: { type: string }
+                barcode: { type: string }
+                price: { type: number }
+                cost_price: { type: number }
+      responses:
+        '200':
+          description: Variant updated successfully
+
+  /suppliers:
+    get:
+      summary: List Suppliers
+      tags: [Suppliers]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+        - name: query
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of registered suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Supplier'
+    post:
+      summary: Create Supplier
+      tags: [Suppliers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                name: { type: string, example: "TechImport Global Co." }
+                email: { type: string, example: "sales@techimport.com" }
+                phone: { type: string, example: "+1 (800) 555-0199" }
+                address: { type: string, example: "500 Logistics Way, San Jose, CA" }
+      responses:
+        '201':
+          description: Supplier created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+
+  /suppliers/{id}:
+    get:
+      summary: Get Supplier Details & Purchase Order History
+      tags: [Suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Detailed supplier record with associated purchases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+    put:
+      summary: Update Supplier Contact Details
+      tags: [Suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                address: { type: string }
+      responses:
+        '200':
+          description: Supplier profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+    delete:
+      summary: Delete or Archive Supplier
+      tags: [Suppliers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Supplier deleted or archived successfully
+
+  /purchases:
+    get:
+      summary: List Purchase Orders
+      tags: [Purchasing]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of purchase orders with items and supplier details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Purchase'
+    post:
+      summary: Create Purchase Order (Draft/Ordered)
+      tags: [Purchasing]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, warehouse_id, supplier_id, items]
+              properties:
+                store_id: { type: string, example: "store_apex_1" }
+                warehouse_id: { type: string, example: "wh_apex_1a" }
+                supplier_id: { type: string, example: "sup_1" }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [product_id, quantity, unit_cost]
+                    properties:
+                      product_id: { type: string, example: "prod_1" }
+                      quantity: { type: integer, example: 10 }
+                      unit_cost: { type: number, example: 850.00 }
+      responses:
+        '201':
+          description: Purchase Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+
+  /purchases/{id}:
+    get:
+      summary: Get Purchase Order Details
+      tags: [Purchasing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Detailed Purchase Order with itemized breakdown and supplier payments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Purchase'
+
+  /purchases/{id}/receive:
+    post:
+      summary: Confirm Goods Receiving into Warehouse
+      description: >
+        Receives goods for the specified Purchase Order. Increments warehouse stock via InventoryService,
+        sets purchase status to RECEIVED, and posts Accounts Payable & Inventory Asset double-entry journal entries.
+      tags: [Purchasing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      responses:
+        '200':
+          description: Goods received into stock and accounting posted successfully
+        '422':
+          description: Purchase order has already been received
+
+  /purchases/{id}/pay:
+    post:
+      summary: Record Supplier Payment against Purchase Order
+      tags: [Purchasing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, payment_method]
+              properties:
+                amount: { type: number, example: 4250.00 }
+                payment_method: { type: string, example: "BANK_TRANSFER" }
+      responses:
+        '200':
+          description: Supplier payment recorded and Accounts Payable journal posted
+
+  /inventory/stock:
+    get:
+      summary: Get Warehouse Stock Breakdown
+      tags: [Inventory]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current stock levels per product and warehouse
 
   /inventory/adjust:
     post:
       summary: Adjust Stock Level at Warehouse
+      tags: [Inventory]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -90,18 +719,88 @@ paths:
               type: object
               required: [org_id, warehouse_id, product_id, delta, reason]
               properties:
-                org_id: { type: string }
-                warehouse_id: { type: string }
-                product_id: { type: string }
-                delta: { type: integer }
-                reason: { type: string }
+                org_id: { type: string, example: "org_apex" }
+                warehouse_id: { type: string, example: "wh_apex_1a" }
+                product_id: { type: string, example: "prod_1" }
+                product_variant_id: { type: string }
+                delta: { type: integer, example: 5 }
+                reason: { type: string, example: "Manual Restock Adjustment" }
+                reference_id: { type: string }
       responses:
         '200':
-          description: Stock adjusted successfully
+          description: Stock adjusted successfully and ledger movement recorded
+
+  /inventory/transfer:
+    post:
+      summary: Transfer Stock Between Warehouses
+      tags: [Inventory]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [org_id, source_warehouse_id, destination_warehouse_id, product_id, quantity]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                source_warehouse_id: { type: string, example: "wh_apex_1a" }
+                destination_warehouse_id: { type: string, example: "wh_apex_1b" }
+                product_id: { type: string, example: "prod_1" }
+                quantity: { type: integer, example: 2 }
+      responses:
+        '200':
+          description: Stock transferred successfully between warehouses
+
+  /orders:
+    get:
+      summary: List Sales Orders
+      tags: [Sales & POS]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+        - name: store_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of sales orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SalesOrder'
+
+  /orders/{id}:
+    get:
+      summary: Get Sales Order Details
+      tags: [Sales & POS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesOrder'
 
   /orders/checkout:
     post:
       summary: Create Sales Order and Process POS Checkout
+      tags: [Sales & POS]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -110,43 +809,749 @@ paths:
               type: object
               required: [org_id, store_id, warehouse_id, items, payment_method]
               properties:
-                org_id: { type: string }
-                store_id: { type: string }
-                warehouse_id: { type: string }
-                customer_id: { type: string }
-                customer_name: { type: string }
-                payment_method: { type: string }
+                org_id: { type: string, example: "org_apex" }
+                store_id: { type: string, example: "store_apex_1" }
+                warehouse_id: { type: string, example: "wh_apex_1a" }
+                customer_id: { type: string, example: "cust_1" }
+                customer_name: { type: string, example: "Sarah Connor" }
+                payment_method: { type: string, example: "CARD" }
+                notes: { type: string, example: "Paid via Visa card" }
                 items:
                   type: array
                   items:
                     type: object
+                    required: [product_id, product_name, sku, price, quantity]
                     properties:
-                      product_id: { type: string }
-                      product_name: { type: string }
-                      sku: { type: string }
-                      price: { type: number }
-                      quantity: { type: integer }
+                      product_id: { type: string, example: "prod_1" }
+                      variant_id: { type: string }
+                      product_name: { type: string, example: "ProBook Ultra 15 M3" }
+                      sku: { type: string, example: "APX-LAP-001" }
+                      price: { type: number, example: 1299.99 }
+                      quantity: { type: integer, example: 1 }
+                      discount_percent: { type: number, example: 5.0 }
+                      tax_rate: { type: number, example: 0.08 }
       responses:
         '201':
-          description: Sales order completed successfully
+          description: Sales order completed, stock deducted, and revenue journal posted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesOrder'
+
+  /orders/{id}/cancel:
+    post:
+      summary: Cancel Sales Order and Restore Stock
+      tags: [Sales & POS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order cancelled and stock restored to warehouse
+
+  /orders/{id}/refund:
+    post:
+      summary: Refund Sales Order and Post Reversal Journal
+      tags: [Sales & POS]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order refunded, stock restored, and revenue journal reversed
 
   /customers:
     get:
-      summary: List Customers
+      summary: Search and List Customers
+      tags: [Customers]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+        - name: query
+          in: query
+          schema: { type: string }
       responses:
         '200':
           description: List of customer profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+    post:
+      summary: Create Customer Profile
+      tags: [Customers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                name: { type: string, example: "Sarah Connor" }
+                email: { type: string, example: "sarah.connor@example.com" }
+                phone: { type: string, example: "+1 (555) 234-5678" }
+                address: { type: string, example: "789 Cyberdyne Way, Los Angeles, CA" }
+      responses:
+        '201':
+          description: Customer profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/{id}:
+    get:
+      summary: Get Customer Details
+      tags: [Customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Customer profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    put:
+      summary: Update Customer Profile
+      tags: [Customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                address: { type: string }
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    delete:
+      summary: Delete or Archive Customer
+      tags: [Customers]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Customer deleted successfully
+
+  /expenses:
+    get:
+      summary: List Operating Expenses
+      tags: [Expenses]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of operating expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+    post:
+      summary: Record Operating Expense
+      description: >
+        Records an operating expense and automatically posts a double-entry journal entry:
+        DEBIT: Operating Expense (Account 5010), CREDIT: Cash/Bank (Account 1010).
+      tags: [Expenses]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, category, amount, date]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                store_id: { type: string, example: "store_apex_1" }
+                category: { type: string, example: "Store Utilities" }
+                amount: { type: number, example: 450.00 }
+                date: { type: string, example: "2025-01-15" }
+                payment_method: { type: string, example: "BANK_TRANSFER" }
+                notes: { type: string, example: "Monthly electricity bill" }
+      responses:
+        '201':
+          description: Expense recorded and accounting posted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+
+  /expenses/{id}:
+    get:
+      summary: Get Expense Details
+      tags: [Expenses]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Expense details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+    put:
+      summary: Update Expense
+      tags: [Expenses]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category: { type: string }
+                amount: { type: number }
+                date: { type: string }
+                payment_method: { type: string }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+    delete:
+      summary: Delete Expense
+      tags: [Expenses]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Expense deleted successfully
+
+  /accounting/accounts:
+    get:
+      summary: List Chart of Accounts & Balances
+      tags: [Accounting]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of financial accounts with current balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+    post:
+      summary: Create Chart of Accounts Account
+      tags: [Accounting]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chart_of_account_id, code, name]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                chart_of_account_id: { type: string, example: "coa_asset" }
+                code: { type: string, example: "1020" }
+                name: { type: string, example: "Petty Cash Drawer" }
+                initial_balance: { type: number, example: 500.00 }
+      responses:
+        '201':
+          description: Account created successfully
 
   /accounting/journal:
     get:
       summary: Fetch General Ledger Journal Entries
+      tags: [Accounting]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
       responses:
         '200':
-          description: General ledger entries
+          description: General ledger double-entry journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntry'
+
+  /accounting/entry:
+    post:
+      summary: Post Custom Double-Entry Journal Entry
+      description: >
+        Posts a custom journal entry. Enforces strict double-entry invariant (Total Debits == Total Credits).
+      tags: [Accounting]
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, description, lines]
+              properties:
+                org_id: { type: string, example: "org_apex" }
+                store_id: { type: string, example: "store_apex_1" }
+                description: { type: string, example: "Owner Capital Injection" }
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    required: [account_id, type, amount]
+                    properties:
+                      account_id: { type: string, example: "acc_1010" }
+                      type: { type: string, enum: [DEBIT, CREDIT] }
+                      amount: { type: number, example: 1000.00 }
+                      description: { type: string }
+      responses:
+        '201':
+          description: Journal entry posted successfully
+        '400':
+          description: Double-entry accounting violation (Total Debits != Total Credits)
 
   /accounting/summary:
     get:
       summary: Fetch Executive Revenue & Financial Summary
+      tags: [Accounting]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
       responses:
         '200':
           description: Financial metrics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountingSummary'
+
+  /accounting/reports/profit-loss:
+    get:
+      summary: Profit & Loss Statement (P&L)
+      tags: [Accounting Reports]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Revenue, Operating Expenses, and Net Income
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfitLossReport'
+
+  /accounting/reports/balance-sheet:
+    get:
+      summary: Balance Sheet Report
+      tags: [Accounting Reports]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Total Assets, Total Liabilities, Total Equity, and Balance status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceSheetReport'
+
+  /accounting/reports/trial-balance:
+    get:
+      summary: Trial Balance Report
+      tags: [Accounting Reports]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Account debits, credits, and trial balance verification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrialBalanceReport'
+
+  /audit-logs:
+    get:
+      summary: List Audit Logs
+      tags: [Audit Logs]
+      parameters:
+        - name: org_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: System mutation audit log trail
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLog'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    TenantHeader:
+      type: apiKey
+      name: X-Tenant-ID
+      in: header
+    StoreHeader:
+      type: apiKey
+      name: X-Store-ID
+      in: header
+    IdempotencyHeader:
+      type: apiKey
+      name: X-Idempotency-Key
+      in: header
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: Forbidden - user is not authorized to access organization
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    Organization:
+      type: object
+      properties:
+        id: { type: string, example: "org_apex" }
+        name: { type: string, example: "Apex Retail Group" }
+        code: { type: string, example: "APEX" }
+        logo_url: { type: string }
+        currency_symbol: { type: string, example: "$" }
+        currency_code: { type: string, example: "USD" }
+        subscription_tier: { type: string, example: "ENTERPRISE" }
+        stores:
+          type: array
+          items:
+            $ref: '#/components/schemas/Store'
+
+    Store:
+      type: object
+      properties:
+        id: { type: string, example: "store_apex_1" }
+        organization_id: { type: string, example: "org_apex" }
+        name: { type: string, example: "Apex Flagship Store (Downtown)" }
+        code: { type: string, example: "APX-DT" }
+        address: { type: string }
+        phone: { type: string }
+        warehouses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warehouse'
+
+    Warehouse:
+      type: object
+      properties:
+        id: { type: string, example: "wh_apex_1a" }
+        store_id: { type: string, example: "store_apex_1" }
+        organization_id: { type: string, example: "org_apex" }
+        name: { type: string, example: "Main Warehouse" }
+        code: { type: string, example: "WH-MAIN" }
+        address: { type: string }
+
+    Product:
+      type: object
+      properties:
+        id: { type: string, example: "prod_1" }
+        organization_id: { type: string, example: "org_apex" }
+        sku: { type: string, example: "APX-LAP-001" }
+        barcode: { type: string, example: "880609123401" }
+        name: { type: string, example: "ProBook Ultra 15 M3" }
+        description: { type: string }
+        price: { type: number, example: 1299.99 }
+        cost_price: { type: number, example: 850.00 }
+        category: { type: string, example: "Electronics" }
+        unit: { type: string, example: "pcs" }
+        image_url: { type: string }
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+
+    ProductVariant:
+      type: object
+      properties:
+        id: { type: string, example: "var_1_1" }
+        product_id: { type: string, example: "prod_1" }
+        sku: { type: string, example: "APX-LAP-001-SLV" }
+        barcode: { type: string, example: "8806091234011" }
+        name: { type: string, example: "Silver - 512GB" }
+        price: { type: number, example: 1299.99 }
+        cost_price: { type: number, example: 850.00 }
+
+    Supplier:
+      type: object
+      properties:
+        id: { type: string, example: "sup_1" }
+        organization_id: { type: string, example: "org_apex" }
+        name: { type: string, example: "TechImport Global Co." }
+        email: { type: string, example: "sales@techimport.com" }
+        phone: { type: string, example: "+1 (800) 555-0199" }
+        address: { type: string, example: "500 Logistics Way, San Jose, CA" }
+        purchases:
+          type: array
+          items:
+            $ref: '#/components/schemas/Purchase'
+
+    Purchase:
+      type: object
+      properties:
+        id: { type: string, example: "po_1001" }
+        purchase_number: { type: string, example: "PO-2025-1001" }
+        organization_id: { type: string, example: "org_apex" }
+        store_id: { type: string, example: "store_apex_1" }
+        warehouse_id: { type: string, example: "wh_apex_1a" }
+        supplier_id: { type: string, example: "sup_1" }
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItem'
+        total_amount: { type: number, example: 8500.00 }
+        status: { type: string, enum: [ORDERED, RECEIVED, CANCELLED], example: "RECEIVED" }
+        payment_status: { type: string, enum: [UNPAID, PARTIAL, PAID], example: "PAID" }
+
+    PurchaseItem:
+      type: object
+      properties:
+        id: { type: string }
+        purchase_id: { type: string }
+        product_id: { type: string, example: "prod_1" }
+        quantity: { type: integer, example: 10 }
+        unit_cost: { type: number, example: 850.00 }
+        total_cost: { type: number, example: 8500.00 }
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string, example: "cust_1" }
+        organization_id: { type: string, example: "org_apex" }
+        name: { type: string, example: "Sarah Connor" }
+        email: { type: string, example: "sarah.connor@example.com" }
+        phone: { type: string, example: "+1 (555) 234-5678" }
+        address: { type: string, example: "789 Cyberdyne Way, Los Angeles, CA" }
+        total_purchases: { type: number, example: 1603.78 }
+        loyalty_points: { type: integer, example: 160 }
+
+    SalesOrder:
+      type: object
+      properties:
+        id: { type: string, example: "ord_1001" }
+        order_number: { type: string, example: "ORD-2025-1001" }
+        organization_id: { type: string, example: "org_apex" }
+        store_id: { type: string, example: "store_apex_1" }
+        warehouse_id: { type: string, example: "wh_apex_1a" }
+        customer_id: { type: string, example: "cust_1" }
+        customer_name: { type: string, example: "Sarah Connor" }
+        subtotal: { type: number, example: 1549.98 }
+        discount_amount: { type: number, example: 65.00 }
+        tax_amount: { type: number, example: 118.80 }
+        total_amount: { type: number, example: 1603.78 }
+        payment_method: { type: string, example: "CARD" }
+        payment_status: { type: string, example: "PAID" }
+        fulfillment_status: { type: string, example: "COMPLETED" }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+    OrderItem:
+      type: object
+      properties:
+        id: { type: string }
+        order_id: { type: string }
+        product_id: { type: string, example: "prod_1" }
+        product_name: { type: string, example: "ProBook Ultra 15 M3" }
+        sku: { type: string, example: "APX-LAP-001" }
+        unit_price: { type: number, example: 1299.99 }
+        quantity: { type: integer, example: 1 }
+        total_price: { type: number, example: 1333.79 }
+
+    Expense:
+      type: object
+      properties:
+        id: { type: string, example: "exp_1001" }
+        organization_id: { type: string, example: "org_apex" }
+        store_id: { type: string, example: "store_apex_1" }
+        category: { type: string, example: "Store Utilities" }
+        amount: { type: number, example: 450.00 }
+        payment_method: { type: string, example: "BANK_TRANSFER" }
+        date: { type: string, example: "2025-01-15" }
+        notes: { type: string, example: "Monthly electricity bill" }
+        user_id: { type: string, example: "usr_admin_1" }
+
+    Account:
+      type: object
+      properties:
+        id: { type: string, example: "acc_1010" }
+        organization_id: { type: string, example: "org_apex" }
+        chart_of_account_id: { type: string, example: "coa_asset" }
+        code: { type: string, example: "1010" }
+        name: { type: string, example: "Cash / POS Drawer" }
+        balance: { type: number, example: 15000.00 }
+
+    JournalEntry:
+      type: object
+      properties:
+        id: { type: string, example: "je_1001" }
+        organization_id: { type: string, example: "org_apex" }
+        store_id: { type: string, example: "store_apex_1" }
+        entry_number: { type: string, example: "JE-20250115-1234" }
+        description: { type: string, example: "Sales Order #ORD-2025-1001 revenue entry" }
+        total_debit: { type: number, example: 1603.78 }
+        total_credit: { type: number, example: 1603.78 }
+        is_posted: { type: boolean, example: true }
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryLine'
+
+    JournalEntryLine:
+      type: object
+      properties:
+        id: { type: string }
+        journal_entry_id: { type: string }
+        account_id: { type: string, example: "acc_1010" }
+        type: { type: string, enum: [DEBIT, CREDIT] }
+        amount: { type: number, example: 1603.78 }
+        description: { type: string }
+
+    AccountingSummary:
+      type: object
+      properties:
+        total_revenue: { type: number, example: 2940.82 }
+        today_revenue: { type: number, example: 1603.78 }
+        total_expenses: { type: number, example: 450.00 }
+        net_profit: { type: number, example: 2490.82 }
+        total_sales_count: { type: integer, example: 14 }
+        today_sales_count: { type: integer, example: 3 }
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+
+    ProfitLossReport:
+      type: object
+      properties:
+        organization_id: { type: string, example: "org_apex" }
+        gross_revenue: { type: number, example: 2940.82 }
+        operating_expenses: { type: number, example: 450.00 }
+        net_income: { type: number, example: 2490.82 }
+
+    BalanceSheetReport:
+      type: object
+      properties:
+        organization_id: { type: string, example: "org_apex" }
+        total_assets: { type: number, example: 40000.00 }
+        total_liabilities: { type: number, example: 5000.00 }
+        total_equity: { type: number, example: 35000.00 }
+        is_balanced: { type: boolean, example: true }
+
+    TrialBalanceReport:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              account_id: { type: string, example: "acc_1010" }
+              code: { type: string, example: "1010" }
+              name: { type: string, example: "Cash / POS Drawer" }
+              debit: { type: number, example: 15000.00 }
+              credit: { type: number, example: 0.00 }
+        total_debit: { type: number, example: 40000.00 }
+        total_credit: { type: number, example: 40000.00 }
+        is_balanced: { type: boolean, example: true }
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string, example: "org_apex" }
+        user_id: { type: string, example: "usr_admin_1" }
+        action: { type: string, example: "CHECKOUT" }
+        entity_type: { type: string, example: "Order" }
+        entity_id: { type: string, example: "ord_1001" }
+        details: { type: string }
+        ip_address: { type: string }
+        created_at: { type: string }
+
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string, example: "Unauthorized organization access" }
+        message: { type: string, example: "User usr_cashier_1 is not authorized to access organization org_braveboy" }
