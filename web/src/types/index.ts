@@ -163,3 +163,12 @@ export interface AccountingSummary {
   totalSalesCount: number;
   todaySalesCount: number;
 }
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isPlatformAdmin: boolean;
+  tenantId?: string;
+}

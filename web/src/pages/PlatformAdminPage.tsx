@@ -3,9 +3,11 @@ import { apiClient } from '../api/apiClient';
 
 interface PlatformAdminPageProps {
   language?: 'fa' | 'en';
+  selectedApplicationId?: string;
+  navigate?: (path: string) => void;
 }
 
-export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language = 'fa' }) => {
+export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language = 'fa', selectedApplicationId, navigate }) => {
   const [applications, setApplications] = useState<any[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('PENDING');
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
@@ -25,9 +27,11 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
     setIsLoading(true);
     try {
       const list = await apiClient.getPlatformApplications(selectedStatus || undefined);
-      setApplications(list);
+      setApplications(list || []);
       setIsLoading(false);
-    } catch {
+    } catch (err) {
+      console.error('loadApplications error:', err);
+      setApplications([]);
       setIsLoading(false);
     }
   };

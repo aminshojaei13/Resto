@@ -22,8 +22,12 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
   }, []);
 
   const loadProducts = async () => {
-    const list = await apiClient.getProducts(searchQuery);
-    setProducts(list);
+    try {
+      const list = await apiClient.getProducts(searchQuery);
+      setProducts(list || []);
+    } catch {
+      setProducts([]);
+    }
   };
 
   const addToCart = (product: Product) => {

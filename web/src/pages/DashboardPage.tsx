@@ -16,8 +16,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
   const isFa = language === 'fa';
 
   useEffect(() => {
-    apiClient.getAccountingSummary().then(setSummary);
-    apiClient.getJournalEntries().then(setEntries);
+    const fetchData = async () => {
+      try {
+        const s = await apiClient.getAccountingSummary();
+        if (s) setSummary(s);
+      } catch {}
+      try {
+        const e = await apiClient.getJournalEntries();
+        if (e) setEntries(e);
+      } catch {}
+    };
+    fetchData();
   }, []);
 
   return (

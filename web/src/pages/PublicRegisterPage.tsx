@@ -4,11 +4,13 @@ import { apiClient } from '../api/apiClient';
 interface PublicRegisterPageProps {
   language?: 'fa' | 'en';
   onRegistrationSubmitted?: (applicationId: string) => void;
+  navigate?: (path: string) => void;
 }
 
 export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
   language = 'fa',
   onRegistrationSubmitted,
+  navigate,
 }) => {
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -83,15 +85,25 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
             <div><strong>{isFa ? 'وضعیت:' : 'Status:'}</strong> <span style={{ color: '#E65100', fontWeight: 'bold' }}>{submittedApplication.status || 'PENDING'}</span></div>
           </div>
 
-          <button
-            onClick={() => setSubmittedApplication(null)}
-            style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            {isFa ? 'ثبت درخواست جدید' : 'Submit Another Application'}
-          </button>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSubmittedApplication(null)}
+              style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              {isFa ? 'ثبت درخواست جدید' : 'Submit Another Application'}
+            </button>
+            {navigate && (
+              <button
+                onClick={() => navigate('/login')}
+                style={{ backgroundColor: '#198754', color: '#FFF', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                🔑 {isFa ? 'انتقال به صفحه ورود' : 'Go to Login'}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} style={{ backgroundColor: '#FFF', border: '1px solid #E0E0E0', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} noValidate style={{ backgroundColor: '#FFF', border: '1px solid #E0E0E0', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {errorMessage && (
             <div style={{ backgroundColor: '#F8D7DA', color: '#842029', padding: '12px 16px', borderRadius: '8px', fontSize: '14px' }}>
               {errorMessage}
