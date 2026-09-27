@@ -1,19 +1,38 @@
 package com.braveboy.calcuapp.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Message
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.ShoppingBag
+import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -26,10 +45,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.calcuapp.data.model.TenantState
 import com.braveboy.calcuapp.di.AppContainer
@@ -69,6 +91,7 @@ enum class MainDestination(
     ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(
     appContainer: AppContainer,
@@ -77,6 +100,7 @@ fun MainAppScreen(
 ) {
     var currentDestination by remember { mutableStateOf(MainDestination.POS) }
     var isTenantSwitcherOpen by remember { mutableStateOf(false) }
+    var isMoreMenuOpen by remember { mutableStateOf(false) }
 
     val tenantState by appContainer.tenantRepository.getTenantState().collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
@@ -158,12 +182,18 @@ fun MainAppScreen(
         )
     )
 
+    val primaryDestinations = listOf(
+        MainDestination.POS,
+        MainDestination.INVENTORY,
+        MainDestination.ORDERS
+    )
+
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             bottomBar = {
                 NavigationBar {
-                    MainDestination.values().forEach { destination ->
+                    primaryDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = currentDestination == destination,
                             onClick = { currentDestination = destination },
@@ -171,6 +201,12 @@ fun MainAppScreen(
                             label = { Text(if (isPersian) destination.titleFa else destination.title) }
                         )
                     }
+                    NavigationBarItem(
+                        selected = !primaryDestinations.contains(currentDestination),
+                        onClick = { isMoreMenuOpen = true },
+                        icon = { Icon(imageVector = Icons.Rounded.MoreHoriz, contentDescription = if (isPersian) "سایر بخش‌ها" else "More") },
+                        label = { Text(if (isPersian) "سایر بخش‌ها" else "More") }
+                    )
                 }
             }
         ) { innerPadding ->
@@ -213,6 +249,112 @@ fun MainAppScreen(
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(viewModel = dashboardViewModel)
                     }
+                }
+            }
+        }
+
+        // Clean Material 3 Modal Drawer / Sheet for Remaining Modules
+        if (isMoreMenuOpen) {
+            ModalBottomSheet(
+                onDismissRequest = { isMoreMenuOpen = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (isPersian) "منوی سایر بخش‌های کسب‌وکار" else "Resto Business Modules",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isPersian) "برای دسترسی سریع، ماژول مورد نظر را انتخاب کنید" else "Select a module to navigate",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val secondaryDestinations = listOf(
+                        MainDestination.PURCHASES,
+                        MainDestination.CUSTOMERS,
+                        MainDestination.SUPPLIERS,
+                        MainDestination.EXPENSES,
+                        MainDestination.MESSAGES,
+                        MainDestination.ACCOUNTING
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(secondaryDestinations) { dest ->
+                            val isSelected = currentDestination == dest
+                            Card(
+                                onClick = {
+                                    currentDestination = dest
+                                    isMoreMenuOpen = false
+                                },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = dest.icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = if (isPersian) dest.titleFa else dest.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Card(
+                                onClick = {
+                                    isMoreMenuOpen = false
+                                    isTenantSwitcherOpen = true
+                                },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Storefront,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = if (isPersian) "تغییر شعبه / تننت" else "Switch Tenant",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }

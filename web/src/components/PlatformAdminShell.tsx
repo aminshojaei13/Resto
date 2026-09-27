@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { theme } from '../theme/tokens';
 import { AuthUser } from '../types';
 
@@ -22,6 +22,19 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
   children,
 }) => {
   const isFa = language === 'fa';
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const adminNavItems = [
     {
@@ -41,45 +54,47 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
     },
   ];
 
-  return (
-    <div
+  const handleNavClick = (path: string) => {
+    navigate(path);
+    if (isMobileScreen) {
+      setIsMobileOpen(false);
+    }
+  };
+
+  const sidebarContent = (
+    <aside
       style={{
+        width: '260px',
+        backgroundColor: '#1E293B',
+        color: '#F8FAFC',
         display: 'flex',
-        minHeight: '100vh',
-        backgroundColor: theme.colors.background,
-        fontFamily: theme.typography.fontFamily,
-        direction: isFa ? 'rtl' : 'ltr',
+        flexDirection: 'column',
+        flexShrink: 0,
+        boxShadow: theme.shadows.md,
+        zIndex: 100,
+        position: isMobileScreen ? 'fixed' : 'relative',
+        top: 0,
+        bottom: 0,
+        [isFa ? 'right' : 'left']: isMobileScreen ? (isMobileOpen ? '0' : '-280px') : 'auto',
+        transition: 'all 0.3s ease-in-out',
       }}
     >
-      {/* Platform Admin Dark Sidebar */}
-      <aside
+      <div
         style={{
-          width: '260px',
-          backgroundColor: '#1E293B', // Dark slate for admin
-          color: '#F8FAFC',
+          padding: theme.spacing['2xl'],
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
-          flexDirection: 'column',
-          flexShrink: 0,
-          boxShadow: theme.shadows.md,
-          zIndex: 20,
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
-        {/* Platform Admin Header Logo */}
-        <div
-          style={{
-            padding: theme.spacing['2xl'],
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: theme.spacing.md,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
           <div
             style={{
               width: '38px',
               height: '38px',
               borderRadius: theme.borderRadius.lg,
-              backgroundColor: '#38BDF8', // Cyan for admin badge
+              backgroundColor: '#38BDF8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -100,66 +115,98 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           </div>
         </div>
 
-        {/* Admin Navigation */}
-        <nav style={{ flex: 1, padding: `${theme.spacing.lg} ${theme.spacing.md}` }}>
-          {adminNavItems.map((item) => {
-            const isActive = currentPath.startsWith(item.path);
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.md,
-                  padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-                  borderRadius: theme.borderRadius.lg,
-                  border: 'none',
-                  backgroundColor: isActive ? '#0284C7' : 'transparent',
-                  color: isActive ? '#FFF' : '#CBD5E1',
-                  fontWeight: isActive ? 700 : 500,
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  marginBottom: '6px',
-                  textAlign: isFa ? 'right' : 'left',
-                }}
-              >
-                <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Language Switcher Footer */}
-        <div style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        {isMobileScreen && (
           <button
-            onClick={() => setLanguage(isFa ? 'en' : 'fa')}
-            style={{
-              width: '100%',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: theme.borderRadius.lg,
-              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-              color: '#FFF',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: theme.spacing.sm,
-            }}
+            onClick={() => setIsMobileOpen(false)}
+            style={{ backgroundColor: 'transparent', border: 'none', color: '#FFF', fontSize: '20px', cursor: 'pointer' }}
           >
-            🌐 {isFa ? 'English (LTR)' : 'فارسی (RTL)'}
+            ✕
           </button>
-        </div>
-      </aside>
+        )}
+      </div>
 
-      {/* Main Container Area */}
+      <nav style={{ flex: 1, padding: `${theme.spacing.lg} ${theme.spacing.md}` }}>
+        {adminNavItems.map((item) => {
+          const isActive = currentPath.startsWith(item.path);
+          return (
+            <button
+              key={item.path}
+              onClick={() => handleNavClick(item.path)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.md,
+                padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                borderRadius: theme.borderRadius.lg,
+                border: 'none',
+                backgroundColor: isActive ? '#0284C7' : 'transparent',
+                color: isActive ? '#FFF' : '#CBD5E1',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '14px',
+                cursor: 'pointer',
+                marginBottom: '6px',
+                textAlign: isFa ? 'right' : 'left',
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              <span style={{ flex: 1 }}>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <div style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <button
+          onClick={() => setLanguage(isFa ? 'en' : 'fa')}
+          style={{
+            width: '100%',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: theme.borderRadius.lg,
+            padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+            color: '#FFF',
+            fontWeight: 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: theme.spacing.sm,
+          }}
+        >
+          🌐 {isFa ? 'English (LTR)' : 'فارسی (RTL)'}
+        </button>
+      </div>
+    </aside>
+  );
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: theme.colors.background,
+        fontFamily: theme.typography.fontFamily,
+        direction: isFa ? 'rtl' : 'ltr',
+        position: 'relative',
+      }}
+    >
+      {isMobileScreen && isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 90,
+          }}
+        />
+      )}
+
+      {sidebarContent}
+
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
-        {/* Top Header Bar */}
         <header
           style={{
             backgroundColor: theme.colors.surface,
@@ -172,6 +219,22 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            {isMobileScreen && (
+              <button
+                onClick={() => setIsMobileOpen(!isMobileOpen)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: '6px 12px',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                }}
+              >
+                🍔
+              </button>
+            )}
+
             <span style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
               {isFa ? 'کنسول مدیریت پلتفرم (Platform Admin)' : 'Platform Admin Console'}
             </span>
@@ -211,7 +274,6 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           </div>
         </header>
 
-        {/* Page Content */}
         <main
           style={{
             flex: 1,
