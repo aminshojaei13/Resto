@@ -11,7 +11,7 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $query = $request->query('query');
 
         $builder = Customer::where('organization_id', $orgId);
@@ -35,7 +35,7 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'name' => 'required|string',

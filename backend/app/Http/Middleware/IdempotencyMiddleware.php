@@ -18,7 +18,7 @@ class IdempotencyMiddleware
             return $next($request);
         }
 
-        $orgId = $request->attributes->get('org_id') ?? $request->header('X-Tenant-ID') ?? 'org_apex';
+        $orgId = $request->attributes->get('org_id') ?? $request->header('X-Tenant-ID') ?? '';
 
         $existing = IdempotencyKey::where('organization_id', $orgId)
             ->where('key', $idempotencyKey)

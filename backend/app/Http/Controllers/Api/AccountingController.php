@@ -22,14 +22,14 @@ class AccountingController extends Controller
 
     public function accounts(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $accounts = Account::where('organization_id', $orgId)->get();
         return response()->json($accounts);
     }
 
     public function createAccount(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'chart_of_account_id' => 'required|string',
@@ -51,7 +51,7 @@ class AccountingController extends Controller
 
     public function journal(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $entries = JournalEntry::where('organization_id', $orgId)
             ->with('lines.account')
             ->orderBy('created_at', 'desc')
@@ -62,7 +62,7 @@ class AccountingController extends Controller
 
     public function postEntry(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'store_id' => 'required',
@@ -84,7 +84,7 @@ class AccountingController extends Controller
 
     public function summary(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $totalRevenue = Order::where('organization_id', $orgId)->sum('total_amount');
         $todayRevenue = Order::where('organization_id', $orgId)
@@ -113,7 +113,7 @@ class AccountingController extends Controller
 
     public function profitAndLoss(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $totalRevenue = Order::where('organization_id', $orgId)->where('payment_status', 'PAID')->sum('total_amount');
         $totalExpenses = Expense::where('organization_id', $orgId)->sum('amount');
@@ -129,7 +129,7 @@ class AccountingController extends Controller
 
     public function balanceSheet(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $accounts = Account::where('organization_id', $orgId)->get();
 
@@ -148,7 +148,7 @@ class AccountingController extends Controller
 
     public function trialBalance(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $accounts = Account::where('organization_id', $orgId)->get();
 
         $rows = $accounts->map(function($acc) {

@@ -10,7 +10,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $logs = AuditLog::where('organization_id', $orgId)->orderBy('created_at', 'desc')->get();
         return response()->json($logs);
     }

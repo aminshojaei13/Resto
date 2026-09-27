@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\AccountingService;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +16,7 @@ class MonetaryPrecisionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(MockDataSeeder::class);
         $this->accountingService = app(AccountingService::class);
     }
 

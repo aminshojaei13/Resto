@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\BusinessApplication;
 use App\Models\Organization;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ class SaasOnboardingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(MockDataSeeder::class);
 
         // Platform Admin
         $this->adminUser = User::create([

@@ -1,6 +1,6 @@
 package com.braveboy.calcuapp
 
-import com.braveboy.calcuapp.data.mock.MockSaaSDataSource
+import com.braveboy.calcuapp.data.mock.MockDataArchive
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerType
 import org.junit.Assert.assertEquals
@@ -12,7 +12,7 @@ class SalesAccountingAndCustomerUnitTest {
 
     @Test
     fun customers_mockData_containsApexCustomers() {
-        val customers = MockSaaSDataSource.customers
+        val customers = MockDataArchive.customers
         assertTrue(customers.isNotEmpty())
         val sarah = customers.find { it.name == "Sarah Connor" }
         assertNotNull(sarah)
@@ -22,7 +22,7 @@ class SalesAccountingAndCustomerUnitTest {
 
     @Test
     fun ledgerEntries_typeAndCategoryMatch() {
-        val entries = MockSaaSDataSource.ledgerEntries
+        val entries = MockDataArchive.ledgerEntries
         assertTrue(entries.isNotEmpty())
         val salesEntry = entries.find { it.category == LedgerCategory.SALES }
         assertNotNull(salesEntry)
@@ -31,7 +31,7 @@ class SalesAccountingAndCustomerUnitTest {
 
     @Test
     fun salesOrders_mockData_containsOrdersWithItems() {
-        val orders = MockSaaSDataSource.salesOrders
+        val orders = MockDataArchive.salesOrders
         assertTrue(orders.isNotEmpty())
         val firstOrder = orders.first()
         assertTrue(firstOrder.items.isNotEmpty())

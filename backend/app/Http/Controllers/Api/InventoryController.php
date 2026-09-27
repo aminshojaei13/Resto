@@ -18,7 +18,7 @@ class InventoryController extends Controller
 
     public function stock(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $stock = WarehouseStock::where('organization_id', $orgId)->with(['product', 'warehouse'])->get();
         return response()->json($stock);
     }

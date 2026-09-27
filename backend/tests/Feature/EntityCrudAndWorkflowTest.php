@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,7 +14,7 @@ class EntityCrudAndWorkflowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(MockDataSeeder::class);
     }
 
     public function test_product_crud_lifecycle(): void

@@ -2,8 +2,8 @@ import { AccountingSummary, Customer, Expense, LedgerEntry, Organization, Produc
 
 const BASE_URL = 'http://localhost:8000/api/v1';
 
-let activeOrgId = 'org_apex';
-let activeStoreId = 'store_apex_1';
+let activeOrgId = '';
+let activeStoreId = '';
 
 export const setTenantContext = (orgId: string, storeId: string) => {
   activeOrgId = orgId;
@@ -48,28 +48,7 @@ export const apiClient = {
         })),
       }));
     } catch {
-      return [
-        {
-          id: 'org_apex',
-          name: 'Apex Retail Group',
-          code: 'APEX',
-          currencySymbol: '$',
-          currencyCode: 'USD',
-          subscriptionTier: 'ENTERPRISE',
-          stores: [
-            {
-              id: 'store_apex_1',
-              organizationId: 'org_apex',
-              name: 'Apex Flagship Store (Downtown)',
-              code: 'APX-DT',
-              warehouses: [
-                { id: 'wh_apex_1a', storeId: 'store_apex_1', organizationId: 'org_apex', name: 'Main Warehouse', code: 'WH-MAIN' },
-                { id: 'wh_apex_1b', storeId: 'store_apex_1', organizationId: 'org_apex', name: 'Express Storage Hub', code: 'WH-EXP' },
-              ],
-            },
-          ],
-        },
-      ];
+      return [];
     }
   },
 
@@ -97,21 +76,7 @@ export const apiClient = {
         stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? { wh_apex_1a: 20 },
       }));
     } catch {
-      return [
-        {
-          id: 'prod_1',
-          organizationId: activeOrgId,
-          sku: 'APX-LAP-001',
-          barcode: '880609123401',
-          name: 'ProBook Ultra 15 M3',
-          description: 'High-performance laptop featuring 16GB RAM and 512GB SSD.',
-          price: 1299.99,
-          costPrice: 850.0,
-          category: 'Electronics',
-          unit: 'pcs',
-          stockQuantityByWarehouse: { wh_apex_1a: 22, wh_apex_1b: 7 },
-        },
-      ];
+      return [];
     }
   },
 
@@ -232,9 +197,7 @@ export const apiClient = {
         loyaltyPoints: Number(c.loyalty_points ?? c.loyaltyPoints ?? 0),
       }));
     } catch {
-      return [
-        { id: 'cust_1', organizationId: activeOrgId, name: 'Sarah Connor', email: 'sarah@example.com', phone: '+1 (555) 234-5678', totalPurchases: 3548.5, loyaltyPoints: 350 },
-      ];
+      return [];
     }
   },
 
@@ -298,9 +261,7 @@ export const apiClient = {
         createdAt: s.created_at || s.createdAt,
       }));
     } catch {
-      return [
-        { id: 'sup_1', organizationId: activeOrgId, name: 'TechImport Global Co.', email: 'sales@techimport.com', phone: '+1 (800) 555-0199', address: '500 Logistics Way, San Jose, CA' },
-      ];
+      return [];
     }
   },
 
@@ -395,22 +356,7 @@ export const apiClient = {
         createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString(),
       }));
     } catch {
-      return [
-        {
-          id: 'po_1001',
-          purchaseNumber: 'PO-2025-1001',
-          organizationId: activeOrgId,
-          storeId: activeStoreId,
-          warehouseId: 'wh_apex_1a',
-          supplierId: 'sup_1',
-          supplierName: 'TechImport Global Co.',
-          items: [{ productId: 'prod_1', productName: 'ProBook Ultra 15 M3', quantity: 10, unitCost: 850.0, totalCost: 8500.0 }],
-          totalAmount: 8500.0,
-          status: 'RECEIVED',
-          paymentStatus: 'PAID',
-          createdAt: new Date().toISOString(),
-        },
-      ];
+      return [];
     }
   },
 
@@ -507,18 +453,7 @@ export const apiClient = {
         createdAt: e.created_at ?? e.createdAt,
       }));
     } catch {
-      return [
-        {
-          id: 'exp_1001',
-          organizationId: activeOrgId,
-          storeId: activeStoreId,
-          category: 'Store Utilities',
-          amount: 450.0,
-          paymentMethod: 'BANK_TRANSFER',
-          date: new Date().toISOString().split('T')[0],
-          notes: 'Monthly electricity bill for Apex Flagship Store',
-        },
-      ];
+      return [];
     }
   },
 
@@ -690,9 +625,7 @@ export const apiClient = {
         createdAt: e.created_at ?? e.createdAt ?? new Date().toISOString(),
       }));
     } catch {
-      return [
-        { id: 'leg_1', organizationId: activeOrgId, storeId: activeStoreId, entryNumber: 'LEDG-2025-001', type: 'CREDIT', category: 'SALES', amount: 1603.78, description: 'Sales Order #ORD-2025-1001 payment', createdAt: new Date().toISOString() },
-      ];
+      return [];
     }
   },
 
@@ -704,11 +637,13 @@ export const apiClient = {
       return {
         totalRevenue: Number(data.total_revenue ?? data.totalRevenue ?? 0),
         todayRevenue: Number(data.today_revenue ?? data.todayRevenue ?? 0),
+        totalExpenses: Number(data.total_expenses ?? data.totalExpenses ?? 0),
+        netProfit: Number(data.net_profit ?? data.netProfit ?? 0),
         totalSalesCount: Number(data.total_sales_count ?? data.totalSalesCount ?? 0),
         todaySalesCount: Number(data.today_sales_count ?? data.todaySalesCount ?? 0),
       };
     } catch {
-      return { totalRevenue: 2940.82, todayRevenue: 1603.78, totalSalesCount: 14, todaySalesCount: 3 };
+      return { totalRevenue: 0, todayRevenue: 0, totalExpenses: 0, netProfit: 0, totalSalesCount: 0, todaySalesCount: 0 };
     }
   },
 
@@ -718,16 +653,7 @@ export const apiClient = {
       if (!res.ok) throw new Error('Failed to fetch platform audit logs');
       return await res.json();
     } catch {
-      return [
-        {
-          id: 'log_1',
-          action: 'business.application.created',
-          entity_type: 'BusinessApplication',
-          entity_id: 'app_apex_1',
-          details: "Application submitted for business 'Apex Retail Group'",
-          created_at: new Date().toISOString(),
-        },
-      ];
+      return [];
     }
   },
 };

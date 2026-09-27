@@ -19,7 +19,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\AccountingService;
 use App\Services\InventoryService;
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -38,7 +38,7 @@ class RealWorldMultiTenantValidationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(MockDataSeeder::class);
 
         // Platform Admin
         $this->adminUser = User::create([

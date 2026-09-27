@@ -38,8 +38,8 @@ export const App: React.FC = () => {
   });
 
   const [language, setLanguage] = useState<'fa' | 'en'>('fa');
-  const [activeOrgName, setActiveOrgName] = useState('گروه بازرگانی اپکس (Apex Retail)');
-  const [activeStoreName, setActiveStoreName] = useState('شعبه مرکزی (Downtown)');
+  const [activeOrgName, setActiveOrgName] = useState('کسب‌وکار من');
+  const [activeStoreName, setActiveStoreName] = useState('شعبه اصلی');
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
 
   const isFa = language === 'fa';

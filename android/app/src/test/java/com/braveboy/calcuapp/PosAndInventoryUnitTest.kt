@@ -1,6 +1,6 @@
 package com.braveboy.calcuapp
 
-import com.braveboy.calcuapp.data.mock.MockSaaSDataSource
+import com.braveboy.calcuapp.data.mock.MockDataArchive
 import com.braveboy.calcuapp.data.model.CartItem
 import com.braveboy.calcuapp.data.model.PaymentMethod
 import org.junit.Assert.assertEquals
@@ -12,7 +12,7 @@ class PosAndInventoryUnitTest {
 
     @Test
     fun mockProducts_verifyStockBreakdownAndVariants() {
-        val laptop = MockSaaSDataSource.products.find { it.id == "prod_1" }
+        val laptop = MockDataArchive.products.find { it.id == "prod_1" }
         assertNotNull(laptop)
         assertTrue(laptop!!.variants.isNotEmpty())
         val totalStock = laptop.getTotalStock()
@@ -23,7 +23,7 @@ class PosAndInventoryUnitTest {
     @Test
     fun barcodeLookup_inMockData() {
         val barcode = "880609123401"
-        val matched = MockSaaSDataSource.products.find { it.barcode == barcode }
+        val matched = MockDataArchive.products.find { it.barcode == barcode }
         assertNotNull(matched)
         assertEquals("ProBook Ultra 15 M3", matched?.name)
     }

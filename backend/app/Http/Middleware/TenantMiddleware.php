@@ -23,25 +23,27 @@ class TenantMiddleware
             return $next($request);
         }
 
-        $tenantId = $request->header('X-Tenant-ID') ?? $request->query('org_id') ?? $request->input('org_id') ?? 'org_apex';
-        $storeId = $request->header('X-Store-ID') ?? $request->query('store_id') ?? $request->input('store_id') ?? 'store_apex_1';
+        $tenantId = $request->header('X-Tenant-ID') ?? $request->query('org_id') ?? $request->input('org_id') ?? '';
+        $storeId = $request->header('X-Store-ID') ?? $request->query('store_id') ?? $request->input('store_id') ?? '';
 
-        $orgExists = Organization::where('id', $tenantId)->exists();
-        if (!$orgExists) {
-            return response()->json(['error' => "Organization '{$tenantId}' not found"], 404);
-        }
+        if (!empty($tenantId)) {
+            $orgExists = Organization::where('id', $tenantId)->exists();
+            if (!$orgExists) {
+                return response()->json(['error' => "Organization '{$tenantId}' not found"], 404);
+            }
 
-        // Server-side membership authorization check
-        if ($user) {
-            $isMember = OrganizationMembership::where('organization_id', $tenantId)
-                ->where('user_id', $user->id)
-                ->exists();
+            // Server-side membership authorization check
+            if ($user) {
+                $isMember = OrganizationMembership::where('organization_id', $tenantId)
+                    ->where('user_id', $user->id)
+                    ->exists();
 
-            if (!$isMember) {
-                return response()->json([
-                    'error' => 'Unauthorized organization access',
-                    'message' => "User {$user->id} is not authorized to access organization {$tenantId}"
-                ], 403);
+                if (!$isMember) {
+                    return response()->json([
+                        'error' => 'Unauthorized organization access',
+                        'message' => "User {$user->id} is not authorized to access organization {$tenantId}"
+                    ], 403);
+                }
             }
         }
 

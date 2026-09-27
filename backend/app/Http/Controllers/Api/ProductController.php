@@ -12,7 +12,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $query = $request->query('query');
         $category = $request->query('category');
 
@@ -42,7 +42,7 @@ class ProductController extends Controller
 
     public function barcode(Request $request, string $barcode)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $product = Product::where('organization_id', $orgId)
             ->where('barcode', $barcode)
             ->with(['variants', 'stock'])
@@ -57,7 +57,7 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'sku' => 'required|string',

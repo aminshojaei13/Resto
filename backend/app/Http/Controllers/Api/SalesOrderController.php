@@ -26,7 +26,7 @@ class SalesOrderController extends Controller
 
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $storeId = $request->query('store_id');
 
         $builder = Order::where('organization_id', $orgId)->with('items');
@@ -46,7 +46,7 @@ class SalesOrderController extends Controller
 
     public function checkout(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'store_id' => 'required',

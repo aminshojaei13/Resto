@@ -79,7 +79,7 @@ class MessagesViewModel(
                 salesOrderRepository.processCheckout(
                     orgId = state.activeOrgId,
                     storeId = state.activeStoreId,
-                    warehouseId = state.activeWarehouseId.ifBlank { "wh_apex_1a" },
+                    warehouseId = state.activeWarehouseId,
                     customer = customer,
                     cartItems = items,
                     paymentMethod = paymentMethod,

@@ -26,14 +26,14 @@ class TenantPreferences(private val context: Context) {
 
     val tenantState: Flow<TenantState> = context.tenantDataStore.data.map { prefs ->
         TenantState(
-            activeOrgId = prefs[PreferenceKeys.ACTIVE_ORG_ID] ?: "org_apex",
-            activeStoreId = prefs[PreferenceKeys.ACTIVE_STORE_ID] ?: "store_apex_1",
-            activeWarehouseId = prefs[PreferenceKeys.ACTIVE_WAREHOUSE_ID] ?: "wh_apex_1a",
-            userId = prefs[PreferenceKeys.USER_ID] ?: "usr_admin_1",
-            userName = prefs[PreferenceKeys.USER_NAME] ?: "Alex Mercer",
-            userRole = prefs[PreferenceKeys.USER_ROLE] ?: "Regional Store Manager",
+            activeOrgId = prefs[PreferenceKeys.ACTIVE_ORG_ID] ?: "",
+            activeStoreId = prefs[PreferenceKeys.ACTIVE_STORE_ID] ?: "",
+            activeWarehouseId = prefs[PreferenceKeys.ACTIVE_WAREHOUSE_ID] ?: "",
+            userId = prefs[PreferenceKeys.USER_ID] ?: "",
+            userName = prefs[PreferenceKeys.USER_NAME] ?: "",
+            userRole = prefs[PreferenceKeys.USER_ROLE] ?: "",
             language = prefs[PreferenceKeys.LANGUAGE] ?: "fa",
-            isLoggedIn = true
+            isLoggedIn = (prefs[PreferenceKeys.ACTIVE_ORG_ID]?.isNotEmpty() == true)
         )
     }
 

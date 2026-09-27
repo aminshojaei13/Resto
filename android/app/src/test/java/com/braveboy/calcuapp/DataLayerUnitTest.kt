@@ -1,6 +1,6 @@
 package com.braveboy.calcuapp
 
-import com.braveboy.calcuapp.data.mock.MockSaaSDataSource
+import com.braveboy.calcuapp.data.mock.MockDataArchive
 import com.braveboy.calcuapp.data.model.CartItem
 import com.braveboy.calcuapp.data.model.FulfillmentStatus
 import com.braveboy.calcuapp.data.model.LedgerCategory
@@ -18,14 +18,14 @@ class DataLayerUnitTest {
 
     @Test
     fun mockDataSource_containsOrganizationsAndProducts() {
-        val orgs = MockSaaSDataSource.organizations
+        val orgs = MockDataArchive.organizations
         assertTrue(orgs.isNotEmpty())
         val apexOrg = orgs.find { it.id == "org_apex" }
         assertNotNull(apexOrg)
         assertEquals("Apex Retail Group", apexOrg?.name)
         assertTrue(apexOrg!!.stores.isNotEmpty())
 
-        val products = MockSaaSDataSource.products
+        val products = MockDataArchive.products
         assertTrue(products.isNotEmpty())
         val apexProducts = products.filter { it.orgId == "org_apex" }
         assertTrue(apexProducts.size >= 5)

@@ -14,10 +14,10 @@ object NetworkModule {
     private const val BASE_URL = "http://10.0.2.2:8000/api/v1/" // 10.0.2.2 for Android emulator host loopback
 
     @Volatile
-    private var activeOrgId: String = "org_apex"
+    private var activeOrgId: String = ""
 
     @Volatile
-    private var activeStoreId: String = "store_apex_1"
+    private var activeStoreId: String = ""
 
     fun setTenantContext(orgId: String, storeId: String) {
         activeOrgId = orgId

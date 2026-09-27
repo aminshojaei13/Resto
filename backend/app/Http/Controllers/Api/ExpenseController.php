@@ -21,7 +21,7 @@ class ExpenseController extends Controller
 
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $expenses = Expense::where('organization_id', $orgId)->orderBy('date', 'desc')->get();
         return response()->json($expenses);
     }
@@ -34,7 +34,7 @@ class ExpenseController extends Controller
 
     public function store(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'store_id' => 'required|string',

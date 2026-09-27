@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -14,7 +14,7 @@ class BackupRestoreTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(MockDataSeeder::class);
     }
 
     public function test_database_schema_and_double_entry_balance_integrity(): void

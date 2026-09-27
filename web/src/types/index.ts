@@ -160,6 +160,8 @@ export interface LedgerEntry {
 export interface AccountingSummary {
   totalRevenue: number;
   todayRevenue: number;
+  totalExpenses?: number;
+  netProfit?: number;
   totalSalesCount: number;
   todaySalesCount: number;
 }

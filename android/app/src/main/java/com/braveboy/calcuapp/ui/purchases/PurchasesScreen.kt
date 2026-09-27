@@ -162,7 +162,7 @@ fun PurchasesScreen(
         CreatePurchaseDialog(
             suppliers = suppliers,
             products = products,
-            activeWarehouseId = tenantState.activeWarehouseId.ifBlank { "wh_apex_1a" },
+            activeWarehouseId = tenantState.activeWarehouseId,
             onSubmit = { supplierId, supplierName, warehouseId, items ->
                 viewModel.createPurchase(supplierId, supplierName, warehouseId, items)
             },

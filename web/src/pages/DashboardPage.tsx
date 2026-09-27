@@ -29,6 +29,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
     fetchData();
   }, []);
 
+  const totalRevenue = summary?.totalRevenue || 0;
+  const totalExpenses = summary?.totalExpenses || 0;
+  const netProfit = summary?.netProfit ?? (totalRevenue - totalExpenses);
+  const totalSalesCount = summary?.totalSalesCount || 0;
+
   return (
     <div>
       {/* Top Header Controls */}
@@ -82,9 +87,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
       >
         <StatCard
           title={isFa ? 'کل فروش' : 'Sales Revenue'}
-          value={isFa ? `${(summary?.totalRevenue || 2940.82).toLocaleString('fa-IR')} تومان` : `$${(summary?.totalRevenue || 2940.82).toFixed(2)}`}
-          subtitle={isFa ? 'نسبت به ماه قبل' : 'vs last month'}
-          trend="12.8%"
+          value={isFa ? `${totalRevenue.toLocaleString('fa-IR')} تومان` : `$${totalRevenue.toFixed(2)}`}
+          subtitle={isFa ? 'میزان فروش کل' : 'Total Revenue'}
+          trend="0%"
           isPositive={true}
           icon="💳"
           badgeText={isFa ? 'فروش کل' : 'Total'}
@@ -93,10 +98,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'خریدهای تامین' : 'Purchases & POs'}
-          value={isFa ? '۱,۸۵۰,۰۰۰ تومان' : '$1,850.00'}
-          subtitle={isFa ? 'تامین کالا' : '4 purchase orders'}
-          trend="5.2%"
-          isPositive={false}
+          value={isFa ? '۰ تومان' : '$0.00'}
+          subtitle={isFa ? 'تامین کالا' : '0 purchase orders'}
+          trend="0%"
+          isPositive={true}
           icon="🛍️"
           badgeText={isFa ? 'خرید' : 'Purchases'}
           badgeColor="warning"
@@ -104,9 +109,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'سود ناخالص' : 'Gross Profit'}
-          value={isFa ? '۱,۰۹۰,۸۲۰ تومان' : '$1,090.82'}
-          subtitle={isFa ? 'حاشیه سود ۳۷٪' : '37% Margin'}
-          trend="8.4%"
+          value={isFa ? `${totalRevenue.toLocaleString('fa-IR')} تومان` : `$${totalRevenue.toFixed(2)}`}
+          subtitle={isFa ? 'حاشیه سود' : 'Margin'}
+          trend="0%"
           isPositive={true}
           icon="📈"
           badgeText={isFa ? 'ناخالص' : 'Gross'}
@@ -115,9 +120,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'سود خالص عملیاتی' : 'Net Profit'}
-          value={isFa ? '۹۲۰,۵۰۰ تومان' : '$920.50'}
+          value={isFa ? `${netProfit.toLocaleString('fa-IR')} تومان` : `$${netProfit.toFixed(2)}`}
           subtitle={isFa ? 'منهای هزینه‌ها' : 'After Expenses'}
-          trend="14.2%"
+          trend="0%"
           isPositive={true}
           icon="⚖️"
           badgeText={isFa ? 'خالص' : 'Net'}
@@ -126,9 +131,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'تعداد سفارشات' : 'Total Orders'}
-          value={isFa ? `${(summary?.totalSalesCount || 14).toLocaleString('fa-IR')} سفارش` : `${summary?.totalSalesCount || 14} orders`}
-          subtitle={isFa ? 'میانگین فاکتور: ۲۱۰,۰۰۰ تومان' : 'Avg Order: $210'}
-          trend="3.1%"
+          value={isFa ? `${totalSalesCount.toLocaleString('fa-IR')} سفارش` : `${totalSalesCount} orders`}
+          subtitle={isFa ? 'تعداد کل سفارش‌های ثبت شده' : 'Total registered orders'}
+          trend="0%"
           isPositive={true}
           icon="🧾"
           badgeText={isFa ? 'سفارشات' : 'Orders'}
@@ -137,8 +142,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'ارزش موجودی انبار' : 'Inventory Value'}
-          value={isFa ? '۴,۵۰۰,۰۰۰ تومان' : '$4,500.00'}
-          subtitle={isFa ? '۱۲۸ قلم کالا در ۳ انبار' : '128 items in 3 WHs'}
+          value={isFa ? '۰ تومان' : '$0.00'}
+          subtitle={isFa ? 'موجودی کل انبارها' : 'Total stock value'}
           icon="📦"
           badgeText={isFa ? 'انبار' : 'Stock'}
           badgeColor="info"
@@ -146,10 +151,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'مطالبات مشتریان (AR)' : 'Receivables (AR)'}
-          value={isFa ? '۳۵۰,۰۰۰ تومان' : '$350.00'}
-          subtitle={isFa ? '۳ مشتری بدهکار' : '3 overdue accounts'}
-          trend="2.0%"
-          isPositive={false}
+          value={isFa ? '۰ تومان' : '$0.00'}
+          subtitle={isFa ? 'مشتریان بدهکار' : 'Overdue accounts'}
+          trend="0%"
+          isPositive={true}
           icon="👥"
           badgeText={isFa ? 'بدهکاران' : 'AR'}
           badgeColor="warning"
@@ -157,8 +162,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
         <StatCard
           title={isFa ? 'بدهی به تامین‌کنندگان (AP)' : 'Payables (AP)'}
-          value={isFa ? '۶۲۰,۰۰۰ تومان' : '$620.00'}
-          subtitle={isFa ? '۲ فاکتور خرید سررسید' : '2 pending bills'}
+          value={isFa ? '۰ تومان' : '$0.00'}
+          subtitle={isFa ? 'فاکتورهای معوق تامین‌کننده' : 'Pending bills'}
           icon="🏢"
           badgeText={isFa ? 'بستانکاران' : 'AP'}
           badgeColor="error"
@@ -193,9 +198,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
             {[
-              { channel: isFa ? 'فروشگاه حضوری (POS)' : 'Physical POS Store', share: '65%', amount: isFa ? '۱,۹۱۰,۵۰۰ تومان' : '$1,910.50', color: theme.colors.primary },
-              { channel: isFa ? 'وب‌سایت آنلاین' : 'Online Website', share: '25%', amount: isFa ? '۷۳۵,۲۰۰ تومان' : '$735.20', color: theme.colors.info },
-              { channel: isFa ? 'سفارش دستی / اینستاگرام' : 'Manual / Instagram', share: '10%', amount: isFa ? '۲۹۵,۱۲۰ تومان' : '$295.12', color: theme.colors.success },
+              { channel: isFa ? 'فروشگاه حضوری (POS)' : 'Physical POS Store', share: '0%', amount: isFa ? '۰ تومان' : '$0.00', color: theme.colors.primary },
+              { channel: isFa ? 'وب‌سایت آنلاین' : 'Online Website', share: '0%', amount: isFa ? '۰ تومان' : '$0.00', color: theme.colors.info },
+              { channel: isFa ? 'سفارش دستی / اینستاگرام' : 'Manual / Instagram', share: '0%', amount: isFa ? '۰ تومان' : '$0.00', color: theme.colors.success },
             ].map((c, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -228,16 +233,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            {[
-              { name: isFa ? 'تبلیغات و بازاریابی' : 'Marketing & Ads', cost: isFa ? '۷۵,۰۰۰ تومان' : '$75.00', pct: '44%' },
-              { name: isFa ? 'بسته‌بندی و ارسال' : 'Packaging & Shipping', cost: isFa ? '۵۵,۰۰۰ تومان' : '$55.00', pct: '32%' },
-              { name: isFa ? 'کارمزد درگاه و خدمات' : 'Gateway & Platform Fees', cost: isFa ? '۴۰,۳۲۰ تومان' : '$40.32', pct: '24%' },
-            ].map((exp, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: theme.spacing.md, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>{exp.name}</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.error }}>{exp.cost}</span>
+            {totalExpenses === 0 ? (
+              <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.textSecondary, fontSize: '13px' }}>
+                {isFa ? 'هیچ هزینه‌ای ثبت نشده است' : 'No operating expenses recorded.'}
               </div>
-            ))}
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: theme.spacing.md, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>{isFa ? 'مجموع هزینه‌ها' : 'Total Expenses'}</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.error }}>
+                  {isFa ? `${totalExpenses.toLocaleString('fa-IR')} تومان` : `$${totalExpenses.toFixed(2)}`}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -265,38 +272,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: `2px solid ${theme.colors.border}`, color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شماره سند' : 'Entry #'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شرح حساب' : 'Description'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'نوع حساب' : 'Type'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'مبلغ' : 'Amount'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primaryDark }}>
-                    {e.entryNumber}
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
-                    <StatusBadge label={e.category} variant="neutral" />
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, color: theme.colors.textPrimary, fontWeight: 500 }}>
-                    {e.description}
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
-                    <StatusBadge label={e.type === 'CREDIT' ? (isFa ? 'بستانکار' : 'CREDIT') : (isFa ? 'بدهکار' : 'DEBIT')} variant={e.type === 'CREDIT' ? 'success' : 'error'} />
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontWeight: 700, color: theme.colors.textPrimary }}>
-                    {isFa ? `${e.amount.toLocaleString('fa-IR')} تومان` : `$${e.amount.toFixed(2)}`}
-                  </td>
+          {entries.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: theme.spacing['2xl'], color: theme.colors.textSecondary, fontSize: '14px' }}>
+              {isFa ? 'هیچ سند حسابداری ثبت نشده است' : 'No general ledger entries found.'}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${theme.colors.border}`, color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شماره سند' : 'Entry #'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شرح حساب' : 'Description'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'نوع حساب' : 'Type'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'مبلغ' : 'Amount'}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.map((e) => (
+                  <tr key={e.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primaryDark }}>
+                      {e.entryNumber}
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
+                      <StatusBadge label={e.category} variant="neutral" />
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, color: theme.colors.textPrimary, fontWeight: 500 }}>
+                      {e.description}
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
+                      <StatusBadge label={e.type === 'CREDIT' ? (isFa ? 'بستانکار' : 'CREDIT') : (isFa ? 'بدهکار' : 'DEBIT')} variant={e.type === 'CREDIT' ? 'success' : 'error'} />
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {isFa ? `${e.amount.toLocaleString('fa-IR')} تومان` : `$${e.amount.toFixed(2)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

@@ -13,7 +13,7 @@ class MessageImportController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->get('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
         $messages = ImportedMessage::where('organization_id', $orgId)
             ->with(['customer', 'order'])
             ->orderBy('created_at', 'desc')
@@ -24,7 +24,7 @@ class MessageImportController extends Controller
 
     public function parse(Request $request)
     {
-        $orgId = $request->get('org_id') ?? $request->input('org_id') ?? 'org_apex';
+        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
 
         $request->validate([
             'raw_text' => 'required|string',
