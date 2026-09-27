@@ -25,9 +25,19 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
 
   const adminNavItems = [
     {
-      path: '/platform/applications',
+      path: '/applications',
       label: isFa ? 'درخواست‌های ثبت سازمان' : 'Business Applications',
       icon: '📝',
+    },
+    {
+      path: '/tenants',
+      label: isFa ? 'سازمان‌ها و تننت‌های فعال' : 'Provisioned Tenants',
+      icon: '🏢',
+    },
+    {
+      path: '/audit',
+      label: isFa ? 'دفتر ثبت رویدادها' : 'Audit Trail',
+      icon: '📋',
     },
   ];
 

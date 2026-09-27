@@ -711,4 +711,23 @@ export const apiClient = {
       return { totalRevenue: 2940.82, todayRevenue: 1603.78, totalSalesCount: 14, todaySalesCount: 3 };
     }
   },
+
+  getPlatformAuditLogs: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/audit-logs`, { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch platform audit logs');
+      return await res.json();
+    } catch {
+      return [
+        {
+          id: 'log_1',
+          action: 'business.application.created',
+          entity_type: 'BusinessApplication',
+          entity_id: 'app_apex_1',
+          details: "Application submitted for business 'Apex Retail Group'",
+          created_at: new Date().toISOString(),
+        },
+      ];
+    }
+  },
 };

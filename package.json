@@ -2,7 +2,12 @@
   "name": "calcuapp-root",
   "private": true,
   "scripts": {
-    "start": "npm --prefix web start",
-    "build": "npm --prefix web build"
+    "start": "npm --prefix web run start:business",
+    "start:business": "npm --prefix web run start:business",
+    "start:admin": "npm --prefix web run start:admin",
+    "build": "npm --prefix web run build",
+    "build:business": "npm --prefix web run build:business",
+    "build:admin": "npm --prefix web run build:admin",
+    "test": "npm --prefix web test"
   }
 }
