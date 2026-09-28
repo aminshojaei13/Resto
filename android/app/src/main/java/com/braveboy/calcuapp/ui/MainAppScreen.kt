@@ -15,10 +15,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.Assessment
 import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Message
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Payments
@@ -80,15 +79,15 @@ enum class MainDestination(
     val titleFa: String,
     val icon: ImageVector
 ) {
-    POS("POS", "فروشگاه", Icons.Rounded.PointOfSale),
-    INVENTORY("Inventory", "انبار", Icons.Rounded.Inventory),
-    ORDERS("Orders", "سفارشات", Icons.Rounded.ReceiptLong),
-    PURCHASES("Purchases", "خرید", Icons.Rounded.ShoppingBag),
+    POS("New Order", "ثبت سفارش", Icons.Rounded.PointOfSale),
+    INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
+    MESSAGES("Import Message", "ثبت از پیام", Icons.Rounded.Message),
+    ACCOUNTING("Dashboard", "داشبورد", Icons.Rounded.Assessment),
+    ORDERS("Order History", "سابقه سفارشات", Icons.Rounded.ReceiptLong),
+    PURCHASES("Purchases", "خرید و تامین", Icons.Rounded.ShoppingBag),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
     SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
-    EXPENSES("Expenses", "هزینه‌ها", Icons.Rounded.Payments),
-    MESSAGES("Messages", "ورود پیام‌ها", Icons.Rounded.Message),
-    ACCOUNTING("Accounting", "حسابداری", Icons.Rounded.AccountBalance)
+    EXPENSES("Expenses", "هزینه‌ها", Icons.Rounded.Payments)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,7 +184,8 @@ fun MainAppScreen(
     val primaryDestinations = listOf(
         MainDestination.POS,
         MainDestination.INVENTORY,
-        MainDestination.ORDERS
+        MainDestination.MESSAGES,
+        MainDestination.ACCOUNTING
     )
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
@@ -204,8 +204,8 @@ fun MainAppScreen(
                     NavigationBarItem(
                         selected = !primaryDestinations.contains(currentDestination),
                         onClick = { isMoreMenuOpen = true },
-                        icon = { Icon(imageVector = Icons.Rounded.MoreHoriz, contentDescription = if (isPersian) "سایر بخش‌ها" else "More") },
-                        label = { Text(if (isPersian) "سایر بخش‌ها" else "More") }
+                        icon = { Icon(imageVector = Icons.Rounded.MoreHoriz, contentDescription = if (isPersian) "سایر" else "More") },
+                        label = { Text(if (isPersian) "سایر" else "More") }
                     )
                 }
             }
@@ -225,6 +225,15 @@ fun MainAppScreen(
                     MainDestination.INVENTORY -> {
                         InventoryScreen(viewModel = inventoryViewModel)
                     }
+                    MainDestination.MESSAGES -> {
+                        MessagesScreen(
+                            viewModel = messagesViewModel,
+                            initialSharedText = initialSharedText
+                        )
+                    }
+                    MainDestination.ACCOUNTING -> {
+                        DashboardScreen(viewModel = dashboardViewModel)
+                    }
                     MainDestination.ORDERS -> {
                         SalesOrdersScreen(viewModel = salesOrdersViewModel)
                     }
@@ -240,20 +249,11 @@ fun MainAppScreen(
                     MainDestination.EXPENSES -> {
                         ExpensesScreen(viewModel = expensesViewModel)
                     }
-                    MainDestination.MESSAGES -> {
-                        MessagesScreen(
-                            viewModel = messagesViewModel,
-                            initialSharedText = initialSharedText
-                        )
-                    }
-                    MainDestination.ACCOUNTING -> {
-                        DashboardScreen(viewModel = dashboardViewModel)
-                    }
                 }
             }
         }
 
-        // Clean Material 3 Modal Drawer / Sheet for Remaining Modules
+        // Clean Material 3 Modal Sheet for Remaining Modules
         if (isMoreMenuOpen) {
             ModalBottomSheet(
                 onDismissRequest = { isMoreMenuOpen = false }
@@ -264,24 +264,23 @@ fun MainAppScreen(
                         .fillMaxWidth()
                 ) {
                     Text(
-                        text = if (isPersian) "منوی سایر بخش‌های کسب‌وکار" else "Resto Business Modules",
+                        text = if (isPersian) "سایر بخش‌های کسب‌وکار" else "Resto Business Operations",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "برای دسترسی سریع، ماژول مورد نظر را انتخاب کنید" else "Select a module to navigate",
+                        text = if (isPersian) "جهت دسترسی سریع به ابزارهای جانبی، بخش مورد نظر را انتخاب کنید" else "Select an operational module to navigate",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
                     val secondaryDestinations = listOf(
+                        MainDestination.ORDERS,
                         MainDestination.PURCHASES,
                         MainDestination.CUSTOMERS,
                         MainDestination.SUPPLIERS,
-                        MainDestination.EXPENSES,
-                        MainDestination.MESSAGES,
-                        MainDestination.ACCOUNTING
+                        MainDestination.EXPENSES
                     )
 
                     LazyVerticalGrid(
@@ -345,7 +344,7 @@ fun MainAppScreen(
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Text(
-                                        text = if (isPersian) "تغییر شعبه / تننت" else "Switch Tenant",
+                                        text = if (isPersian) "تغییر شعبه / سازمان" else "Switch Tenant",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )

@@ -110,7 +110,7 @@ export const App: React.FC = () => {
         authUser={authUser}
         onLogout={handleLogout}
       >
-        <DashboardPage language={language} />
+        <DashboardPage language={language} navigate={navigate} />
         {isTenantModalOpen && (
           <TenantModal
             language={language}
@@ -182,7 +182,7 @@ export const App: React.FC = () => {
               {isFa ? 'بازگشت به داشبورد سازمان' : 'Return to Tenant Dashboard'}
             </button>
           </div>
-          <DashboardPage language={language} />
+          <DashboardPage language={language} navigate={navigate} />
         </TenantAppShell>
       );
     }
@@ -235,7 +235,7 @@ export const App: React.FC = () => {
     }
 
     // Render Tenant Business Module
-    let tenantContent = <DashboardPage language={language} />;
+    let tenantContent = <DashboardPage language={language} navigate={navigate} />;
     if (path === '/app/pos') {
       tenantContent = <PosPage language={language} />;
     } else if (path === '/app/inventory' || path === '/app/products') {
@@ -326,7 +326,7 @@ export const App: React.FC = () => {
       authUser={authUser}
       onLogout={handleLogout}
     >
-      <DashboardPage language={language} />
+      <DashboardPage language={language} navigate={navigate} />
     </TenantAppShell>
   );
 };

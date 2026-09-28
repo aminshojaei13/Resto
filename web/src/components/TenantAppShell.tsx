@@ -15,6 +15,11 @@ interface TenantAppShellProps {
   children: React.ReactNode;
 }
 
+interface NavGroup {
+  groupTitle: { fa: string; en: string };
+  items: { path: string; labelFa: string; labelEn: string; icon: string }[];
+}
+
 export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   currentPath,
   navigate,
@@ -42,21 +47,36 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const tenantNavItems = [
-    { path: '/app/dashboard', label: isFa ? 'داشبورد مدیریتی' : 'Dashboard', icon: '📊' },
-    { path: '/app/pos', label: isFa ? 'فروشگاه و POS' : 'Point of Sale', icon: '🛒' },
-    { path: '/app/orders', label: isFa ? 'سفارشات فروش' : 'Sales Orders', icon: '🧾' },
-    { path: '/app/products', label: isFa ? 'کاتالوگ محصولات' : 'Product Catalog', icon: '📦' },
-    { path: '/app/inventory', label: isFa ? 'انبار و موجودی' : 'Warehouse Inventory', icon: '🏭' },
-    { path: '/app/purchases', label: isFa ? 'خرید و تامین' : 'Purchasing & POs', icon: '🛍️' },
-    { path: '/app/suppliers', label: isFa ? 'تامین‌کنندگان' : 'Suppliers', icon: '🏢' },
-    { path: '/app/customers', label: isFa ? 'مشتریان (CRM)' : 'Customers CRM', icon: '👥' },
-    { path: '/app/expenses', label: isFa ? 'هزینه‌ها' : 'Expenses', icon: '💸' },
-    { path: '/app/messages', label: isFa ? 'ورود پیام‌های سفارش' : 'Message Import', icon: '📩' },
-    { path: '/app/accounting', label: isFa ? 'دفتر کل حسابداری' : 'Double-Entry Ledger', icon: '⚖️' },
-    { path: '/app/reports', label: isFa ? 'گزارش‌های مالی' : 'Financial Reports', icon: '📈' },
-    { path: '/app/settings', label: isFa ? 'تنظیمات کسب‌وکار' : 'Settings', icon: '⚙️' },
+  const navGroups: NavGroup[] = [
+    {
+      groupTitle: { fa: 'مشاغل اصلی', en: 'Core Jobs' },
+      items: [
+        { path: '/app/dashboard', labelFa: 'نمای کلی کسب‌وکار', labelEn: 'Business Control Center', icon: '📊' },
+        { path: '/app/inventory', labelFa: 'موجودی و کالاها', labelEn: 'Inventory & Products', icon: '📦' },
+        { path: '/app/pos', labelFa: 'ثبت سفارش (آنلاین/POS)', labelEn: 'Register New Order', icon: '🛒' },
+        { path: '/app/messages', labelFa: 'ثبت سفارش از پیام', labelEn: 'Social Message Import', icon: '📩' },
+        { path: '/app/orders', labelFa: 'سفارش‌های ثبت‌شده', labelEn: 'Sales Orders', icon: '🧾' },
+      ],
+    },
+    {
+      groupTitle: { fa: 'عملیات کسب‌وکار', en: 'Business Workspace' },
+      items: [
+        { path: '/app/customers', labelFa: 'مشتریان', labelEn: 'Customers', icon: '👥' },
+        { path: '/app/purchases', labelFa: 'خرید و تامین کالا', labelEn: 'Purchases & Receiving', icon: '🛍️' },
+        { path: '/app/suppliers', labelFa: 'تامین‌کنندگان', labelEn: 'Suppliers', icon: '🏢' },
+      ],
+    },
+    {
+      groupTitle: { fa: 'مالی و تنظیمات', en: 'Finance & Settings' },
+      items: [
+        { path: '/app/expenses', labelFa: 'هزینه‌های جاری', labelEn: 'Expenses', icon: '💸' },
+        { path: '/app/accounting', labelFa: 'دفتر کل و گزارش‌ها', labelEn: 'Ledger & Reports', icon: '⚖️' },
+        { path: '/app/settings', labelFa: 'تنظیمات کسب‌وکار', labelEn: 'Settings', icon: '⚙️' },
+      ],
+    },
   ];
+
+  const allNavItems = navGroups.flatMap((g) => g.items);
 
   const handleNavClick = (path: string) => {
     navigate(path);
@@ -64,6 +84,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       setIsMobileOpen(false);
     }
   };
+
+  const currentItem = allNavItems.find((n) => n.path === currentPath);
 
   const sidebarContent = (
     <aside
@@ -115,7 +137,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
               {isFa ? 'رسـتو' : 'Resto'}
             </div>
             <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>
-              {isFa ? 'مدیریت یکپارچه کسب‌وکار' : 'Commerce OS'}
+              {isFa ? 'سیستم یکپارچه مدیریت کسب‌وکار' : 'Commerce Management OS'}
             </div>
           </div>
         </div>
@@ -157,47 +179,63 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
         </button>
       </div>
 
-      {/* Navigation Items List */}
+      {/* Grouped Navigation Items */}
       <nav style={{ flex: 1, padding: `${theme.spacing.sm} ${theme.spacing.lg}`, overflowY: 'auto' }}>
-        {tenantNavItems.map((item) => {
-          const isActive = currentPath === item.path;
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavClick(item.path)}
+        {navGroups.map((group, groupIdx) => (
+          <div key={groupIdx} style={{ marginBottom: theme.spacing.lg }}>
+            <div
               style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: theme.spacing.md,
-                padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-                borderRadius: theme.borderRadius.lg,
-                border: 'none',
-                backgroundColor: isActive ? theme.colors.primary : 'transparent',
-                color: isActive ? theme.colors.sidebarTextActive : theme.colors.sidebarText,
-                fontWeight: isActive ? 600 : 400,
-                fontSize: '14px',
-                cursor: 'pointer',
-                marginBottom: '4px',
-                transition: 'background-color 0.15s ease',
-                textAlign: isFa ? 'right' : 'left',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'rgba(255,255,255,0.4)',
+                textTransform: 'uppercase',
+                padding: `0 ${theme.spacing.md} ${theme.spacing.xs}`,
+                letterSpacing: '0.05em',
               }}
             >
-              <span style={{ fontSize: '16px' }}>{item.icon}</span>
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {isActive && (
-                <span
+              {isFa ? group.groupTitle.fa : group.groupTitle.en}
+            </div>
+            {group.items.map((item) => {
+              const isActive = currentPath === item.path;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleNavClick(item.path)}
                   style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: '#FFF',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    borderRadius: theme.borderRadius.lg,
+                    border: 'none',
+                    backgroundColor: isActive ? theme.colors.primary : 'transparent',
+                    color: isActive ? theme.colors.sidebarTextActive : theme.colors.sidebarText,
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginBottom: '3px',
+                    transition: 'background-color 0.15s ease',
+                    textAlign: isFa ? 'right' : 'left',
                   }}
-                />
-              )}
-            </button>
-          );
-        })}
+                >
+                  <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                  <span style={{ flex: 1 }}>{isFa ? item.labelFa : item.labelEn}</span>
+                  {isActive && (
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FFF',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Language Switcher Footer */}
@@ -284,7 +322,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
             )}
 
             <span style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
-              {tenantNavItems.find((n) => n.path === currentPath)?.label || (isFa ? 'پنل سازمان' : 'Business App')}
+              {currentItem ? (isFa ? currentItem.labelFa : currentItem.labelEn) : (isFa ? 'پنل کسب‌وکار' : 'Business OS')}
             </span>
 
             <span
@@ -297,7 +335,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
                 fontWeight: 600,
               }}
             >
-              {isFa ? 'نسخه فعال (SaaS Tenant)' : 'Active Tenant Workspace'}
+              {isFa ? 'فضای کاری متمرکز کسب‌وکار' : 'Centralized Operations'}
             </span>
           </div>
 
@@ -319,7 +357,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
             </button>
 
             <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-              👤 {authUser?.name || (isFa ? 'مالک سازمان' : 'Tenant User')}
+              👤 {authUser?.name || (isFa ? 'مالک کسب‌وکار' : 'Business Owner')}
             </span>
 
             <button

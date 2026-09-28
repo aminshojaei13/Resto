@@ -1,6 +1,6 @@
 import { AccountingSummary, Customer, Expense, LedgerEntry, Organization, Product, Purchase, SalesOrder, Store, Supplier, Warehouse } from '../types';
 
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 let activeOrgId = '';
 let activeStoreId = '';
@@ -55,7 +55,7 @@ export const apiClient = {
   getProducts: async (query?: string): Promise<Product[]> => {
     try {
       const url = new URL(`${BASE_URL}/products`);
-      url.searchParams.append('org_id', activeOrgId);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
       if (query) url.searchParams.append('query', query);
 
       const res = await fetch(url.toString(), { headers: getHeaders() });
@@ -73,7 +73,7 @@ export const apiClient = {
         category: p.category,
         unit: p.unit ?? 'pcs',
         imageUrl: p.image_url ?? p.imageUrl,
-        stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? { wh_apex_1a: 20 },
+        stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
       }));
     } catch {
       return [];
@@ -99,7 +99,7 @@ export const apiClient = {
       costPrice: Number(p.cost_price),
       category: p.category,
       unit: p.unit || 'pcs',
-      stockQuantityByWarehouse: { wh_apex_1a: 0 },
+      stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
     };
   },
 
@@ -122,34 +122,33 @@ export const apiClient = {
       costPrice: Number(p.cost_price),
       category: p.category,
       unit: p.unit || 'pcs',
-      stockQuantityByWarehouse: { wh_apex_1a: 0 },
+      stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
     };
   },
 
   adjustStock: async (productId: string, warehouseId: string, delta: number, reason: string) => {
-    try {
-      const res = await fetch(`${BASE_URL}/inventory/adjust`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          org_id: activeOrgId,
-          warehouse_id: warehouseId,
-          product_id: productId,
-          delta,
-          reason,
-        }),
-      });
-      return await res.json();
-    } catch {
-      return { success: true };
-    }
+    const targetWh = warehouseId || (activeStoreId ? `wh_${activeStoreId}` : 'wh_default');
+    const res = await fetch(`${BASE_URL}/inventory/adjust`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        org_id: activeOrgId,
+        warehouse_id: targetWh,
+        product_id: productId,
+        delta,
+        reason,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to adjust stock');
+    return await res.json();
   },
 
   checkout: async (payload: any): Promise<SalesOrder> => {
+    const whId = payload.warehouse_id || payload.warehouseId || (activeStoreId ? `wh_${activeStoreId}` : 'wh_default');
     const res = await fetch(`${BASE_URL}/orders/checkout`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId, warehouse_id: 'wh_apex_1a' }),
+      body: JSON.stringify({ ...payload, org_id: activeOrgId, store_id: activeStoreId, warehouse_id: whId }),
     });
     if (!res.ok) throw new Error('Checkout failed');
     const data = await res.json();
@@ -183,7 +182,9 @@ export const apiClient = {
 
   getCustomers: async (): Promise<Customer[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/customers?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/customers`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch customers');
       const data = await res.json();
       return (data || []).map((c: any) => ({
@@ -244,7 +245,7 @@ export const apiClient = {
   getSuppliers: async (query?: string): Promise<Supplier[]> => {
     try {
       const url = new URL(`${BASE_URL}/suppliers`);
-      url.searchParams.append('org_id', activeOrgId);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
       if (query) url.searchParams.append('query', query);
 
       const res = await fetch(url.toString(), { headers: getHeaders() });
@@ -330,7 +331,9 @@ export const apiClient = {
 
   getPurchases: async (): Promise<Purchase[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/purchases?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/purchases`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch purchases');
       const data = await res.json();
       return (data || []).map((p: any) => ({
@@ -338,7 +341,7 @@ export const apiClient = {
         purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
         organizationId: p.organization_id ?? activeOrgId,
         storeId: p.store_id ?? activeStoreId,
-        warehouseId: p.warehouse_id ?? 'wh_apex_1a',
+        warehouseId: p.warehouse_id ?? (activeStoreId ? `wh_${activeStoreId}` : 'wh_default'),
         supplierId: p.supplier_id ?? p.supplierId,
         supplierName: p.supplier?.name || 'Supplier',
         supplier: p.supplier,
@@ -369,7 +372,7 @@ export const apiClient = {
       purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
       organizationId: p.organization_id ?? activeOrgId,
       storeId: p.store_id ?? activeStoreId,
-      warehouseId: p.warehouse_id ?? 'wh_apex_1a',
+      warehouseId: p.warehouse_id ?? (activeStoreId ? `wh_${activeStoreId}` : 'wh_default'),
       supplierId: p.supplier_id ?? p.supplierId,
       supplierName: p.supplier?.name || 'Supplier',
       supplier: p.supplier,
@@ -437,7 +440,9 @@ export const apiClient = {
 
   getExpenses: async (): Promise<Expense[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/expenses?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/expenses`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch expenses');
       const data = await res.json();
       return (data || []).map((e: any) => ({
@@ -538,7 +543,9 @@ export const apiClient = {
 
   getImportedMessages: async (): Promise<any[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/messages?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/messages`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch imported messages');
       return await res.json();
     } catch {
@@ -590,13 +597,9 @@ export const apiClient = {
   },
 
   getTenantOnboarding: async (): Promise<any> => {
-    try {
-      const res = await fetch(`${BASE_URL}/tenant/onboarding`, { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch tenant onboarding status');
-      return await res.json();
-    } catch {
-      return { onboarding_status: 'IN_PROGRESS' };
-    }
+    const res = await fetch(`${BASE_URL}/tenant/onboarding`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch tenant onboarding status');
+    return await res.json();
   },
 
   completeOnboarding: async (): Promise<any> => {
@@ -610,7 +613,9 @@ export const apiClient = {
 
   getJournalEntries: async (): Promise<LedgerEntry[]> => {
     try {
-      const res = await fetch(`${BASE_URL}/accounting/journal?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/accounting/journal`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch journal entries');
       const data = await res.json();
       return (data || []).map((e: any) => ({
@@ -631,7 +636,9 @@ export const apiClient = {
 
   getAccountingSummary: async (): Promise<AccountingSummary> => {
     try {
-      const res = await fetch(`${BASE_URL}/accounting/summary?org_id=${activeOrgId}`, { headers: getHeaders() });
+      const url = new URL(`${BASE_URL}/accounting/summary`);
+      if (activeOrgId) url.searchParams.append('org_id', activeOrgId);
+      const res = await fetch(url.toString(), { headers: getHeaders() });
       if (!res.ok) throw new Error('Failed to fetch accounting summary');
       const data = await res.json();
       return {
