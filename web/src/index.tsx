@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ThemeProvider } from './theme/ThemeContext';
 import { BusinessApp } from './business/BusinessApp';
 import { PlatformAdminApp } from './platform-admin/PlatformAdminApp';
 
@@ -12,13 +13,17 @@ const root = ReactDOM.createRoot(
 if (appType === 'platform-admin') {
   root.render(
     <React.StrictMode>
-      <PlatformAdminApp />
+      <ThemeProvider>
+        <PlatformAdminApp />
+      </ThemeProvider>
     </React.StrictMode>
   );
 } else {
   root.render(
     <React.StrictMode>
-      <BusinessApp />
+      <ThemeProvider>
+        <BusinessApp />
+      </ThemeProvider>
     </React.StrictMode>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 import { AuthUser } from '../types';
 
 interface PlatformAdminShellProps {
@@ -22,6 +23,8 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
   children,
 }) => {
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
@@ -65,8 +68,8 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
     <aside
       style={{
         width: '260px',
-        backgroundColor: '#1E293B',
-        color: '#F8FAFC',
+        backgroundColor: theme.colors.surface,
+        color: theme.colors.textSecondary,
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
@@ -82,7 +85,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
       <div
         style={{
           padding: theme.spacing['2xl'],
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: `1px solid ${theme.colors.border}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -94,22 +97,22 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
               width: '38px',
               height: '38px',
               borderRadius: theme.borderRadius.lg,
-              backgroundColor: '#38BDF8',
+              backgroundColor: theme.colors.infoLight,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
-              color: '#0F172A',
               fontSize: '18px',
+              color: theme.colors.info,
             }}
           >
             🛡️
           </div>
           <div>
-            <div style={{ color: '#FFF', fontWeight: 700, fontSize: '15px' }}>
+            <div style={{ color: theme.colors.textPrimary, fontWeight: 700, fontSize: '15px' }}>
               {isFa ? 'مدیریت پلتفرم' : 'Platform Admin'}
             </div>
-            <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+            <div style={{ fontSize: '11px', color: theme.colors.textMuted }}>
               {isFa ? 'کنسول راهبری Resto' : 'Resto SaaS Control Panel'}
             </div>
           </div>
@@ -118,7 +121,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
         {isMobileScreen && (
           <button
             onClick={() => setIsMobileOpen(false)}
-            style={{ backgroundColor: 'transparent', border: 'none', color: '#FFF', fontSize: '20px', cursor: 'pointer' }}
+            style={{ backgroundColor: 'transparent', border: 'none', color: theme.colors.textPrimary, fontSize: '20px', cursor: 'pointer' }}
           >
             ✕
           </button>
@@ -140,8 +143,8 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
                 padding: `${theme.spacing.md} ${theme.spacing.lg}`,
                 borderRadius: theme.borderRadius.lg,
                 border: 'none',
-                backgroundColor: isActive ? '#0284C7' : 'transparent',
-                color: isActive ? '#FFF' : '#CBD5E1',
+                backgroundColor: isActive ? theme.colors.infoLight : 'transparent',
+                color: isActive ? theme.colors.info : theme.colors.textSecondary,
                 fontWeight: isActive ? 700 : 500,
                 fontSize: '14px',
                 cursor: 'pointer',
@@ -156,16 +159,16 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
         })}
       </nav>
 
-      <div style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+      <div style={{ padding: theme.spacing.lg, borderTop: `1px solid ${theme.colors.border}` }}>
         <button
           onClick={() => setLanguage(isFa ? 'en' : 'fa')}
           style={{
             width: '100%',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundColor: theme.colors.surfaceHover,
+            border: `1px solid ${theme.colors.border}`,
             borderRadius: theme.borderRadius.lg,
             padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-            color: '#FFF',
+            color: theme.colors.textPrimary,
             fontWeight: 600,
             fontSize: '13px',
             cursor: 'pointer',
@@ -190,6 +193,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
         fontFamily: theme.typography.fontFamily,
         direction: isFa ? 'rtl' : 'ltr',
         position: 'relative',
+        color: theme.colors.textPrimary,
       }}
     >
       {isMobileScreen && isMobileOpen && (
@@ -198,7 +202,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: theme.colors.overlay,
             zIndex: 90,
           }}
         />
@@ -209,7 +213,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
         <header
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.surfaceElevated,
             borderBottom: `1px solid ${theme.colors.border}`,
             padding: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
             display: 'flex',
@@ -229,6 +233,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
                   padding: '6px 12px',
                   fontSize: '18px',
                   cursor: 'pointer',
+                  color: theme.colors.textPrimary,
                 }}
               >
                 🍔
@@ -243,8 +248,8 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
                 fontSize: '11px',
                 padding: '2px 10px',
                 borderRadius: theme.borderRadius.full,
-                backgroundColor: '#E0F2FE',
-                color: '#0369A1',
+                backgroundColor: theme.colors.infoLight,
+                color: theme.colors.info,
                 fontWeight: 700,
               }}
             >
@@ -253,14 +258,15 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+            <ThemeToggle language={language} />
             <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
               👤 {authUser?.name || (isFa ? 'راهبر سیستم' : 'System Admin')} ({authUser?.email || 'admin@resto.com'})
             </div>
             <button
               onClick={onLogout}
               style={{
-                backgroundColor: '#FEE2E2',
-                color: '#991B1B',
+                backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
+                color: isDark ? theme.colors.error : '#991B1B',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
                 padding: '6px 14px',

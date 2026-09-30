@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 export type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -9,6 +9,7 @@ interface StatusBadgeProps {
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, variant = 'info' }) => {
+  const { theme } = useTheme();
   const getColors = () => {
     switch (variant) {
       case 'success':

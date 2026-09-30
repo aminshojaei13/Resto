@@ -7,4 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Resto Warm Dark design language (mirrors web tokens + Compose theme) -->
+    <color name="resto_warm_dark_background">#FF171513</color>
+    <color name="resto_warm_dark_surface">#FF24211E</color>
+    <color name="resto_teal">#FF18B7C7</color>
+    <color name="resto_teal_pressed">#FF0E8E9C</color>
 </resources>

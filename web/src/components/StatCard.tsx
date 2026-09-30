@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface StatCardProps {
   title: string;
@@ -22,6 +22,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   badgeText,
   badgeColor = 'info',
 }) => {
+  const { theme } = useTheme();
   const getBadgeStyle = () => {
     switch (badgeColor) {
       case 'success':

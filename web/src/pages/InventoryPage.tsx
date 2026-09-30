@@ -3,7 +3,7 @@ import { apiClient } from '../api/apiClient';
 import { Product } from '../types';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface InventoryPageProps {
   language?: 'fa' | 'en';
@@ -27,6 +27,8 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
   const [errorMessage, setErrorMessage] = useState('');
 
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   useEffect(() => {
     loadProducts();
@@ -213,8 +215,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
                       </td>
                       <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, color: theme.colors.textSecondary }}>
                         {isFa ? `${p.costPrice.toLocaleString('fa-IR')} تومان` : `$${p.costPrice.toFixed(2)}`}
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontWeight: 700, color: totalStock <= 5 ? theme.colors.error : theme.colors.success }}>
+                      </td>                       <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontWeight: 700, color: totalStock <= 5 ? theme.colors.error : theme.colors.success }}>
                         {isFa ? `${totalStock.toLocaleString('fa-IR')} ${p.unit || 'عدد'}` : `${totalStock} ${p.unit || 'pcs'}`}
                       </td>
                       <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>
@@ -237,9 +238,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
                           <button
                             onClick={() => handleAdjust(p.id)}
                             style={{
-                              backgroundColor: theme.colors.background,
+                              backgroundColor: theme.colors.surfaceHover,
                               color: theme.colors.textPrimary,
-                              border: `1px solid ${theme.colors.border}`,
+                              border: `1px solid ${theme.colors.borderStrong}`,
                               borderRadius: theme.borderRadius.md,
                               padding: '6px 12px',
                               fontWeight: 600,
@@ -273,8 +274,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
               <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textMuted }}>✕</button>
             </div>
 
-            {errorMessage && (
-              <div style={{ backgroundColor: '#FEE2E2', color: '#991B1B', padding: theme.spacing.md, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.lg, fontSize: '13px', fontWeight: 600 }}>
+            {errorMessage && (               <div style={{ backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2', color: isDark ? theme.colors.error : '#991B1B', padding: theme.spacing.md, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.lg, fontSize: '13px', fontWeight: 600 }}>
                 {errorMessage}
               </div>
             )}

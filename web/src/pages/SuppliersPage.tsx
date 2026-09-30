@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import { Supplier } from '../types';
+import { useTheme } from '../theme/ThemeContext';
 
 interface SuppliersPageProps {
   language?: 'fa' | 'en';
@@ -25,6 +26,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
   const [errorMessage, setErrorMessage] = useState('');
 
   const isFa = language === 'fa';
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadSuppliers();
@@ -155,12 +157,12 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
   };
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>{isFa ? 'مدیریت تامین‌کنندگان' : 'Supplier Management'}</h2>
+        <h2 style={{ margin: 0, color: theme.colors.textPrimary }}>{isFa ? 'مدیریت تامین‌کنندگان' : 'Supplier Management'}</h2>
         <button
           onClick={openCreateModal}
-          style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+          style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
         >
           {isFa ? '+ ثبت تامین‌کننده جدید' : '+ Add New Supplier'}
         </button>
@@ -172,48 +174,48 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
         placeholder={isFa ? 'جستجوی تامین‌کننده بر اساس نام، تلفن، ایمیل...' : 'Search suppliers by name, phone, email...'}
         value={searchQuery}
         onChange={handleSearchChange}
-        style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #CCC', fontSize: '15px', marginBottom: '20px', boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', marginBottom: '20px', boxSizing: 'border-box' }}
       />
 
       {/* Supplier Grid */}
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>{isFa ? 'در حال بارگذاری اطلاعات...' : 'Loading suppliers...'}</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری اطلاعات...' : 'Loading suppliers...'}</div>
       ) : suppliers.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#888', backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E0E0E0' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textMuted, backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}` }}>
           {isFa ? 'هیچ تامین‌کننده‌ای یافت نشد.' : 'No suppliers found.'}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
           {suppliers.map((s) => (
-            <div key={s.id} style={{ backgroundColor: '#FFF', border: '1px solid #E0E0E0', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div key={s.id} style={{ backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`, borderRadius: '12px', padding: '20px', boxShadow: theme.shadows.card, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: 'bold' }}>{s.name}</h3>
-                <p style={{ margin: '0 0 10px 0', color: '#555', fontSize: '13px' }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: 'bold', color: theme.colors.textPrimary }}>{s.name}</h3>
+                <p style={{ margin: '0 0 10px 0', color: theme.colors.textSecondary, fontSize: '13px' }}>
                   📞 {s.phone || (isFa ? 'بدون شماره' : 'No phone')} • ✉️ {s.email || (isFa ? 'بدون ایمیل' : 'No email')}
                 </p>
                 {s.address && (
-                  <p style={{ margin: '0 0 12px 0', color: '#777', fontSize: '13px' }}>
+                  <p style={{ margin: '0 0 12px 0', color: theme.colors.textMuted, fontSize: '13px' }}>
                     📍 {s.address}
                   </p>
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #EEE', paddingTop: '12px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', borderTop: `1px solid ${theme.colors.border}`, paddingTop: '12px', marginTop: '12px' }}>
                 <button
                   onClick={() => handleViewDetail(s)}
-                  style={{ flex: 1, backgroundColor: '#F0F0F0', color: '#333', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ flex: 1, backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isFa ? '👁️ جزئیات' : '👁️ View'}
                 </button>
                 <button
                   onClick={() => openEditModal(s)}
-                  style={{ flex: 1, backgroundColor: '#D8E2FF', color: '#001A41', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ flex: 1, backgroundColor: theme.colors.primaryLight, color: theme.colors.primaryDark, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isFa ? '✏️ ویرایش' : '✏️ Edit'}
                 </button>
                 <button
                   onClick={() => handleDeleteSupplier(s)}
-                  style={{ backgroundColor: '#FFDAD6', color: '#410002', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isFa ? '🗑️ حذف' : '🗑️ Delete'}
                 </button>
@@ -225,14 +227,14 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Create Supplier Modal */}
       {isCreateModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#FFF', borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', direction: isFa ? 'rtl' : 'ltr' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? 'ثبت تامین‌کننده جدید' : 'Create New Supplier'}
             </h3>
 
             {errorMessage && (
-              <div style={{ backgroundColor: '#F8D7DA', color: '#842029', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
+              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
                 {errorMessage}
               </div>
             )}
@@ -244,7 +246,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                   required
                 />
               </div>
@@ -255,7 +257,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -265,7 +267,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -275,7 +277,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   rows={2}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -284,14 +286,14 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="button"
                   onClick={closeModals}
                   disabled={isSubmitting}
-                  style={{ backgroundColor: '#E0E0E0', color: '#333', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isFa ? 'انصراف' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Saving...') : (isFa ? 'ثبت تامین‌کننده' : 'Save Supplier')}
                 </button>
@@ -303,14 +305,14 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Edit Supplier Modal (Pre-Populated) */}
       {editingSupplier && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#FFF', borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', direction: isFa ? 'rtl' : 'ltr' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? `ویرایش تامین‌کننده (${editingSupplier.name})` : `Edit Supplier (${editingSupplier.name})`}
             </h3>
 
             {errorMessage && (
-              <div style={{ backgroundColor: '#F8D7DA', color: '#842029', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
+              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
                 {errorMessage}
               </div>
             )}
@@ -322,7 +324,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                   required
                 />
               </div>
@@ -333,7 +335,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -343,7 +345,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -353,7 +355,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   rows={2}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CCC', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -362,14 +364,14 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                   type="button"
                   onClick={closeModals}
                   disabled={isSubmitting}
-                  style={{ backgroundColor: '#E0E0E0', color: '#333', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isFa ? 'انصراف' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Saving...') : (isFa ? 'ثبت تغییرات' : 'Save Changes')}
                 </button>
@@ -381,34 +383,34 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Supplier Detail Modal */}
       {detailSupplier && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#FFF', borderRadius: '12px', width: '100%', maxWidth: '560px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', direction: isFa ? 'rtl' : 'ltr' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '560px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{detailSupplier.name}</h3>
-              <button onClick={closeModals} style={{ backgroundColor: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+              <button onClick={closeModals} style={{ backgroundColor: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textSecondary }}>✕</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', fontSize: '14px', color: theme.colors.textPrimary }}>
               <div><strong>{isFa ? 'شماره تماس:' : 'Phone:'}</strong> {detailSupplier.phone || '-'}</div>
               <div><strong>{isFa ? 'ایمیل:' : 'Email:'}</strong> {detailSupplier.email || '-'}</div>
               <div><strong>{isFa ? 'آدرس:' : 'Address:'}</strong> {detailSupplier.address || '-'}</div>
             </div>
 
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold', borderTop: '1px solid #EEE', paddingTop: '12px' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold', borderTop: `1px solid ${theme.colors.border}`, paddingTop: '12px', color: theme.colors.textPrimary }}>
               {isFa ? 'سابقه سفارشات خرید (Purchase Orders)' : 'Purchase Order History'}
             </h4>
 
             {(!detailSupplier.purchases || detailSupplier.purchases.length === 0) ? (
-              <p style={{ color: '#888', fontSize: '13px' }}>{isFa ? 'هیچ سفارش خریدی ثبت نشده است.' : 'No purchase orders recorded.'}</p>
+              <p style={{ color: theme.colors.textMuted, fontSize: '13px' }}>{isFa ? 'هیچ سفارش خریدی ثبت نشده است.' : 'No purchase orders recorded.'}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                 {detailSupplier.purchases.map((p: any) => (
-                  <div key={p.id} style={{ padding: '10px', backgroundColor: '#F9F9F9', borderRadius: '6px', border: '1px solid #EEE', display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={p.id} style={{ padding: '10px', backgroundColor: theme.colors.backgroundSecondary, borderRadius: '6px', border: `1px solid ${theme.colors.border}`, display: 'flex', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{p.purchase_number || p.id}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{p.status} • {p.payment_status}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '13px', color: theme.colors.textPrimary }}>{p.purchase_number || p.id}</div>
+                      <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{p.status} • {p.payment_status}</div>
                     </div>
-                    <div style={{ fontWeight: 'bold', color: '#005AC1' }}>
+                    <div style={{ fontWeight: 'bold', color: theme.colors.primary }}>
                       {isFa ? `${Number(p.total_amount || 0).toLocaleString('fa-IR')} تومان` : `$${Number(p.total_amount || 0).toFixed(2)}`}
                     </div>
                   </div>
@@ -419,7 +421,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
               <button
                 onClick={closeModals}
-                style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
+                style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
               >
                 {isFa ? 'بستن' : 'Close'}
               </button>

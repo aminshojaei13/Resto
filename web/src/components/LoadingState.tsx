@@ -1,11 +1,12 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface LoadingStateProps {
   message?: string;
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({ message = 'در حال بارگذاری اطلاعات...' }) => {
+  const { theme } = useTheme();
   return (
     <div
       style={{

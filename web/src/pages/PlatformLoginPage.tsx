@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 import { AuthUser } from '../types';
 
 interface PlatformLoginPageProps {
@@ -18,6 +18,8 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
   const [error, setError] = useState('');
 
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +55,12 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
     <div style={{ maxWidth: '480px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
       <div
         style={{
-          backgroundColor: '#0F172A',
-          color: '#F8FAFC',
+          backgroundColor: theme.colors.surfaceElevated,
+          color: theme.colors.textPrimary,
           borderRadius: theme.borderRadius.xl,
           padding: theme.spacing['2xl'],
           boxShadow: theme.shadows.lg,
-          border: '1px solid #334155',
+          border: `1px solid ${theme.colors.border}`,
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: theme.spacing['2xl'] }}>
@@ -67,21 +69,21 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
               width: '56px',
               height: '56px',
               borderRadius: theme.borderRadius.xl,
-              backgroundColor: '#0284C7',
+              backgroundColor: theme.colors.infoLight,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#FFF',
+              color: theme.colors.info,
               fontSize: '28px',
               margin: '0 auto 16px auto',
             }}
           >
             🛡️
           </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#FFF', margin: '0 0 8px 0' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: theme.colors.textPrimary, margin: '0 0 8px 0' }}>
             {isFa ? 'ورود به پنل راهبری پلتفرم (Platform Admin)' : 'Resto Platform Admin Portal'}
           </h2>
-          <p style={{ color: '#94A3B8', fontSize: '14px', margin: 0 }}>
+          <p style={{ color: theme.colors.textSecondary, fontSize: '14px', margin: 0 }}>
             {isFa ? 'ویژه بررسی درخواست‌های ثبت سازمان و راه‌اندازی تننت‌ها' : 'Administrative access for application reviews & tenant provisioning'}
           </p>
         </div>
@@ -89,8 +91,8 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
         {error && (
           <div
             style={{
-              backgroundColor: '#7F1D1D',
-              color: '#FECACA',
+              backgroundColor: theme.colors.errorLight,
+              color: theme.colors.error,
               padding: `${theme.spacing.md} ${theme.spacing.lg}`,
               borderRadius: theme.borderRadius.lg,
               fontSize: '14px',
@@ -103,7 +105,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
           <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: '#E2E8F0' }}>
+            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
               {isFa ? 'ایمیل راهبر پلتفرم:' : 'Platform Admin Email:'} *
             </label>
             <input
@@ -116,9 +118,9 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
                 width: '100%',
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius.lg,
-                border: '1px solid #475569',
-                backgroundColor: '#1E293B',
-                color: '#FFF',
+                border: `1px solid ${theme.colors.borderStrong}`,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.textPrimary,
                 fontSize: '15px',
                 boxSizing: 'border-box',
               }}
@@ -126,7 +128,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: '#E2E8F0' }}>
+            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
               {isFa ? 'رمز عبور راهبری:' : 'Admin Password:'} *
             </label>
             <input
@@ -139,9 +141,9 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
                 width: '100%',
                 padding: theme.spacing.md,
                 borderRadius: theme.borderRadius.lg,
-                border: '1px solid #475569',
-                backgroundColor: '#1E293B',
-                color: '#FFF',
+                border: `1px solid ${theme.colors.borderStrong}`,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.textPrimary,
                 fontSize: '15px',
                 boxSizing: 'border-box',
               }}
@@ -151,8 +153,8 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
           <button
             type="submit"
             style={{
-              backgroundColor: '#0284C7',
-              color: '#FFF',
+              backgroundColor: theme.colors.info,
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: theme.borderRadius.lg,
               padding: theme.spacing.lg,
@@ -167,13 +169,13 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
         </form>
 
         {/* Demo Quick Access */}
-        <div style={{ marginTop: theme.spacing['2xl'], paddingTop: theme.spacing.xl, borderTop: '1px solid #334155' }}>
+        <div style={{ marginTop: theme.spacing['2xl'], paddingTop: theme.spacing.xl, borderTop: `1px solid ${theme.colors.border}` }}>
           <button
             onClick={handleQuickPlatformAdminLogin}
             style={{
               width: '100%',
-              backgroundColor: '#0369A1',
-              color: '#FFF',
+              backgroundColor: isDark ? theme.colors.surfaceHover : theme.colors.surfaceSelected,
+              color: isDark ? theme.colors.info : theme.colors.info,
               border: 'none',
               borderRadius: theme.borderRadius.lg,
               padding: theme.spacing.md,
@@ -190,7 +192,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
           <button
             type="button"
             onClick={() => navigate('/login')}
-            style={{ border: 'none', background: 'none', color: '#38BDF8', cursor: 'pointer', fontWeight: 600 }}
+            style={{ border: 'none', background: 'none', color: theme.colors.info, cursor: 'pointer', fontWeight: 600 }}
           >
             {isFa ? 'بازگشت به ورود کاربران معمولی (Tenant Login)' : 'Switch to Tenant User Login'}
           </button>

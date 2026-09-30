@@ -4,7 +4,7 @@ import { AccountingSummary, LedgerEntry, Product } from '../types';
 import { StatCard } from '../components/StatCard';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface DashboardPageProps {
   language?: 'fa' | 'en';
@@ -16,6 +16,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -112,9 +114,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           <button
             onClick={() => handleNav('/app/messages')}
             style={{
-              backgroundColor: '#8B5CF6',
-              color: '#FFF',
-              border: 'none',
+              backgroundColor: theme.colors.surfaceSelected,
+              color: theme.colors.primary,
+              border: `1px solid ${theme.colors.borderStrong}`,
               borderRadius: theme.borderRadius.lg,
               padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
               fontSize: '14px',
@@ -240,9 +242,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
                 <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'تعداد کل کالاها' : 'Total Products'}</div>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: theme.colors.textPrimary }}>{totalProductsCount}</div>
               </div>
-              <div style={{ backgroundColor: lowStockProducts.length > 0 ? '#FEF2F2' : theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
-                <div style={{ fontSize: '12px', color: lowStockProducts.length > 0 ? '#991B1B' : theme.colors.textMuted }}>{isFa ? 'هشدار کمبود موجودی' : 'Low Stock Alert'}</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: lowStockProducts.length > 0 ? '#DC2626' : theme.colors.textPrimary }}>
+              <div style={{ backgroundColor: lowStockProducts.length > 0 ? (isDark ? theme.colors.errorLight : '#FEF2F2') : theme.colors.backgroundSecondary, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: lowStockProducts.length > 0 ? (isDark ? theme.colors.error : '#991B1B') : theme.colors.textMuted }}>{isFa ? 'هشدار کمبود موجودی' : 'Low Stock Alert'}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: lowStockProducts.length > 0 ? (isDark ? theme.colors.error : '#DC2626') : theme.colors.textPrimary }}>
                   {lowStockProducts.length}
                 </div>
               </div>
@@ -296,7 +298,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
             backgroundColor: theme.colors.surface,
             borderRadius: theme.borderRadius.xl,
             padding: theme.spacing['2xl'],
-            border: `2px solid #DDD6FE`,
+            border: isDark ? '2px solid #2C2545' : '2px solid #DDD6FE',
             boxShadow: theme.shadows.card,
             display: 'flex',
             flexDirection: 'column',
@@ -306,7 +308,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: '#EDE9FE', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: isDark ? '#2A2340' : '#EDE9FE', color: isDark ? '#B49CF8' : '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                   💬
                 </div>
                 <div>
@@ -346,7 +348,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
               onClick={() => handleNav('/app/messages')}
               style={{
                 flex: 1,
-                backgroundColor: '#7C3AED',
+                backgroundColor: isDark ? '#5B21B6' : '#7C3AED',
                 color: '#FFF',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
@@ -392,7 +394,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: '#D1FAE5', color: '#065F46', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: isDark ? theme.colors.successLight : '#D1FAE5', color: isDark ? theme.colors.success : '#065F46', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                   📊
                 </div>
                 <div>
@@ -537,7 +539,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
               <tbody>
                 {entries.slice(0, 5).map((e) => (
                   <tr key={e.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
-                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primaryDark }}>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primary }}>
                       {e.entryNumber}
                     </td>
                     <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>

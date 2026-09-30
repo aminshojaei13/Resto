@@ -1,5 +1,6 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 
 interface PublicShellProps {
   currentPath: string;
@@ -17,6 +18,7 @@ export const PublicShell: React.FC<PublicShellProps> = ({
   children,
 }) => {
   const isFa = language === 'fa';
+  const { theme } = useTheme();
 
   const navLinks = [
     { path: '/register', label: isFa ? 'ثبت‌نام کسب‌وکار' : 'Register Business', icon: '🚀' },
@@ -30,17 +32,17 @@ export const PublicShell: React.FC<PublicShellProps> = ({
       style={{
         minHeight: '100vh',
         backgroundColor: theme.colors.background,
+        color: theme.colors.textPrimary,
         fontFamily: theme.typography.fontFamily,
         direction: isFa ? 'rtl' : 'ltr',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      {/* Public Header */}
-      <header
-        style={{
-          backgroundColor: theme.colors.surface,
-          borderBottom: `1px solid ${theme.colors.border}`,
+      {/* Public Header */}        <header
+          style={{
+            backgroundColor: theme.colors.surfaceElevated,
+            borderBottom: `1px solid ${theme.colors.border}`,
           padding: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
           boxShadow: theme.shadows.sm,
           position: 'sticky',
@@ -104,8 +106,8 @@ export const PublicShell: React.FC<PublicShellProps> = ({
                   key={link.path}
                   onClick={() => navigate(link.path)}
                   style={{
-                    backgroundColor: isActive ? theme.colors.primaryLight : 'transparent',
-                    color: isActive ? theme.colors.primaryDark : theme.colors.textPrimary,
+                    backgroundColor: isActive ? theme.colors.surfaceSelected : 'transparent',
+                    color: isActive ? theme.colors.primary : theme.colors.textPrimary,
                     border: 'none',
                     borderRadius: theme.borderRadius.md,
                     padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
@@ -125,22 +127,25 @@ export const PublicShell: React.FC<PublicShellProps> = ({
             })}
           </nav>
 
-          {/* Language Switcher */}
-          <button
-            onClick={() => setLanguage(isFa ? 'en' : 'fa')}
-            style={{
-              backgroundColor: theme.colors.background,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: theme.borderRadius.md,
-              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-              fontSize: '13px',
-              fontWeight: 600,
-              color: theme.colors.textPrimary,
-              cursor: 'pointer',
-            }}
-          >
-            🌐 {isFa ? 'English' : 'فارسی'}
-          </button>
+          {/* Theme + Language Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <ThemeToggle language={language} />
+            <button
+              onClick={() => setLanguage(isFa ? 'en' : 'fa')}
+              style={{
+                backgroundColor: theme.colors.surfaceHover,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                fontSize: '13px',
+                fontWeight: 600,
+                color: theme.colors.textPrimary,
+                cursor: 'pointer',
+              }}
+            >
+              🌐 {isFa ? 'English' : 'فارسی'}
+            </button>
+          </div>
         </div>
       </header>
 

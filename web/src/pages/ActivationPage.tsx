@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface ActivationPageProps {
   language?: 'fa' | 'en';
@@ -11,6 +11,8 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
   navigate,
 }) => {
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   return (
     <div style={{ maxWidth: '640px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
@@ -51,20 +53,20 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
         {/* Status Callout */}
         <div
           style={{
-            backgroundColor: '#EFF6FF',
-            border: '1px solid #BFDBFE',
+            backgroundColor: isDark ? theme.colors.infoLight : '#EFF6FF',
+            border: isDark ? `1px solid ${theme.colors.borderStrong}` : '1px solid #BFDBFE',
             borderRadius: theme.borderRadius.lg,
             padding: theme.spacing.lg,
             marginBottom: theme.spacing.xl,
           }}
         >
-          <div style={{ fontWeight: 700, color: '#1E40AF', fontSize: '14px', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 700, color: isDark ? theme.colors.info : '#1E40AF', fontSize: '14px', marginBottom: '6px' }}>
             📌 {isFa ? 'وضعیت مکانیزم کدهای فعال‌سازی (Activation Code Status):' : 'Activation Code Mechanism Status:'}
           </div>
-          <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1D4ED8', fontSize: '13px', marginBottom: '8px' }}>
+          <div style={{ fontFamily: 'monospace', fontWeight: 700, color: isDark ? theme.colors.primary : '#1D4ED8', fontSize: '13px', marginBottom: '8px' }}>
             ACTIVATION_CODE_STATUS: NOT_IMPLEMENTED
           </div>
-          <p style={{ margin: 0, color: '#1E3A8A', fontSize: '13px', lineHeight: 1.6 }}>
+          <p style={{ margin: 0, color: isDark ? theme.colors.textSecondary : '#1E3A8A', fontSize: '13px', lineHeight: 1.6 }}>
             {isFa
               ? 'در نسخه فعلی پلتفرم ابری رستو، نیازی به وارد کردن کد دعوت یا کد فعال‌سازی عددی نیست. فعال‌سازی سازمان‌ها مستقیماً پس از بررسی و تایید راهبر پلتفرم انجام می‌پذیرد.'
               : 'In the current version of Resto SaaS, explicit invitation/activation codes are not used. Tenant workspaces are activated directly upon review and approval by the Platform Administrator.'}

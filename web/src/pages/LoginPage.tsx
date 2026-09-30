@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 import { AuthUser } from '../types';
 
 interface LoginPageProps {
@@ -18,6 +18,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
   const isFa = language === 'fa';
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -111,8 +113,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {error && (
           <div
             style={{
-              backgroundColor: '#FEE2E2',
-              color: '#991B1B',
+              backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
+              color: isDark ? theme.colors.error : '#991B1B',
               padding: `${theme.spacing.md} ${theme.spacing.lg}`,
               borderRadius: theme.borderRadius.lg,
               fontSize: '14px',

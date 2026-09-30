@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient, setTenantContext } from '../api/apiClient';
 import { Organization } from '../types';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface TenantModalProps {
   language: 'fa' | 'en';
@@ -12,6 +12,7 @@ interface TenantModalProps {
 export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onSelectTenant }) => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const isFa = language === 'fa';
+  const { theme } = useTheme();
 
   useEffect(() => {
     apiClient.getOrganizations().then(setOrganizations);
@@ -31,7 +32,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: theme.colors.overlay,
         backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
@@ -43,7 +44,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
     >
       <div
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.surfaceElevated,
           borderRadius: theme.borderRadius.xl,
           padding: theme.spacing['2xl'],
           width: '460px',
@@ -81,7 +82,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
                 backgroundColor: theme.colors.background,
               }}
             >
-              <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: theme.spacing.md, color: theme.colors.primaryDark }}>
+              <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: theme.spacing.md, color: theme.colors.primary }}>
                 🏢 {org.name}
               </div>
               {org.stores?.map((store) => (
@@ -91,7 +92,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
                   style={{
                     width: '100%',
                     textAlign: isFa ? 'right' : 'left',
-                    backgroundColor: theme.colors.surface,
+                    backgroundColor: theme.colors.surfaceHover,
                     border: `1px solid ${theme.colors.border}`,
                     borderRadius: theme.borderRadius.md,
                     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
@@ -122,7 +123,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
             padding: theme.spacing.md,
             borderRadius: theme.borderRadius.md,
             border: `1px solid ${theme.colors.border}`,
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.surfaceHover,
             color: theme.colors.textPrimary,
             cursor: 'pointer',
             fontWeight: 600,

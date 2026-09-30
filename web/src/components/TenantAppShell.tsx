@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 import { AuthUser } from '../types';
 
 interface TenantAppShellProps {
@@ -33,6 +34,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   children,
 }) => {
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
 
@@ -109,7 +112,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       <div
         style={{
           padding: theme.spacing['2xl'],
-          borderBottom: `1px solid ${theme.colors.sidebarItemActiveBg}`,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -171,9 +174,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
             textAlign: isFa ? 'right' : 'left',
           }}
         >
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <div style={{ fontWeight: 600, color: theme.colors.primaryLight }}>{activeOrgName}</div>
-            <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>{activeStoreName}</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>              <div style={{ fontWeight: 600, color: theme.colors.sidebarTextActive }}>{activeOrgName}</div>
+              <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>{activeStoreName}</div>
           </div>
           <span style={{ fontSize: '12px' }}>▼</span>
         </button>
@@ -209,8 +211,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
                     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
                     borderRadius: theme.borderRadius.lg,
                     border: 'none',
-                    backgroundColor: isActive ? theme.colors.primary : 'transparent',
-                    color: isActive ? theme.colors.sidebarTextActive : theme.colors.sidebarText,
+                    backgroundColor: isActive ? theme.colors.sidebarItemActiveBg : 'transparent',
+                    color: isActive ? theme.colors.primary : theme.colors.sidebarText,
                     fontWeight: isActive ? 600 : 400,
                     fontSize: '13px',
                     cursor: 'pointer',
@@ -227,7 +229,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
                         width: '6px',
                         height: '6px',
                         borderRadius: '50%',
-                        backgroundColor: '#FFF',
+                        backgroundColor: theme.colors.primary,
                       }}
                     />
                   )}
@@ -282,7 +284,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: theme.colors.overlay,
             zIndex: 90,
           }}
         />
@@ -295,7 +297,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
         {/* Top Header Bar */}
         <header
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: theme.colors.surfaceElevated,
             borderBottom: `1px solid ${theme.colors.border}`,
             padding: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
             display: 'flex',
@@ -335,15 +337,17 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
                 fontWeight: 600,
               }}
             >
-              {isFa ? 'فضای کاری متمرکز کسب‌وکار' : 'Centralized Operations'}
+              {isFa ? 'نسخه فعال (SaaS Tenant)' : 'Active SaaS Tenant'}
             </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <ThemeToggle language={language} />
+
             <button
               onClick={onOpenTenantModal}
               style={{
-                backgroundColor: theme.colors.background,
+                backgroundColor: theme.colors.surfaceHover,
                 border: `1px solid ${theme.colors.border}`,
                 borderRadius: theme.borderRadius.md,
                 padding: '6px 12px',
@@ -363,8 +367,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
             <button
               onClick={onLogout}
               style={{
-                backgroundColor: '#FEE2E2',
-                color: '#991B1B',
+                backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
+                color: isDark ? theme.colors.error : '#991B1B',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
                 padding: '6px 12px',

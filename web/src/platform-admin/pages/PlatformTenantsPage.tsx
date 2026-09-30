@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import { Organization } from '../../types';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface PlatformTenantsPageProps {
   language?: 'fa' | 'en';
@@ -11,6 +12,7 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
   const [isLoading, setIsLoading] = useState(false);
 
   const isFa = language === 'fa';
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadOrganizations();
@@ -29,25 +31,25 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
   };
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: 'bold' }}>
+        <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
           {isFa ? 'مدیریت تننت‌ها و سازمان‌های فعال (Platform Tenants)' : 'Provisioned Tenant Organizations'}
         </h2>
-        <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+        <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '14px' }}>
           {isFa ? 'فهرست تمامی سازمان‌ها، شعب فروشگاه و انبارهای راه‌اندازی‌شده در پلتفرم ابری رستو' : 'Overview of all active tenants, stores, and warehouses provisioned on Resto SaaS'}
         </p>
       </div>
 
-      <div style={{ backgroundColor: '#FFF', borderRadius: '12px', border: '1px solid #E0E0E0', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}`, overflow: 'hidden' }}>
         {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>{isFa ? 'در حال بارگذاری سازمان‌ها...' : 'Loading tenants...'}</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری سازمان‌ها...' : 'Loading tenants...'}</div>
         ) : organizations.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>{isFa ? 'هیچ سازمانی یافت نشد.' : 'No active organizations found.'}</div>
+          <div style={{ padding: '40px', textAlign: 'center', color: theme.colors.textMuted }}>{isFa ? 'هیچ سازمانی یافت نشد.' : 'No active organizations found.'}</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: '#F5F5F5', textAlign: isFa ? 'right' : 'left' }}>
+              <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'کد سازمان' : 'Tenant Code'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'نام سازمان' : 'Organization Name'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'سطح اشتراک' : 'Subscription Tier'}</th>
@@ -57,8 +59,8 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
             </thead>
             <tbody>
               {organizations.map((org) => (
-                <tr key={org.id} style={{ borderBottom: '1px solid #EEE' }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold', color: '#005AC1' }}>{org.code}</td>
+                <tr key={org.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold', color: theme.colors.info }}>{org.code}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{org.name}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <span
@@ -67,8 +69,8 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
                         borderRadius: '12px',
                         fontSize: '12px',
                         fontWeight: 'bold',
-                        backgroundColor: '#E0F2FE',
-                        color: '#0369A1',
+                        backgroundColor: theme.colors.infoLight,
+                        color: theme.colors.info,
                       }}
                     >
                       {org.subscriptionTier || 'ENTERPRISE'}

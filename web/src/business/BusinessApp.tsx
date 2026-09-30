@@ -16,6 +16,7 @@ import { MessagesPage } from '../pages/MessagesPage';
 import { AccountingPage } from '../pages/AccountingPage';
 import { EmptyState } from '../components/EmptyState';
 import { AuthUser } from '../types';
+import { useTheme } from '../theme/ThemeContext';
 
 export const BusinessApp: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -40,6 +41,8 @@ export const BusinessApp: React.FC = () => {
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
 
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   const navigate = (path: string) => {
     if (window.location.pathname !== path) {
@@ -73,7 +76,7 @@ export const BusinessApp: React.FC = () => {
   if (path.startsWith('/platform') || path.startsWith('/admin')) {
     return (
       <PublicShell currentPath="/login" navigate={navigate} language={language} setLanguage={setLanguage}>
-        <div style={{ maxWidth: '600px', margin: '60px auto', padding: '32px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '16px', color: '#1E40AF', fontFamily: 'system-ui, sans-serif', direction: isFa ? 'rtl' : 'ltr', textAlign: 'center' }}>
+        <div style={{ maxWidth: '600px', margin: '60px auto', padding: '32px', backgroundColor: isDark ? theme.colors.infoLight : '#EFF6FF', border: isDark ? `1px solid ${theme.colors.borderStrong}` : '1px solid #BFDBFE', borderRadius: '16px', color: isDark ? theme.colors.info : '#1E40AF', fontFamily: theme.typography.fontFamily, direction: isFa ? 'rtl' : 'ltr', textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
           <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: 800 }}>
             {isFa ? 'انتقال بخش مدیریت پلتفرم به سامانه اپراتور (Operator Console)' : 'Platform Admin Console Moved to Port 3001'}
@@ -85,7 +88,7 @@ export const BusinessApp: React.FC = () => {
           </p>
           <a
             href="http://localhost:3001/login"
-            style={{ backgroundColor: '#0284C7', color: '#FFF', textDecoration: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, fontSize: '15px', display: 'inline-block' }}
+            style={{ backgroundColor: theme.colors.info, color: '#FFFFFF', textDecoration: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, fontSize: '15px', display: 'inline-block' }}
           >
             🚀 {isFa ? 'ورود به پنل راهبری پلتفرم (localhost:3001)' : 'Launch Operator Console (localhost:3001)'}
           </a>
