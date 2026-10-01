@@ -15,6 +15,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Intentionally left blank for clean database initialization.
+        $this->call(MockDataSeeder::class);
     }
 }

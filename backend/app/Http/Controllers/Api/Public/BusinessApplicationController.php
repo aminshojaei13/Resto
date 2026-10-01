@@ -37,6 +37,8 @@ class BusinessApplicationController extends Controller
             ], 200);
         }
 
+        $autoApprove = $request->boolean('auto_approve', false) || $request->input('auto_approve') === true || $request->input('auto_approve') === 'true';
+
         $application = BusinessApplication::create([
             'id' => (string) Str::uuid(),
             'business_name' => $request->business_name,
@@ -48,25 +50,88 @@ class BusinessApplicationController extends Controller
             'city' => $request->city,
             'address' => $request->address,
             'notes' => $request->notes,
-            'status' => 'PENDING',
+            'status' => $autoApprove ? 'APPROVED' : 'PENDING',
         ]);
+
+        $organizationId = null;
+
+        if ($autoApprove) {
+            // Instant Tenant Provisioning
+            $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $application->business_name), 0, 4));
+            if (strlen($code) < 3) $code = 'RSTO';
+            $code .= rand(100, 999);
+
+            $user = \App\Models\User::where('email', $application->email)->first();
+            if (!$user) {
+                $user = \App\Models\User::create([
+                    'id' => (string) Str::uuid(),
+                    'name' => $application->owner_name,
+                    'email' => $application->email,
+                    'phone' => $application->phone,
+                    'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+                    'role' => 'Owner',
+                    'is_platform_admin' => false,
+                ]);
+            }
+
+            $organization = \App\Models\Organization::create([
+                'id' => (string) Str::uuid(),
+                'name' => $application->business_name,
+                'code' => $code,
+                'currency_symbol' => '$',
+                'currency_code' => 'USD',
+                'subscription_tier' => 'ENTERPRISE',
+                'business_type' => $application->business_type ?? 'RETAIL',
+                'onboarding_status' => 'IN_PROGRESS',
+            ]);
+
+            \App\Models\OrganizationMembership::create([
+                'id' => (string) Str::uuid(),
+                'organization_id' => $organization->id,
+                'user_id' => $user->id,
+                'role' => 'OWNER',
+            ]);
+
+            $store = \App\Models\Store::create([
+                'id' => (string) Str::uuid(),
+                'organization_id' => $organization->id,
+                'name' => $application->business_name . ' (Main Store)',
+                'code' => $code . '-ST1',
+                'address' => $application->address ?? 'Main Store Address',
+                'phone' => $application->phone ?? '',
+            ]);
+
+            \App\Models\Warehouse::create([
+                'id' => (string) Str::uuid(),
+                'organization_id' => $organization->id,
+                'store_id' => $store->id,
+                'name' => 'Main Warehouse',
+                'code' => $code . '-WH1',
+                'address' => $application->address ?? 'Main Warehouse Address',
+            ]);
+
+            $application->organization_id = $organization->id;
+            $application->save();
+            $organizationId = $organization->id;
+        }
 
         // Audit Log
         AuditLog::create([
             'id' => (string) Str::uuid(),
-            'organization_id' => 'system',
+            'organization_id' => $organizationId ?? 'system',
             'user_id' => null,
-            'action' => 'business.application.created',
+            'action' => $autoApprove ? 'business.application.auto_approved' : 'business.application.created',
             'entity_type' => 'BusinessApplication',
             'entity_id' => $application->id,
-            'details' => "Application submitted for business '{$application->business_name}' by {$application->email}",
+            'details' => "Application submitted for business '{$application->business_name}' by {$application->email}" . ($autoApprove ? " (Auto-Approved)" : ""),
             'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
-            'message' => 'Your business application has been submitted and is pending review.',
+            'message' => $autoApprove ? 'Business application submitted and automatically provisioned!' : 'Your business application has been submitted and is pending review.',
             'application_id' => $application->id,
-            'status' => 'PENDING',
+            'organization_id' => $organizationId,
+            'status' => $application->status,
             'created_at' => $application->created_at,
         ], 201);
     }

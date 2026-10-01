@@ -40,6 +40,7 @@ class MockDataSeeder extends Seeder
             'phone' => '+1 (555) 019-2834',
             'password' => Hash::make('password123'),
             'role' => 'Owner',
+            'is_platform_admin' => true,
         ]);
 
         $cashier = User::create([

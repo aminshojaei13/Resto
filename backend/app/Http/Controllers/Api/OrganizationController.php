@@ -26,19 +26,45 @@ class OrganizationController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'code' => 'required|string|unique:organizations,code',
+            'code' => 'sometimes|nullable|string',
         ]);
+
+        $code = $request->code;
+        if (empty($code)) {
+            $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $request->name), 0, 4));
+            if (strlen($code) < 3) $code = 'RSTO';
+            $code .= rand(100, 999);
+        }
 
         $org = Organization::create([
             'id' => (string) Str::uuid(),
             'name' => $request->name,
-            'code' => $request->code,
+            'code' => $code,
             'currency_symbol' => $request->currency_symbol ?? '$',
             'currency_code' => $request->currency_code ?? 'USD',
             'subscription_tier' => $request->subscription_tier ?? 'ENTERPRISE',
         ]);
 
-        return response()->json($org, 201);
+        // Provision Default Store & Warehouse
+        $store = Store::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => $org->id,
+            'name' => $org->name . ' (Main Store)',
+            'code' => $code . '-ST1',
+            'address' => 'Main Store Address',
+            'phone' => '',
+        ]);
+
+        Warehouse::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => $org->id,
+            'store_id' => $store->id,
+            'name' => 'Main Warehouse',
+            'code' => $code . '-WH1',
+            'address' => 'Main Warehouse Address',
+        ]);
+
+        return response()->json($org->load('stores.warehouses'), 201);
     }
 
     public function update(Request $request, string $id)

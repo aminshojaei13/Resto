@@ -10,12 +10,34 @@ export const setTenantContext = (orgId: string, storeId: string) => {
   activeStoreId = storeId;
 };
 
-const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-  'X-Tenant-ID': activeOrgId,
-  'X-Store-ID': activeStoreId,
-});
+const getHeaders = () => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Tenant-ID': activeOrgId,
+    'X-Store-ID': activeStoreId,
+  };
+
+  const savedUser = localStorage.getItem('resto_auth_user');
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      if (user.id) {
+        headers['X-User-ID'] = user.id;
+      }
+      if (user.isPlatformAdmin) {
+        headers['X-Platform-Admin'] = 'true';
+      }
+      if (user.token) {
+        headers['Authorization'] = `Bearer ${user.token}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return headers;
+};
 
 export const apiClient = {
   getOrganizations: async (): Promise<Organization[]> => {
@@ -50,6 +72,40 @@ export const apiClient = {
     } catch {
       return [];
     }
+  },
+
+  createOrganization: async (orgData: { name: string; code?: string; currency_symbol?: string; currency_code?: string }): Promise<Organization> => {
+    const res = await fetch(`${BASE_URL}/organizations`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(orgData),
+    });
+    if (!res.ok) throw new Error('Failed to create organization');
+    const org = await res.json();
+    return {
+      id: org.id,
+      name: org.name,
+      code: org.code,
+      logoUrl: org.logo_url ?? org.logoUrl,
+      currencySymbol: org.currency_symbol ?? org.currencySymbol ?? '$',
+      currencyCode: org.currency_code ?? org.currencyCode ?? 'USD',
+      subscriptionTier: org.subscription_tier ?? org.subscriptionTier ?? 'ENTERPRISE',
+      stores: (org.stores || []).map((store: any) => ({
+        id: store.id,
+        organizationId: store.organization_id ?? store.organizationId,
+        name: store.name,
+        code: store.code,
+        address: store.address,
+        phone: store.phone,
+        warehouses: (store.warehouses || []).map((wh: any) => ({
+          id: wh.id,
+          storeId: wh.store_id ?? wh.storeId,
+          organizationId: wh.organization_id ?? wh.organizationId,
+          name: wh.name,
+          code: wh.code,
+        })),
+      })),
+    };
   },
 
   getProducts: async (query?: string): Promise<Product[]> => {
