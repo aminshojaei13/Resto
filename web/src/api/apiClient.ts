@@ -40,6 +40,30 @@ const getHeaders = () => {
 };
 
 export const apiClient = {
+  login: async (credentials: { email: string; password?: string }): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'ایمیل یا رمز عبور وارد شده نادرست است.');
+    }
+    const data = await res.json();
+    return {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role || 'Owner',
+      isPlatformAdmin: Boolean(data.user.is_platform_admin),
+      token: data.access_token,
+    };
+  },
+
   getOrganizations: async (): Promise<Organization[]> => {
     try {
       const res = await fetch(`${BASE_URL}/organizations`, { headers: getHeaders() });

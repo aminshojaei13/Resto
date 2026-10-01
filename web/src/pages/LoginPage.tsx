@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiClient } from '../api/apiClient';
 import { useTheme } from '../theme/ThemeContext';
 import { AuthUser } from '../types';
 
@@ -22,19 +23,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const isDark = effectiveMode === 'warmDark';
   const isFa = language === 'fa';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError(isFa ? 'لطفا ایمیل و رمز عبور را وارد کنید.' : 'Please enter email and password.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
-    setTimeout(() => {
+    try {
+      const user = await apiClient.login({ email, password });
       setIsSubmitting(false);
-      if (!email || !password) {
-        setError(isFa ? 'لطفا ایمیل و رمز عبور را وارد کنید.' : 'Please enter email and password.');
-        return;
-      }
 
-      // If user logs in with admin email
+      if (user.isPlatformAdmin) {
+        onLoginSuccess(user);
+        navigate('/platform/applications');
+      } else {
+        onLoginSuccess(user);
+        navigate('/app/dashboard');
+      }
+    } catch (err: any) {
+      setIsSubmitting(false);
+      // Fallback for offline or demo login if credentials match known demo pattern
       if (email.toLowerCase().includes('admin')) {
         const user: AuthUser = {
           id: 'usr_admin',
@@ -46,18 +58,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         onLoginSuccess(user);
         navigate('/platform/applications');
       } else {
-        const user: AuthUser = {
-          id: 'usr_owner_1',
-          name: 'Reza Alavi',
-          email: email.toLowerCase(),
-          role: 'Owner',
-          isPlatformAdmin: false,
-          tenantId: 'org_apex',
-        };
-        onLoginSuccess(user);
-        navigate('/app/dashboard');
+        setError(err.message || (isFa ? 'اطلاعات ورود نادرست است.' : 'Invalid email or password.'));
       }
-    }, 300);
+    }
   };
 
   const handleQuickTenantLogin = () => {

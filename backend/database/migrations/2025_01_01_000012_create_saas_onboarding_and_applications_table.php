@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('business_name');
             $table->string('owner_name');
             $table->string('email');
+            $table->string('password')->nullable();
             $table->string('phone')->nullable();
             $table->string('business_type')->default('RETAIL');
             $table->string('country')->default('IR');

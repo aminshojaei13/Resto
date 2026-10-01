@@ -16,6 +16,7 @@ class BusinessApplicationController extends Controller
             'business_name' => 'required|string|max:255',
             'owner_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
+            'password' => 'nullable|string|min:6',
             'phone' => 'nullable|string|max:50',
             'business_type' => 'nullable|string|max:50',
             'country' => 'nullable|string|max:100',
@@ -39,11 +40,14 @@ class BusinessApplicationController extends Controller
 
         $autoApprove = $request->boolean('auto_approve', false) || $request->input('auto_approve') === true || $request->input('auto_approve') === 'true';
 
+        $hashedPassword = $request->password ? \Illuminate\Support\Facades\Hash::make($request->password) : null;
+
         $application = BusinessApplication::create([
             'id' => (string) Str::uuid(),
             'business_name' => $request->business_name,
             'owner_name' => $request->owner_name,
             'email' => strtolower(trim($request->email)),
+            'password' => $hashedPassword,
             'phone' => $request->phone,
             'business_type' => $request->business_type ?? 'RETAIL',
             'country' => $request->country ?? 'IR',
@@ -68,7 +72,7 @@ class BusinessApplicationController extends Controller
                     'name' => $application->owner_name,
                     'email' => $application->email,
                     'phone' => $application->phone,
-                    'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+                    'password' => $application->password ?? \Illuminate\Support\Facades\Hash::make('password123'),
                     'role' => 'Owner',
                     'is_platform_admin' => false,
                 ]);

@@ -16,6 +16,7 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [businessType, setBusinessType] = useState('RETAIL');
   const [city, setCity] = useState('');
@@ -31,6 +32,13 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!businessName || !ownerName || !email) {
+      setErrorMessage(isFa ? 'لطفا تمامی فیلدهای اجباری ستاره‌دار را تکمیل نمایید.' : 'Please fill in all required fields.');
+      return;
+    }
+
+    const effectivePassword = password.trim() || 'password123';
+
     setIsSubmitting(true);
     setErrorMessage('');
 
@@ -39,6 +47,7 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
         business_name: businessName,
         owner_name: ownerName,
         email,
+        password: effectivePassword,
         phone,
         business_type: businessType,
         city,
@@ -76,20 +85,25 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
           </h2>
           <p style={{ color: theme.colors.textSecondary, fontSize: '15px', marginBottom: '24px' }}>
             {isFa
-              ? 'درخواست شما در وضعیت "در حال بررسی راهبر پلتفرم" قرار گرفت. پس از تایید، دسترسی به پنل مدیریت سازمان و حساب مالک فعال خواهد شد.'
-              : 'Your application is now PENDING review by the Resto platform administrator. Once approved, tenant access will be provisioned.'}
+              ? 'درخواست شما در وضعیت "در حال بررسی راهبر پلتفرم" قرار گرفت. پس از تایید راهبر، با مشخصات ذیل قادر به ورود به پنل سازمان خواهید بود.'
+              : 'Your application is PENDING review. Once approved, you can login with your credentials.'}
           </p>
 
           <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '16px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, textAlign: isFa ? 'right' : 'left', fontSize: '14px', marginBottom: '24px' }}>
             <div><strong>{isFa ? 'شناسه پیگیری:' : 'Application ID:'}</strong> <code style={{ color: theme.colors.primary }}>{submittedApplication.application_id}</code></div>
             <div><strong>{isFa ? 'نام کسب‌وکار:' : 'Business:'}</strong> {businessName}</div>
-            <div><strong>{isFa ? 'مالک:' : 'Owner:'}</strong> {ownerName} ({email})</div>
+            <div><strong>{isFa ? 'مالک:' : 'Owner:'}</strong> {ownerName}</div>
+            <div><strong>{isFa ? 'ایمیل ورود:' : 'Login Email:'}</strong> {email}</div>
+            <div><strong>{isFa ? 'رمز عبور حساب:' : 'Password:'}</strong> <span style={{ color: theme.colors.info, fontWeight: 'bold' }}>{password ? '•••••••• (رمز انتخابی شما)' : 'password123'}</span></div>
             <div><strong>{isFa ? 'وضعیت:' : 'Status:'}</strong> <span style={{ color: theme.colors.warning, fontWeight: 'bold' }}>{submittedApplication.status || 'PENDING'}</span></div>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
-              onClick={() => setSubmittedApplication(null)}
+              onClick={() => {
+                setSubmittedApplication(null);
+                setPassword('');
+              }}
               style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               {isFa ? 'ثبت درخواست جدید' : 'Submit Another Application'}
@@ -176,7 +190,23 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
 
             <div>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>
-                {isFa ? 'شماره همراه همراه:' : 'Phone Number:'}
+                {isFa ? 'رمز عبور حساب مالک:' : 'Password:'} *
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>
+                {isFa ? 'شماره همراه:' : 'Phone Number:'}
               </label>
               <input
                 type="text"
@@ -186,9 +216,7 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', boxSizing: 'border-box' }}
               />
             </div>
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>
                 {isFa ? 'شهر:' : 'City:'}
@@ -201,19 +229,19 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', boxSizing: 'border-box' }}
               />
             </div>
+          </div>
 
-            <div>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>
-                {isFa ? 'آدرس فروشگاه / دفتر مرکزی:' : 'Address:'}
-              </label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder={isFa ? 'خیابان ولیعصر، نرسیده به میدان ونک' : 'Valiasr St, Tehran'}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', boxSizing: 'border-box' }}
-              />
-            </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '14px' }}>
+              {isFa ? 'آدرس فروشگاه / دفتر مرکزی:' : 'Address:'}
+            </label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder={isFa ? 'خیابان ولیعصر، نرسیده به میدان ونک' : 'Valiasr St, Tehran'}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '15px', boxSizing: 'border-box' }}
+            />
           </div>
 
           <button

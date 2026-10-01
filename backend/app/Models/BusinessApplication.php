@@ -14,6 +14,7 @@ class BusinessApplication extends Model
         'business_name',
         'owner_name',
         'email',
+        'password',
         'phone',
         'business_type',
         'country',

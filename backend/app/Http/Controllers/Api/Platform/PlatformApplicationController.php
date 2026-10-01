@@ -102,7 +102,7 @@ class PlatformApplicationController extends Controller
                     'name' => $application->owner_name,
                     'email' => $application->email,
                     'phone' => $application->phone,
-                    'password' => Hash::make('password123'), // Default temporary password
+                    'password' => $application->password ?? Hash::make('password123'),
                     'role' => 'Owner',
                     'is_platform_admin' => false,
                 ]);
