@@ -15,6 +15,12 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
   const [rejectionReason, setRejectionReason] = useState('');
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [customPassword, setCustomPassword] = useState('');
+  const [showCustomPassword, setShowCustomPassword] = useState(false);
+
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
   const [isLoading, setIsLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
 
@@ -38,11 +44,26 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
     }
   };
 
-  const handleApprove = async (id: string) => {
-    if (!window.confirm(isFa ? 'آیا از تایید این درخواست و راه‌اندازی اتوماتیک سازمان/تننت مطمئن هستید؟' : 'Approve application and provision tenant?')) return;
+  const togglePasswordVisibility = (appId: string) => {
+    setVisiblePasswords((prev) => ({
+      ...prev,
+      [appId]: !prev[appId],
+    }));
+  };
+
+  const openApproveModal = (app: any) => {
+    setSelectedApp(app);
+    setCustomPassword(app.password ? 'password123' : 'password123');
+    setIsApproveModalOpen(true);
+  };
+
+  const handleApproveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedApp) return;
 
     try {
-      const res = await apiClient.approvePlatformApplication(id);
+      const res = await apiClient.approvePlatformApplication(selectedApp.id, customPassword || undefined);
+      setIsApproveModalOpen(false);
       setActionMessage(isFa ? `سازمان "${res.organization?.name || 'جدید'}" با موفقیت ایجاد گردید!` : 'Tenant provisioned successfully!');
       loadApplications();
       setSelectedApp(null);
@@ -74,7 +95,7 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
           {isFa ? 'مدیریت درخواست‌های ثبت سازمان (Platform Admin Dashboard)' : 'Platform Admin Business Applications'}
         </h2>
         <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '14px' }}>
-          {isFa ? 'بررسی درخواست‌های آنلاین کسب‌وکارها، تایید و ایجاد اتوماتیک تننت، کاربر مالک، انبار و فروشگاه اولیه' : 'Review incoming business applications, approve transactional tenant provisioning, or reject'}
+          {isFa ? 'بررسی درخواست‌های آنلاین کسب‌وکارها، تایید، ویرایش/مشاهده رمز عبور مالک، و راه‌اندازی اتوماتیک تننت' : 'Review business applications, manage owner passwords, approve tenant provisioning, or reject'}
         </p>
       </div>
 
@@ -118,67 +139,142 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
               <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'نام کسب‌وکار' : 'Business Name'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'مالک' : 'Owner Name'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'ایمیل' : 'Email'}</th>
+                <th style={{ padding: '12px 16px' }}>{isFa ? 'ایمیل ورود' : 'Email'}</th>
+                <th style={{ padding: '12px 16px' }}>{isFa ? 'رمز عبور' : 'Password'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'تلفن' : 'Phone'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'نوع کسب‌وکار' : 'Type'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'وضعیت' : 'Status'}</th>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'عملیات' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody>
-              {applications.map((app) => (
-                <tr key={app.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{app.business_name}</td>
-                  <td style={{ padding: '12px 16px' }}>{app.owner_name}</td>
-                  <td style={{ padding: '12px 16px' }}>{app.email}</td>
-                  <td style={{ padding: '12px 16px' }}>{app.phone || '-'}</td>
-                  <td style={{ padding: '12px 16px' }}>{app.business_type}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        backgroundColor: app.status === 'APPROVED' ? theme.colors.successLight : app.status === 'REJECTED' ? theme.colors.errorLight : theme.colors.warningLight,
-                        color: app.status === 'APPROVED' ? theme.colors.success : app.status === 'REJECTED' ? theme.colors.error : theme.colors.warning,
-                      }}
-                    >
-                      {app.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-                    {app.status === 'PENDING' && (
-                      <>
+              {applications.map((app) => {
+                const isPasswordVisible = Boolean(visiblePasswords[app.id]);
+                const pwdText = app.password ? (isPasswordVisible ? (app.password.length > 20 ? '•••••••• (رمز هش‌شده)' : app.password) : '••••••••') : '••••••••';
+
+                return (
+                  <tr key={app.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{app.business_name}</td>
+                    <td style={{ padding: '12px 16px' }}>{app.owner_name}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{app.email}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '13px' }}>{pwdText}</span>
                         <button
-                          onClick={() => handleApprove(app.id)}
-                          style={{ backgroundColor: theme.colors.success, color: '#0A2E1E', border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
+                          type="button"
+                          onClick={() => togglePasswordVisibility(app.id)}
+                          style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px' }}
+                          title={isFa ? 'نمایش/مخفی کردن رمز عبور' : 'Toggle password'}
                         >
-                          {isFa ? '✅ تایید و راه‌اندازی' : 'Approve'}
+                          {isPasswordVisible ? '👁️' : '🙈'}
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedApp(app);
-                            setIsRejectModalOpen(true);
-                          }}
-                          style={{ backgroundColor: theme.colors.error, color: '#FFFFFF', border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
-                        >
-                          {isFa ? '❌ رد درخواست' : 'Reject'}
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>{app.phone || '-'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          backgroundColor: app.status === 'APPROVED' ? theme.colors.successLight : app.status === 'REJECTED' ? theme.colors.errorLight : theme.colors.warningLight,
+                          color: app.status === 'APPROVED' ? theme.colors.success : app.status === 'REJECTED' ? theme.colors.error : theme.colors.warning,
+                        }}
+                      >
+                        {app.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
+                      {app.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => openApproveModal(app)}
+                            style={{ backgroundColor: theme.colors.success, color: '#0A2E1E', border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            {isFa ? '✅ تایید و راه‌اندازی' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedApp(app);
+                              setIsRejectModalOpen(true);
+                            }}
+                            style={{ backgroundColor: theme.colors.error, color: '#FFFFFF', border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            {isFa ? '❌ رد درخواست' : 'Reject'}
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
+      {/* Approve & Password Provisioning Modal */}
+      {isApproveModalOpen && selectedApp && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '24px', borderRadius: '12px', width: '480px', maxWidth: '90%', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold' }}>
+              🔑 {isFa ? 'تایید درخواست و تنظیم رمز عبور مالک' : 'Approve Tenant & Set Password'}
+            </h3>
+            <p style={{ fontSize: '14px', color: theme.colors.textSecondary, marginBottom: '16px' }}>
+              {isFa ? `سازمان "${selectedApp.business_name}" برای مالک (${selectedApp.email}) راه‌اندازی خواهد شد.` : `Provisioning tenant for ${selectedApp.email}`}
+            </p>
+
+            <form onSubmit={handleApproveSubmit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '6px' }}>
+                  {isFa ? 'رمز عبور حساب مالکی (قابل ویرایش):' : 'Owner Account Password:'}
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showCustomPassword ? 'text' : 'password'}
+                    required
+                    value={customPassword}
+                    onChange={(e) => setCustomPassword(e.target.value)}
+                    placeholder="••••••••"
+                    style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surface, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomPassword(!showCustomPassword)}
+                    style={{ position: 'absolute', left: isFa ? '10px' : 'auto', right: isFa ? 'auto' : '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                  >
+                    {showCustomPassword ? '👁️' : '🙈'}
+                  </button>
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginTop: '4px' }}>
+                  {isFa ? 'می‌توانید رمز عبور انتخابی کاربر را تایید کرده یا رمز عبور جدید تعیین کنید.' : 'You can keep the applicant password or set a new one.'}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsApproveModalOpen(false)}
+                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  {isFa ? 'انصراف' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  style={{ backgroundColor: theme.colors.success, color: '#0A2E1E', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  🚀 {isFa ? 'تایید و ایجاد حساب' : 'Confirm & Provision'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Reject Modal */}
       {isRejectModalOpen && selectedApp && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '24px', borderRadius: '12px', width: '480px', maxWidth: '90%', color: theme.colors.textPrimary }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '24px', borderRadius: '12px', width: '480px', maxWidth: '90%', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>{isFa ? 'رد درخواست ثبت‌نام سازمان' : 'Reject Application'}</h3>
             <p style={{ fontSize: '14px', color: theme.colors.textSecondary, marginBottom: '16px' }}>
               {isFa ? `درخواست کسب‌وکار "${selectedApp.business_name}" رد خواهد شد.` : `Application for "${selectedApp.business_name}" will be marked as REJECTED.`}

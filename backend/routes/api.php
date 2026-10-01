@@ -41,6 +41,9 @@ Route::prefix('v1')->middleware([TenantMiddleware::class, IdempotencyMiddleware:
     // Auth & Profile
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::get('/auth/profile', [AuthController::class, 'profile']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     // Organizations & Stores
     Route::get('/organizations', [OrganizationController::class, 'index']);

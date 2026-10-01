@@ -15,6 +15,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const isFa = language === 'fa';
@@ -131,23 +132,34 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
             <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
               {isFa ? 'رمز عبور راهبری:' : 'Admin Password:'} *
             </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                border: `1px solid ${theme.colors.borderStrong}`,
-                backgroundColor: theme.colors.surface,
-                color: theme.colors.textPrimary,
-                fontSize: '15px',
-                boxSizing: 'border-box',
-              }}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: theme.spacing.md,
+                  paddingLeft: isFa ? '12px' : '40px',
+                  paddingRight: isFa ? '40px' : '12px',
+                  borderRadius: theme.borderRadius.lg,
+                  border: `1px solid ${theme.colors.borderStrong}`,
+                  backgroundColor: theme.colors.surface,
+                  color: theme.colors.textPrimary,
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', left: isFa ? '12px' : 'auto', right: isFa ? 'auto' : '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
+              >
+                {showPassword ? '👁️' : '🙈'}
+              </button>
+            </div>
           </div>
 
           <button

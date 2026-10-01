@@ -76,6 +76,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     navigate('/app/dashboard');
   };
 
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div style={{ maxWidth: '480px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
       <div
@@ -151,24 +153,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
-              {isFa ? 'رمز عبور:' : 'Password:'} *
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                border: `1px solid ${theme.colors.border}`,
-                fontSize: '15px',
-                boxSizing: 'border-box',
-              }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
+                {isFa ? 'رمز عبور:' : 'Password:'} *
+              </label>
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                style={{ border: 'none', background: 'none', color: theme.colors.primary, fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {isFa ? 'فراموشی رمز عبور؟' : 'Forgot password?'}
+              </button>
+            </div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: theme.spacing.md,
+                  paddingLeft: isFa ? '12px' : '40px',
+                  paddingRight: isFa ? '40px' : '12px',
+                  borderRadius: theme.borderRadius.lg,
+                  border: `1px solid ${theme.colors.border}`,
+                  fontSize: '15px',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', left: isFa ? '12px' : 'auto', right: isFa ? 'auto' : '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
+              >
+                {showPassword ? '👁️' : '🙈'}
+              </button>
+            </div>
           </div>
 
           <button

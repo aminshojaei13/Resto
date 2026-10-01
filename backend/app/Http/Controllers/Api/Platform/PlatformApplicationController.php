@@ -94,6 +94,11 @@ class PlatformApplicationController extends Controller
         return DB::transaction(function () use ($request, $application) {
             $reviewer = $request->user();
 
+            $rawPassword = $request->input('custom_password') ?? $application->password;
+            $hashedPassword = $rawPassword
+                ? (Str::startsWith($rawPassword, '$2y$') ? $rawPassword : Hash::make($rawPassword))
+                : Hash::make('password123');
+
             // 1. Create or Find Owner User
             $user = User::where('email', $application->email)->first();
             if (!$user) {
@@ -102,10 +107,13 @@ class PlatformApplicationController extends Controller
                     'name' => $application->owner_name,
                     'email' => $application->email,
                     'phone' => $application->phone,
-                    'password' => $application->password ?? Hash::make('password123'),
+                    'password' => $hashedPassword,
                     'role' => 'Owner',
                     'is_platform_admin' => false,
                 ]);
+            } else {
+                $user->password = $hashedPassword;
+                $user->save();
             }
 
             // 2. Create Organization / Tenant

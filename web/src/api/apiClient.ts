@@ -657,12 +657,58 @@ export const apiClient = {
     }
   },
 
-  approvePlatformApplication: async (id: string): Promise<any> => {
+  approvePlatformApplication: async (id: string, custom_password?: string): Promise<any> => {
     const res = await fetch(`${BASE_URL}/platform/business-applications/${id}/approve`, {
       method: 'POST',
       headers: getHeaders(),
+      body: JSON.stringify({ custom_password }),
     });
     if (!res.ok) throw new Error('Failed to approve application');
+    return await res.json();
+  },
+
+  forgotPassword: async (email: string): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در ارسال درخواست بازیابی رمز عبور');
+    }
+    return await res.json();
+  },
+
+  resetPassword: async (data: { email: string; code: string; password: string; password_confirmation: string }): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در تغییر رمز عبور. کد یا اطلاعات نامعتبر است.');
+    }
+    return await res.json();
+  },
+
+  changePassword: async (data: { current_password: string; new_password: string; new_password_confirmation: string; email?: string }): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در بروزرسانی رمز عبور');
+    }
     return await res.json();
   },
 

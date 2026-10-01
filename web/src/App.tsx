@@ -7,6 +7,8 @@ import { PublicRegisterPage } from './pages/PublicRegisterPage';
 import { LoginPage } from './pages/LoginPage';
 import { PlatformLoginPage } from './pages/PlatformLoginPage';
 import { ActivationPage } from './pages/ActivationPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { PlatformAdminPage } from './pages/PlatformAdminPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PosPage } from './pages/PosPage';
@@ -17,7 +19,6 @@ import { CustomersPage } from './pages/CustomersPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { AccountingPage } from './pages/AccountingPage';
-import { EmptyState } from './components/EmptyState';
 import { AuthUser } from './types';
 
 export const App: React.FC = () => {
@@ -126,7 +127,7 @@ export const App: React.FC = () => {
   }
 
   // 2. Public Experience Routes
-  if (path === '/register' || path === '/login' || path === '/platform/login' || path === '/activation') {
+  if (path === '/register' || path === '/login' || path === '/platform/login' || path === '/activation' || path === '/forgot-password') {
     let pageContent = <PublicRegisterPage language={language} navigate={navigate} />;
     if (path === '/login') {
       pageContent = <LoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
@@ -134,6 +135,8 @@ export const App: React.FC = () => {
       pageContent = <PlatformLoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
     } else if (path === '/activation') {
       pageContent = <ActivationPage language={language} navigate={navigate} />;
+    } else if (path === '/forgot-password') {
+      pageContent = <ForgotPasswordPage language={language} navigate={navigate} />;
     }
 
     return (
@@ -253,15 +256,7 @@ export const App: React.FC = () => {
     } else if (path === '/app/accounting' || path === '/app/reports') {
       tenantContent = <AccountingPage language={language} />;
     } else if (path === '/app/settings') {
-      tenantContent = (
-        <EmptyState
-          title={isFa ? 'تنظیمات کسب‌وکار' : 'Settings'}
-          description={isFa ? 'پیکربندی حسابداری، ارز پایه و جزئیات فروشگاه' : 'Configure store currency, accounts, and profile'}
-          actionText={isFa ? 'بازگشت به داشبورد' : 'Back to Dashboard'}
-          onAction={() => navigate('/app/dashboard')}
-          icon="⚙️"
-        />
-      );
+      tenantContent = <SettingsPage language={language} authUser={authUser} navigate={navigate} />;
     }
 
     return (
