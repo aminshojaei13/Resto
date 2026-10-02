@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,6 +15,7 @@ class MessageImportTest extends TestCase
     {
         parent::setUp();
         $this->seed(MockDataSeeder::class);
+        $this->actingAs(User::find('usr_admin_1'));
     }
 
     public function test_deterministic_social_message_parsing(): void

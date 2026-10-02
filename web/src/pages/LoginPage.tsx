@@ -1,258 +1,243 @@
 import React, { useState } from 'react';
-import { apiClient } from '../api/apiClient';
 import { useTheme } from '../theme/ThemeContext';
+import { ApiError, apiClient } from '../api/apiClient';
+import { useAuth } from '../auth/AuthContext';
+import { Language, t } from '../i18n/authStrings';
 import { AuthUser } from '../types';
 
-interface LoginPageProps {
-  language?: 'fa' | 'en';
-  onLoginSuccess: (user: AuthUser) => void;
+interface Props {
+  language: Language;
   navigate: (path: string) => void;
+  onLoginSuccess?: (user: AuthUser) => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({
-  language = 'fa',
-  onLoginSuccess,
-  navigate,
-}) => {
+/**
+ * Business sign-in.
+ *
+ * Email and password only. There is no demo account, no quick login and no
+ * client-side fabrication of a session: if the server refuses, the page says
+ * so in one generic sentence that reveals nothing about the address.
+ */
+export const LoginPage: React.FC<Props> = ({ language, navigate, onLoginSuccess }) => {
+  const { theme, effectiveMode } = useTheme();
+  const { signIn } = useAuth();
+  const strings = t(language);
+  const isFa = language === 'fa';
+  const isDark = effectiveMode === 'warmDark';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { theme, effectiveMode } = useTheme();
-  const isDark = effectiveMode === 'warmDark';
-  const isFa = language === 'fa';
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setFieldErrors({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError(isFa ? 'لطفا ایمیل و رمز عبور را وارد کنید.' : 'Please enter email and password.');
+    if (!email.trim() || !password) {
+      setError(strings.required);
       return;
     }
 
     setIsSubmitting(true);
-    setError('');
 
     try {
-      const user = await apiClient.login({ email, password });
-      setIsSubmitting(false);
+      const user = await apiClient.login({
+        email: email.trim(),
+        password,
+        locale: language,
+        deviceName: 'business-web',
+      });
 
-      if (user.isPlatformAdmin) {
-        onLoginSuccess(user);
-        navigate('/platform/applications');
+      signIn(user);
+      onLoginSuccess?.(user);
+      navigate('/app/dashboard');
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setFieldErrors(caught.fieldErrors);
+        // A single generic message: never "no such user" or "wrong password".
+        setError(
+          caught.status === 429
+            ? strings.tooManyAttempts
+            : caught.status === 0
+              ? strings.offline
+              : caught.message
+        );
       } else {
-        onLoginSuccess(user);
-        navigate('/app/dashboard');
+        setError(strings.genericError);
       }
-    } catch (err: any) {
+    } finally {
       setIsSubmitting(false);
-      // Fallback for offline or demo login if credentials match known demo pattern
-      if (email.toLowerCase().includes('admin')) {
-        const user: AuthUser = {
-          id: 'usr_admin',
-          name: 'Resto Platform Admin',
-          email: email.toLowerCase(),
-          role: 'PlatformAdmin',
-          isPlatformAdmin: true,
-        };
-        onLoginSuccess(user);
-        navigate('/platform/applications');
-      } else {
-        setError(err.message || (isFa ? 'اطلاعات ورود نادرست است.' : 'Invalid email or password.'));
-      }
     }
   };
 
-  const handleQuickTenantLogin = () => {
-    const user: AuthUser = {
-      id: 'usr_owner_1',
-      name: 'Reza Alavi',
-      email: 'reza@grandcoffee.com',
-      role: 'Owner',
-      isPlatformAdmin: false,
-      tenantId: 'org_apex',
-    };
-    onLoginSuccess(user);
-    navigate('/app/dashboard');
-  };
-
-  const [showPassword, setShowPassword] = useState(false);
-
   return (
-    <div style={{ maxWidth: '480px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
-      <div
-        style={{
-          backgroundColor: theme.colors.surface,
-          borderRadius: theme.borderRadius.xl,
-          border: `1px solid ${theme.colors.border}`,
-          padding: theme.spacing['2xl'],
-          boxShadow: theme.shadows.md,
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: theme.spacing['2xl'] }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: theme.borderRadius.xl,
-              backgroundColor: theme.colors.primary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFF',
-              fontSize: '28px',
-              fontWeight: 800,
-              margin: '0 auto 16px auto',
-            }}
+    <div
+      style={{
+        maxWidth: '440px',
+        margin: '40px auto',
+        padding: '32px',
+        backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+        border: `1px solid ${isDark ? theme.colors.borderStrong : '#E2E8F0'}`,
+        borderRadius: '16px',
+        direction: isFa ? 'rtl' : 'ltr',
+        textAlign: isFa ? 'right' : 'left',
+        fontFamily: theme.typography.fontFamily,
+      }}
+    >
+      <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', color: theme.colors.textPrimary }}>
+        {strings.brandName}
+      </h1>
+      <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: theme.colors.textSecondary }}>
+        {strings.loginTitle}
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate>
+        <label
+          htmlFor="login-email"
+          style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: theme.colors.textPrimary }}
+        >
+          {strings.email}
+        </label>
+        <input
+          id="login-email"
+          name="email"
+          type="email"
+          autoComplete="username"
+          inputMode="email"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          dir="ltr"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder={strings.emailPlaceholder}
+          style={inputStyle(theme, isDark)}
+        />
+
+        <label
+          htmlFor="login-password"
+          style={{ display: 'block', fontSize: '13px', fontWeight: 600, margin: '16px 0 6px 0', color: theme.colors.textPrimary }}
+        >
+          {strings.password}
+        </label>
+        <div style={{ position: 'relative' }}>
+          <input
+            id="login-password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            dir="ltr"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={strings.passwordPlaceholder}
+            style={{ ...inputStyle(theme, isDark), paddingInlineEnd: '44px' }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((value) => !value)}
+            aria-label={showPassword ? strings.hidePassword : strings.showPassword}
+            title={showPassword ? strings.hidePassword : strings.showPassword}
+            style={revealButtonStyle(theme, isDark)}
           >
-            🔑
-          </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: theme.colors.textPrimary, margin: '0 0 8px 0' }}>
-            {isFa ? 'ورود به سامانه کسب‌وکار رستو' : 'Sign in to Resto Tenant Workspace'}
-          </h2>
-          <p style={{ color: theme.colors.textSecondary, fontSize: '14px', margin: 0 }}>
-            {isFa ? 'وارد حساب مدیریت سازمان یا پنل فروشگاهی شوید' : 'Enter your organization credentials to access your dashboard'}
-          </p>
+            {showPassword ? '🙈' : '👁'}
+          </button>
         </div>
 
         {error && (
           <div
+            role="alert"
             style={{
-              backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
-              color: isDark ? theme.colors.error : '#991B1B',
-              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-              borderRadius: theme.borderRadius.lg,
-              fontSize: '14px',
-              marginBottom: theme.spacing.lg,
+              marginTop: '16px',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              backgroundColor: isDark ? theme.colors.errorLight : '#FEF2F2',
+              color: isDark ? theme.colors.error : '#B91C1C',
             }}
           >
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
-              {isFa ? 'ایمیل کاری (نام کاربری):' : 'Work Email:'} *
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="reza@grandcoffee.com"
-              style={{
-                width: '100%',
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                border: `1px solid ${theme.colors.border}`,
-                fontSize: '15px',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
+        {Object.entries(fieldErrors).map(([field, messages]) => (
+          <p key={field} style={{ margin: '8px 0 0 0', fontSize: '12px', color: isDark ? theme.colors.error : '#B91C1C' }}>
+            {messages.join(' ')}
+          </p>
+        ))}
 
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
-                {isFa ? 'رمز عبور:' : 'Password:'} *
-              </label>
-              <button
-                type="button"
-                onClick={() => navigate('/forgot-password')}
-                style={{ border: 'none', background: 'none', color: theme.colors.primary, fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                {isFa ? 'فراموشی رمز عبور؟' : 'Forgot password?'}
-              </button>
-            </div>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: theme.spacing.md,
-                  paddingLeft: isFa ? '12px' : '40px',
-                  paddingRight: isFa ? '40px' : '12px',
-                  borderRadius: theme.borderRadius.lg,
-                  border: `1px solid ${theme.colors.border}`,
-                  fontSize: '15px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', left: isFa ? '12px' : 'auto', right: isFa ? 'auto' : '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
-              >
-                {showPassword ? '👁️' : '🙈'}
-              </button>
-            </div>
-          </div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          style={{
+            width: '100%',
+            marginTop: '20px',
+            padding: '12px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: theme.colors.primary,
+            color: '#FFFFFF',
+            fontSize: '15px',
+            fontWeight: 700,
+            cursor: isSubmitting ? 'default' : 'pointer',
+            opacity: isSubmitting ? 0.7 : 1,
+            fontFamily: theme.typography.fontFamily,
+          }}
+        >
+          {isSubmitting ? strings.signingIn : strings.signIn}
+        </button>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{
-              backgroundColor: theme.colors.primary,
-              color: '#FFF',
-              border: 'none',
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.lg,
-              fontSize: '16px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              marginTop: '8px',
-            }}
-          >
-            {isSubmitting ? (isFa ? 'در حال بررسی...' : 'Signing in...') : (isFa ? 'ورود به حساب کسب‌وکار' : 'Sign In')}
-          </button>
-        </form>
-
-        {/* Demo Quick Login */}
-        <div style={{ marginTop: theme.spacing['2xl'], paddingTop: theme.spacing.xl, borderTop: `1px solid ${theme.colors.border}` }}>
-          <div style={{ fontSize: '12px', color: theme.colors.textSecondary, marginBottom: theme.spacing.md, textAlign: 'center' }}>
-            {isFa ? 'دسترس آسان تست سریع (Quick Demo Access):' : 'Quick Demo Access:'}
-          </div>
-          <button
-            onClick={handleQuickTenantLogin}
-            style={{
-              width: '100%',
-              backgroundColor: theme.colors.primaryLight,
-              color: theme.colors.primaryDark,
-              border: 'none',
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.md,
-              fontWeight: 700,
-              fontSize: '14px',
-              cursor: 'pointer',
-            }}
-          >
-            🏢 {isFa ? 'ورود سریع به عنوان مالک سازمان (Tenant Owner Demo)' : 'Demo Login as Tenant Owner'}
-          </button>
-        </div>
-
-        {/* Links */}
-        <div style={{ marginTop: theme.spacing.xl, display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-          <button
-            type="button"
-            onClick={() => navigate('/register')}
-            style={{ border: 'none', background: 'none', color: theme.colors.primary, cursor: 'pointer', fontWeight: 600 }}
-          >
-            {isFa ? 'ثبت کسب‌وکار جدید در رستو' : 'Register New Business'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/activation')}
-            style={{ border: 'none', background: 'none', color: theme.colors.textSecondary, cursor: 'pointer' }}
-          >
-            {isFa ? 'راهنمای فعال‌سازی' : 'Activation Info'}
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={() => navigate('/forgot-password')}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: '12px',
+            background: 'none',
+            border: 'none',
+            color: theme.colors.info,
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: theme.typography.fontFamily,
+          }}
+        >
+          {strings.forgotPassword}
+        </button>
+      </form>
     </div>
   );
 };
+
+export const inputStyle = (theme: any, isDark: boolean) => ({
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: '8px',
+  border: `1px solid ${isDark ? theme.colors.borderStrong : '#CBD5E1'}`,
+  backgroundColor: isDark ? theme.colors.background : '#FFFFFF',
+  color: theme.colors.textPrimary,
+  fontSize: '14px',
+  fontFamily: theme.typography.fontFamily,
+  boxSizing: 'border-box' as const,
+});
+
+export const revealButtonStyle = (theme: any, isDark: boolean) => ({
+  position: 'absolute' as const,
+  insetInlineEnd: '6px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '16px',
+  padding: '4px',
+  lineHeight: 1,
+  color: theme.colors.textSecondary,
+  opacity: isDark ? 0.9 : 1,
+});
+
+export default LoginPage;

@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\User;
 use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -92,7 +93,7 @@ class SaasOnboardingTest extends TestCase
                          ->postJson("/api/v1/platform/business-applications/{$app->id}/approve");
 
         $response->assertStatus(200)
-                 ->assertJsonFragment(['message' => 'Business application approved and tenant provisioned successfully.']);
+                 ->assertJsonFragment(['message' => 'درخواست تأیید و کسب‌وکار ایجاد شد. لینک فعال‌سازی برای مالک ارسال گردید.']);
 
         $app->refresh();
         $this::assertEquals('APPROVED', $app->status);
@@ -104,6 +105,21 @@ class SaasOnboardingTest extends TestCase
         $this->assertDatabaseHas('organization_memberships', ['organization_id' => $app->organization_id, 'role' => 'OWNER']);
         $this->assertDatabaseHas('stores', ['organization_id' => $app->organization_id]);
         $this->assertDatabaseHas('warehouses', ['organization_id' => $app->organization_id]);
+
+        // The owner must never receive a platform-chosen password: they are
+        // invited and set their own.
+        $owner = User::where('email', 'sara@gourmetbakery.com')->first();
+        $this::assertEquals(User::STATUS_PENDING_INVITE, $owner->status);
+        $this::assertFalse(Hash::check('password123', $owner->password));
+        $this->assertDatabaseHas('staff_invitations', [
+            'organization_id' => $app->organization_id,
+            'email' => 'sara@gourmetbakery.com',
+            'status' => 'PENDING',
+        ]);
+
+        // The response must not contain the invitation token.
+        $this::assertStringNotContainsString('token', (string) $response->json('owner.invitation_id'));
+        $this::assertArrayNotHasKey('token', (array) $response->json('owner'));
     }
 
     public function test_platform_admin_rejection_flow(): void
@@ -131,7 +147,11 @@ class SaasOnboardingTest extends TestCase
 
     public function test_tenant_onboarding_completion_flow(): void
     {
-        $response = $this->postJson('/api/v1/tenant/onboarding/complete', [], ['X-Tenant-ID' => 'org_apex']);
+        // An owner of org_apex completes setup.
+        $owner = User::find('usr_admin_1');
+
+        $response = $this->actingAs($owner)
+                         ->postJson('/api/v1/tenant/onboarding/complete', [], ['X-Tenant-ID' => 'org_apex']);
 
         $response->assertStatus(200)
                  ->assertJsonFragment(['onboarding_status' => 'COMPLETED']);
@@ -140,5 +160,20 @@ class SaasOnboardingTest extends TestCase
             'id' => 'org_apex',
             'onboarding_status' => 'COMPLETED',
         ]);
+    }
+
+    public function test_onboarding_cannot_target_a_business_the_caller_does_not_belong_to(): void
+    {
+        $stranger = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Outsider',
+            'email' => 'outsider@example.com',
+            'password' => bcrypt('Str0ng-Passphrase!'),
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($stranger)
+            ->postJson('/api/v1/tenant/onboarding/complete', [], ['X-Tenant-ID' => 'org_apex'])
+            ->assertStatus(403);
     }
 }

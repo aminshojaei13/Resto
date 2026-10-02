@@ -7,44 +7,32 @@ use App\Models\AuditLog;
 use App\Models\BusinessApplication;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
+use App\Models\StaffInvitation;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Notifications\StaffInvitationNotification;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Exception;
 
 class PlatformApplicationController extends Controller
 {
-    private function checkPlatformAdmin(Request $request)
+    /**
+     * Authorization is handled by the `platform.admin` route middleware.
+     * This guard remains only as a defence in depth for direct controller use:
+     * the caller must be the authenticated platform administrator. There is no
+     * header override, no environment fallback and no "first admin" lookup.
+     */
+    private function checkPlatformAdmin(Request $request): bool
     {
         $user = $request->user();
 
-        if (!$user && auth('sanctum')->check()) {
-            $user = auth('sanctum')->user();
-        }
-
-        if (!$user && $userId = $request->header('X-User-ID')) {
-            $user = User::find($userId);
-        }
-
-        if (!$user && $request->header('X-Platform-Admin') === 'true') {
-            $user = User::where('is_platform_admin', true)->first();
-        }
-
-        // Fallback to default platform admin user in local/dev environment
-        if (!$user) {
-            $user = User::where('is_platform_admin', true)->first();
-        }
-
-        if ($user && $user->is_platform_admin) {
-            $request->setUserResolver(fn() => $user);
-            return true;
-        }
-
-        return false;
+        return $user instanceof User && $user->isPlatformAdmin();
     }
 
     public function index(Request $request)
@@ -94,26 +82,27 @@ class PlatformApplicationController extends Controller
         return DB::transaction(function () use ($request, $application) {
             $reviewer = $request->user();
 
-            $rawPassword = $request->input('custom_password') ?? $application->password;
-            $hashedPassword = $rawPassword
-                ? (Str::startsWith($rawPassword, '$2y$') ? $rawPassword : Hash::make($rawPassword))
-                : Hash::make('password123');
-
             // 1. Create or Find Owner User
+            //
+            // No password is ever chosen, displayed or stored here. The owner
+            // receives an invitation link and sets their own password.
             $user = User::where('email', $application->email)->first();
             if (!$user) {
+                $nameParts = preg_split('/\s+/u', trim((string) $application->owner_name), 2) ?: [];
                 $user = User::create([
                     'id' => (string) Str::uuid(),
                     'name' => $application->owner_name,
+                    'first_name' => $nameParts[0] ?? $application->owner_name,
+                    'last_name' => $nameParts[1] ?? null,
                     'email' => $application->email,
                     'phone' => $application->phone,
-                    'password' => $hashedPassword,
+                    // Placeholder: the account is unusable until the owner
+                    // completes the invitation and sets a real password.
+                    'password' => Hash::make(Str::random(64)),
                     'role' => 'Owner',
+                    'status' => User::STATUS_PENDING_INVITE,
                     'is_platform_admin' => false,
                 ]);
-            } else {
-                $user->password = $hashedPassword;
-                $user->save();
             }
 
             // 2. Create Organization / Tenant
@@ -138,6 +127,9 @@ class PlatformApplicationController extends Controller
                 'organization_id' => $organization->id,
                 'user_id' => $user->id,
                 'role' => 'OWNER',
+                'status' => OrganizationMembership::STATUS_ACTIVE,
+                'invited_by' => $reviewer?->id,
+                'joined_at' => now(),
             ]);
 
             // 4. Provision Default Store
@@ -168,7 +160,7 @@ class PlatformApplicationController extends Controller
             $application->save();
 
             // 7. Audit Logging
-            $reviewerEmail = $reviewer?->email ?? 'admin@resto.com';
+            $reviewerEmail = $reviewer?->email ?? '';
             AuditLog::create([
                 'id' => (string) Str::uuid(),
                 'organization_id' => $organization->id,
@@ -176,18 +168,43 @@ class PlatformApplicationController extends Controller
                 'action' => 'business.application.approved',
                 'entity_type' => 'Organization',
                 'entity_id' => $organization->id,
-                'details' => "Tenant '{$organization->name}' provisioned for owner {$user->email} by Platform Admin {$reviewerEmail}",
+                'details' => "Business '{$organization->name}' provisioned for owner {$user->email} by platform administrator {$reviewerEmail}",
                 'ip_address' => $request->ip(),
             ]);
 
+            // 8. Invite the owner so they can set their own password.
+            // The response never contains the invitation token.
+            $rawToken = Str::random(64);
+            $invitation = StaffInvitation::create([
+                'id' => (string) Str::uuid(),
+                'organization_id' => $organization->id,
+                'email' => $user->email,
+                'first_name' => $user->first_name ?? $application->owner_name,
+                'last_name' => $user->last_name,
+                'role' => OrganizationMembership::ROLE_OWNER,
+                'token' => hash('sha256', $rawToken),
+                'invited_by' => $reviewer->id,
+                'status' => StaffInvitation::STATUS_PENDING,
+                'expires_at' => now()->addHours((int) config('resto.staff_invitation_hours', 72)),
+            ]);
+
+            Notification::send(new AnonymousNotifiable, new StaffInvitationNotification(
+                $rawToken,
+                $organization->name,
+                $reviewer->full_name !== '' ? $reviewer->full_name : $reviewer->email,
+                OrganizationMembership::ROLE_OWNER,
+                $user->preferredLanguage(),
+            ));
+
             return response()->json([
-                'message' => 'Business application approved and tenant provisioned successfully.',
+                'message' => 'درخواست تأیید و کسب‌وکار ایجاد شد. لینک فعال‌سازی برای مالک ارسال گردید.',
                 'application' => $application,
                 'organization' => $organization->load(['stores.warehouses']),
                 'owner' => [
                     'id' => $user->id,
-                    'name' => $user->name,
+                    'name' => $user->full_name,
                     'email' => $user->email,
+                    'invitation_id' => $invitation->id,
                 ]
             ], 200);
         });

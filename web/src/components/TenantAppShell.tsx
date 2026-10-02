@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
-import { AuthUser } from '../types';
 
 interface TenantAppShellProps {
   currentPath: string;
@@ -10,8 +9,10 @@ interface TenantAppShellProps {
   setLanguage: (lang: 'fa' | 'en') => void;
   activeOrgName: string;
   activeStoreName: string;
-  onOpenTenantModal: () => void;
-  authUser: AuthUser | null;
+  activeWarehouseName: string;
+  onOpenBusinessModal: () => void;
+  /** Display name of the signed-in person, exactly as the server reports it. */
+  currentUserName: string;
   onLogout: () => void;
   children: React.ReactNode;
 }
@@ -28,8 +29,9 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   setLanguage,
   activeOrgName,
   activeStoreName,
-  onOpenTenantModal,
-  authUser,
+  activeWarehouseName,
+  onOpenBusinessModal,
+  currentUserName,
   onLogout,
   children,
 }) => {
@@ -74,7 +76,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       items: [
         { path: '/app/expenses', labelFa: 'هزینه‌های جاری', labelEn: 'Expenses', icon: '💸' },
         { path: '/app/accounting', labelFa: 'دفتر کل و گزارش‌ها', labelEn: 'Ledger & Reports', icon: '⚖️' },
-        { path: '/app/settings', labelFa: 'تنظیمات کسب‌وکار', labelEn: 'Settings', icon: '⚙️' },
+        { path: '/app/staff', labelFa: 'کارمندان', labelEn: 'Staff', icon: '👤' },
+        { path: '/app/profile', labelFa: 'حساب کاربری من', labelEn: 'My account', icon: '⚙️' },
       ],
     },
   ];
@@ -155,10 +158,10 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
         )}
       </div>
 
-      {/* Tenant Switcher Trigger */}
+      {/* Business switcher */}
       <div style={{ padding: theme.spacing.lg }}>
         <button
-          onClick={onOpenTenantModal}
+          onClick={onOpenBusinessModal}
           style={{
             width: '100%',
             backgroundColor: theme.colors.sidebarItemActiveBg,
@@ -174,8 +177,11 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
             textAlign: isFa ? 'right' : 'left',
           }}
         >
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>              <div style={{ fontWeight: 600, color: theme.colors.sidebarTextActive }}>{activeOrgName}</div>
-              <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>{activeStoreName}</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontWeight: 600, color: theme.colors.sidebarTextActive }}>{activeOrgName}</div>
+            <div style={{ fontSize: '11px', color: theme.colors.sidebarText }}>
+              {[activeStoreName, activeWarehouseName].filter(Boolean).join(' · ')}
+            </div>
           </div>
           <span style={{ fontSize: '12px' }}>▼</span>
         </button>
@@ -327,25 +333,13 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
               {currentItem ? (isFa ? currentItem.labelFa : currentItem.labelEn) : (isFa ? 'پنل کسب‌وکار' : 'Business OS')}
             </span>
 
-            <span
-              style={{
-                fontSize: '12px',
-                padding: '2px 10px',
-                borderRadius: theme.borderRadius.full,
-                backgroundColor: theme.colors.primaryLight,
-                color: theme.colors.primaryDark,
-                fontWeight: 600,
-              }}
-            >
-              {isFa ? 'نسخه فعال (SaaS Tenant)' : 'Active SaaS Tenant'}
-            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
             <ThemeToggle language={language} />
 
             <button
-              onClick={onOpenTenantModal}
+              onClick={onOpenBusinessModal}
               style={{
                 backgroundColor: theme.colors.surfaceHover,
                 border: `1px solid ${theme.colors.border}`,
@@ -360,9 +354,20 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
               🏢 {activeOrgName}
             </button>
 
-            <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-              👤 {authUser?.name || (isFa ? 'مالک کسب‌وکار' : 'Business Owner')}
-            </span>
+            <button
+              onClick={() => navigate('/app/profile')}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: theme.colors.textSecondary,
+                cursor: 'pointer',
+                padding: '6px 4px',
+              }}
+            >
+              👤 {currentUserName}
+            </button>
 
             <button
               onClick={onLogout}

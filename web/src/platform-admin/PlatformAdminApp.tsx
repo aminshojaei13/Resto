@@ -1,94 +1,150 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { PlatformAdminShell } from '../components/PlatformAdminShell';
 import { PlatformLoginPage } from '../pages/PlatformLoginPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { PlatformAdminPage } from '../pages/PlatformAdminPage';
 import { PlatformTenantsPage } from './pages/PlatformTenantsPage';
 import { PlatformAuditPage } from './pages/PlatformAuditPage';
-import { AuthUser } from '../types';
+import { AuthProvider, useAuth } from '../auth/AuthContext';
+import { setUnauthorizedHandler } from '../api/apiClient';
+import { useTheme } from '../theme/ThemeContext';
+import { Language } from '../i18n/authStrings';
 
-export const PlatformAdminApp: React.FC = () => {
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    return window.location.pathname || '/applications';
-  });
+const PlatformRoutes: React.FC = () => {
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname || '/applications');
+  const [language, setLanguage] = useState<Language>('fa');
 
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('resto_auth_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const [language, setLanguage] = useState<'fa' | 'en'>('fa');
+  const { user, isRestoring, isPlatformAdmin, signOut } = useAuth();
+  const { theme, effectiveMode } = useTheme();
   const isFa = language === 'fa';
+  const isDark = effectiveMode === 'warmDark';
 
-  const navigate = (path: string) => {
+  const navigate = useCallback((path: string) => {
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
     }
     setCurrentPath(path);
-  };
+  }, []);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/applications');
-    };
+    const handlePopState = () => setCurrentPath(window.location.pathname || '/applications');
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleLoginSuccess = (user: AuthUser) => {
-    setAuthUser(user);
-    localStorage.setItem('resto_auth_user', JSON.stringify(user));
-  };
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void signOut();
+      setCurrentPath('/login');
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [signOut]);
 
-  const handleLogout = () => {
-    setAuthUser(null);
-    localStorage.removeItem('resto_auth_user');
+  useEffect(() => {
+    if (!isRestoring && !user && currentPath !== '/login' && currentPath !== '/forgot-password' && currentPath !== '/reset-password') {
+      setCurrentPath('/login');
+    }
+  }, [isRestoring, user, currentPath]);
+
+  if (isRestoring) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.background,
+          color: theme.colors.textSecondary,
+          fontFamily: theme.typography.fontFamily,
+        }}
+      >
+        …
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (currentPath === '/forgot-password') {
+      return <ForgotPasswordPage language={language} navigate={navigate} />;
+    }
+
+    if (currentPath === '/reset-password') {
+      return <ResetPasswordPage language={language} navigate={navigate} />;
+    }
+
+    return <PlatformLoginPage language={language} onLoginSuccess={() => navigate('/applications')} navigate={navigate} />;
+  }
+
+  const handleLogout = async () => {
+    await signOut();
     navigate('/login');
   };
 
-  // Unauthenticated Guard
-  if (!authUser) {
-    return <PlatformLoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
-  }
-
-  // Non-Platform Admin Guard (403 Authorization Boundary Check)
-  if (!authUser.isPlatformAdmin) {
+  // The flag comes from the authenticated profile, so it reflects what the
+  // server says about this account and nothing the browser can set itself.
+  if (!isPlatformAdmin) {
     return (
-      <div style={{ maxWidth: '600px', margin: '80px auto', padding: '32px', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '16px', color: '#991B1B', fontFamily: 'system-ui, sans-serif', direction: isFa ? 'rtl' : 'ltr', textAlign: 'center' }}>
+      <div
+        style={{
+          maxWidth: '600px',
+          margin: '80px auto',
+          padding: '32px',
+          backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
+          border: `1px solid ${isDark ? theme.colors.error : '#FCA5A5'}`,
+          borderRadius: '16px',
+          color: isDark ? theme.colors.error : '#991B1B',
+          fontFamily: theme.typography.fontFamily,
+          direction: isFa ? 'rtl' : 'ltr',
+          textAlign: 'center',
+        }}
+      >
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>⛔</div>
         <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: 800 }}>
-          {isFa ? 'خطای دسترسی غیرمجاز راهبر پلتفرم (403 Access Denied)' : '403 Access Denied - Platform Admin Authorization Required'}
+          {isFa ? 'دسترسی غیرمجاز' : 'Access denied'}
         </h2>
         <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: 1.6 }}>
           {isFa
-            ? 'پورت ۳۰۰۱ منحصراً ویژه راهبران پلتفرم ابری رستو است. حساب کاربری شما از نوع کاربر عادی سازمان/تننت بوده و فاقد سطح دسترسی is_platform_admin می‌باشد.'
-            : 'Port 3001 is reserved exclusively for Resto Platform Operators. Your account is a tenant business user and lacks is_platform_admin authorization.'}
+            ? 'این بخش فقط برای مدیران سامانه است. حساب کاربری شما دسترسی لازم را ندارد.'
+            : 'This console is for system administrators only. Your account does not have the required access.'}
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <a
             href="http://localhost:3000/app/dashboard"
-            style={{ backgroundColor: '#991B1B', color: '#FFF', textDecoration: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '14px' }}
+            style={{
+              backgroundColor: theme.colors.primary,
+              color: '#FFF',
+              textDecoration: 'none',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '14px',
+            }}
           >
-            🏢 {isFa ? 'انتقال به پنل سازمان (localhost:3000)' : 'Go to Tenant Dashboard (localhost:3000)'}
+            🏢 {isFa ? 'رفتن به پنل کسب‌وکار' : 'Go to the business app'}
           </a>
           <button
+            type="button"
             onClick={handleLogout}
-            style={{ backgroundColor: '#FFF', color: '#991B1B', border: '1px solid #991B1B', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}
+            style={{
+              backgroundColor: 'transparent',
+              color: isDark ? theme.colors.error : '#991B1B',
+              border: `1px solid ${isDark ? theme.colors.error : '#991B1B'}`,
+              padding: '10px 20px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: 'pointer',
+            }}
           >
-            🚪 {isFa ? 'خروج از حساب' : 'Logout'}
+            🚪 {isFa ? 'خروج از حساب' : 'Sign out'}
           </button>
         </div>
       </div>
     );
   }
 
-  // Route Resolver for Platform Admin Application
   const path = currentPath === '/' ? '/applications' : currentPath;
 
   let pageContent = <PlatformAdminPage language={language} navigate={navigate} />;
@@ -96,8 +152,6 @@ export const PlatformAdminApp: React.FC = () => {
     pageContent = <PlatformTenantsPage language={language} />;
   } else if (path === '/audit') {
     pageContent = <PlatformAuditPage language={language} />;
-  } else if (path === '/login') {
-    pageContent = <PlatformLoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
   } else if (path.startsWith('/applications/')) {
     const appId = path.replace('/applications/', '');
     pageContent = <PlatformAdminPage language={language} selectedApplicationId={appId} navigate={navigate} />;
@@ -109,12 +163,18 @@ export const PlatformAdminApp: React.FC = () => {
       navigate={navigate}
       language={language}
       setLanguage={setLanguage}
-      authUser={authUser}
+      currentUserName={user.displayName || user.email}
       onLogout={handleLogout}
     >
       {pageContent}
     </PlatformAdminShell>
   );
 };
+
+export const PlatformAdminApp: React.FC = () => (
+  <AuthProvider>
+    <PlatformRoutes />
+  </AuthProvider>
+);
 
 export default PlatformAdminApp;

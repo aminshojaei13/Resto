@@ -166,11 +166,49 @@ export interface AccountingSummary {
   todaySalesCount: number;
 }
 
-export interface AuthUser {
+export interface BusinessMembership {
   id: string;
   name: string;
-  email: string;
   role: string;
+  status: string;
+  stores: {
+    id: string;
+    name: string;
+    warehouses: { id: string; name: string }[];
+  }[];
+}
+
+/**
+ * The person who is signed in, exactly as the server describes them.
+ * `name` is the server-composed full name; the UI never rebuilds it.
+ */
+export interface AuthUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  name: string;
+  displayName: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  role: string | null;
   isPlatformAdmin: boolean;
-  tenantId?: string;
+  permissions: string[];
+  memberships: BusinessMembership[];
+  token?: string;
+}
+
+export interface StaffMember {
+  membershipId: string;
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  name: string;
+  displayName: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  status: string;
+  joinedAt: string | null;
+  isSelf: boolean;
 }

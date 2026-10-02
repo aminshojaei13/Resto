@@ -89,7 +89,7 @@ export const PublicShell: React.FC<PublicShellProps> = ({
             </div>
             <div>
               <div style={{ color: theme.colors.textPrimary, fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em' }}>
-                {isFa ? 'رسـتو (Resto SaaS)' : 'Resto SaaS'}
+                {isFa ? 'رسـتو' : 'Resto'}
               </div>
               <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
                 {isFa ? 'پلتفرم جامع مدیریت کسب‌وکار و فروش' : 'Unified Business Operations Platform'}
@@ -166,8 +166,8 @@ export const PublicShell: React.FC<PublicShellProps> = ({
         }}
       >
         {isFa
-          ? 'تمامی حقوق برای پلتفرم ابری کسب‌وکار Resto SaaS محفوظ است © ۲۰۲۵'
-          : '© 2025 Resto SaaS Enterprise Platform. All rights reserved.'}
+          ? '© ۲۰۲۶ رستو. تمامی حقوق محفوظ است.'
+          : '© 2026 Resto. All rights reserved.'}
       </footer>
     </div>
   );

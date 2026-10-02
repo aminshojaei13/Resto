@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
-import { AuthUser } from '../types';
 
 interface PlatformAdminShellProps {
   currentPath: string;
   navigate: (path: string) => void;
   language: 'fa' | 'en';
   setLanguage: (lang: 'fa' | 'en') => void;
-  authUser: AuthUser | null;
+  /** Display name of the signed-in administrator, exactly as the server reports it. */
+  currentUserName: string;
   onLogout: () => void;
   children: React.ReactNode;
 }
@@ -18,7 +18,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
   navigate,
   language,
   setLanguage,
-  authUser,
+  currentUserName,
   onLogout,
   children,
 }) => {
@@ -260,7 +260,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
             <ThemeToggle language={language} />
             <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-              👤 {authUser?.name || (isFa ? 'راهبر سیستم' : 'System Admin')} ({authUser?.email || 'admin@resto.com'})
+              👤 {currentUserName}
             </div>
             <button
               onClick={onLogout}

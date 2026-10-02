@@ -15,6 +15,7 @@ class EntityCrudAndWorkflowTest extends TestCase
     {
         parent::setUp();
         $this->seed(MockDataSeeder::class);
+        $this->actingAs(User::find('usr_admin_1'));
     }
 
     public function test_product_crud_lifecycle(): void
@@ -115,7 +116,7 @@ class EntityCrudAndWorkflowTest extends TestCase
         // Accessing org_braveboy (unauthorized for cashier)
         $unauthorizedRes = $this->getJson('/api/v1/products', ['X-Tenant-ID' => 'org_braveboy']);
         $unauthorizedRes->assertStatus(403)
-                        ->assertJsonFragment(['error' => 'Unauthorized organization access']);
+                        ->assertJsonFragment(['message' => 'شما عضو این کسب‌وکار نیستید.']);
     }
 
     public function test_idempotency_key_middleware(): void

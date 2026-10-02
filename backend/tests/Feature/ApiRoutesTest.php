@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,6 +15,17 @@ class ApiRoutesTest extends TestCase
     {
         parent::setUp();
         $this->seed(MockDataSeeder::class);
+
+        // Every business endpoint now requires a real authenticated user.
+        $this->actingAs(User::find('usr_admin_1'));
+    }
+
+    public function test_business_endpoints_reject_unauthenticated_callers(): void
+    {
+        auth()->logout();
+
+        $this->getJson('/api/v1/organizations')->assertStatus(401);
+        $this->getJson('/api/v1/products')->assertStatus(401);
     }
 
     public function test_health_endpoint(): void

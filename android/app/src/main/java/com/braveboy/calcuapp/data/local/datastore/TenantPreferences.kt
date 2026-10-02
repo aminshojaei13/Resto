@@ -12,15 +12,19 @@ import kotlinx.coroutines.flow.map
 
 private val Context.tenantDataStore: DataStore<Preferences> by preferencesDataStore(name = "tenant_preferences")
 
+/**
+ * Which business, store and warehouse the person is currently working in.
+ *
+ * This deliberately holds no identity: the person's name and role come from the
+ * authenticated profile, never from this file. "Signed in" is decided by
+ * [SessionStore], not by whether a business happens to be selected.
+ */
 class TenantPreferences(private val context: Context) {
 
     private object PreferenceKeys {
         val ACTIVE_ORG_ID = stringPreferencesKey("active_org_id")
         val ACTIVE_STORE_ID = stringPreferencesKey("active_store_id")
         val ACTIVE_WAREHOUSE_ID = stringPreferencesKey("active_warehouse_id")
-        val USER_ID = stringPreferencesKey("user_id")
-        val USER_NAME = stringPreferencesKey("user_name")
-        val USER_ROLE = stringPreferencesKey("user_role")
         val LANGUAGE = stringPreferencesKey("language")
     }
 
@@ -29,11 +33,12 @@ class TenantPreferences(private val context: Context) {
             activeOrgId = prefs[PreferenceKeys.ACTIVE_ORG_ID] ?: "",
             activeStoreId = prefs[PreferenceKeys.ACTIVE_STORE_ID] ?: "",
             activeWarehouseId = prefs[PreferenceKeys.ACTIVE_WAREHOUSE_ID] ?: "",
-            userId = prefs[PreferenceKeys.USER_ID] ?: "",
-            userName = prefs[PreferenceKeys.USER_NAME] ?: "",
-            userRole = prefs[PreferenceKeys.USER_ROLE] ?: "",
+            // Empty by default: the UI must not invent a person.
+            userId = "",
+            userName = "",
+            userRole = "",
             language = prefs[PreferenceKeys.LANGUAGE] ?: "fa",
-            isLoggedIn = (prefs[PreferenceKeys.ACTIVE_ORG_ID]?.isNotEmpty() == true)
+            isLoggedIn = false
         )
     }
 
@@ -64,11 +69,12 @@ class TenantPreferences(private val context: Context) {
         }
     }
 
-    suspend fun updateUserProfile(userId: String, name: String, role: String) {
+    /** Choosing a different business must not leave the previous person's context behind. */
+    suspend fun clearActiveTenant() {
         context.tenantDataStore.edit { prefs ->
-            prefs[PreferenceKeys.USER_ID] = userId
-            prefs[PreferenceKeys.USER_NAME] = name
-            prefs[PreferenceKeys.USER_ROLE] = role
+            prefs.remove(PreferenceKeys.ACTIVE_ORG_ID)
+            prefs.remove(PreferenceKeys.ACTIVE_STORE_ID)
+            prefs.remove(PreferenceKeys.ACTIVE_WAREHOUSE_ID)
         }
     }
 }

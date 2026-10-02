@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { apiClient } from '../api/apiClient';
-import { Product, Purchase, Supplier } from '../types';
+import { apiClient, getCurrentContext } from '../api/apiClient';
+import { useAuth } from '../auth/AuthContext';
+import { Product, Purchase, Supplier, Warehouse } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 
 interface PurchasesPageProps {
@@ -25,7 +26,10 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
 
   // Create Form State
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState('wh_apex_1a');
+  // Start from the warehouse the person already selected for this business.
+  // Nothing is defaulted to a fixture: the list below comes from the server.
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => getCurrentContext().warehouseId);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [orderItems, setOrderItems] = useState<NewPurchaseItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [inputQuantity, setInputQuantity] = useState<number | ''>(1);
@@ -40,6 +44,22 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
 
   const isFa = language === 'fa';
   const { theme } = useTheme();
+  const { user } = useAuth();
+
+  const warehousesForActiveStore = React.useMemo<Warehouse[]>(() => {
+    const storeId = getCurrentContext().storeId;
+
+    return (
+      user?.memberships
+        .flatMap((membership) => membership.stores)
+        .find((store) => store.id === storeId)
+        ?.warehouses.map((warehouse) => ({ ...warehouse, storeId, organizationId: '', code: '' })) ?? []
+    );
+  }, [user]);
+
+  useEffect(() => {
+    setWarehouses(warehousesForActiveStore);
+  }, [warehousesForActiveStore]);
 
   useEffect(() => {
     loadPurchases();
@@ -61,7 +81,7 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
 
   const openCreateModal = () => {
     setSelectedSupplierId(suppliers[0]?.id || '');
-    setSelectedWarehouseId('wh_apex_1a');
+    setSelectedWarehouseId(getCurrentContext().warehouseId);
     setOrderItems([]);
     setErrorMessage('');
     setIsCreateModalOpen(true);
@@ -114,8 +134,16 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
     setErrorMessage('');
 
     try {
+      if (!selectedWarehouseId) {
+        setIsSubmitting(false);
+        setErrorMessage(
+          isFa ? 'پیش از ثبت سفارش خرید باید انبار مقصد را انتخاب کنید.' : 'Choose a destination warehouse before saving.'
+        );
+        return;
+      }
+
       await apiClient.createPurchase({
-        store_id: 'store_apex_1',
+        store_id: getCurrentContext().storeId,
         warehouse_id: selectedWarehouseId,
         supplier_id: selectedSupplierId,
         items: orderItems.map((item) => ({
@@ -303,9 +331,20 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' })
                     style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
                     required
                   >
-                    <option value="wh_apex_1a">{isFa ? 'انبار اصلی (WH-MAIN)' : 'Main Warehouse (WH-MAIN)'}</option>
-                    <option value="wh_apex_1b">{isFa ? 'انبار اکسپرس (WH-EXP)' : 'Express Hub (WH-EXP)'}</option>
+                    <option value="">{isFa ? 'انبار را انتخاب کنید…' : 'Choose a warehouse…'}</option>
+                    {warehouses.map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </option>
+                    ))}
                   </select>
+                  {warehouses.length === 0 && (
+                    <p style={{ fontSize: '12px', color: theme.colors.textSecondary, margin: '6px 0 0 0' }}>
+                      {isFa
+                        ? 'برای این فروشگاه انباری ثبت نشده است. ابتدا از بخش کسب‌وکار انبار بسازید.'
+                        : 'This store has no warehouse yet. Add one from the business settings first.'}
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Services\AccountingService;
 use Database\Seeders\MockDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +18,7 @@ class MonetaryPrecisionTest extends TestCase
     {
         parent::setUp();
         $this->seed(MockDataSeeder::class);
+        $this->actingAs(User::find('usr_admin_1'));
         $this->accountingService = app(AccountingService::class);
     }
 

@@ -93,7 +93,7 @@ class RealWorldMultiTenantValidationTest extends TestCase
         $this->actingAs($this->alphaOwner);
         $res = $this->getJson("/api/v1/products/{$betaProduct->id}", ['X-Tenant-ID' => 'org_beta']);
         $res->assertStatus(403)
-            ->assertJsonFragment(['error' => 'Unauthorized organization access']);
+            ->assertJsonFragment(['message' => 'شما عضو این کسب‌وکار نیستید.']);
 
         // 2. Alpha User attempting to list products using Beta tenant header -> 403
         $listRes = $this->getJson('/api/v1/products', ['X-Tenant-ID' => 'org_beta']);
@@ -282,7 +282,7 @@ class RealWorldMultiTenantValidationTest extends TestCase
         $this->actingAs($this->alphaOwner);
         $resDeny = $this->getJson('/api/v1/platform/business-applications');
         $resDeny->assertStatus(403)
-                ->assertJsonFragment(['error' => 'Unauthorized platform admin access']);
+                ->assertJsonFragment(['message' => 'شما اجازه دسترسی به بخش مدیریت سامانه را ندارید.']);
 
         // 2. Platform Admin User accessing Platform Applications API -> 200
         $this->actingAs($this->adminUser);

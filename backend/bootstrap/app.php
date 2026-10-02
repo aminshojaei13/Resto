@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'tenant' => \App\Http\Middleware\TenantMiddleware::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
+            'user.active' => \App\Http\Middleware\EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

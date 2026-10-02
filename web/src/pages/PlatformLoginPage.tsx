@@ -1,67 +1,100 @@
 import React, { useState } from 'react';
 import { useTheme } from '../theme/ThemeContext';
+import { ApiError, apiClient } from '../api/apiClient';
 import { AuthUser } from '../types';
+import { inputStyle, revealButtonStyle } from './LoginPage';
+import { Language, t } from '../i18n/authStrings';
 
 interface PlatformLoginPageProps {
-  language?: 'fa' | 'en';
+  language?: Language;
   onLoginSuccess: (user: AuthUser) => void;
   navigate: (path: string) => void;
 }
 
+/**
+ * Sign-in for the system administration console.
+ *
+ * The console is a technical interface, so "system administration" wording is
+ * appropriate here. What is not appropriate — and is not present — is a way to
+ * get in without the server agreeing: no demo account, no quick login and no
+ * session invented in the browser.
+ */
 export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
   language = 'fa',
   onLoginSuccess,
   navigate,
 }) => {
+  const { theme, effectiveMode } = useTheme();
+  const strings = t(language);
+  const isFa = language === 'fa';
+  const isDark = effectiveMode === 'warmDark';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isFa = language === 'fa';
-  const { theme, effectiveMode } = useTheme();
-  const isDark = effectiveMode === 'warmDark';
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError(isFa ? 'لطفا مشخصات راهبر پلتفرم را وارد کنید.' : 'Please enter platform admin credentials.');
+    if (!email.trim() || !password) {
+      setError(strings.required);
       return;
     }
 
-    const user: AuthUser = {
-      id: 'usr_admin',
-      name: 'Resto Platform Administrator',
-      email: email.toLowerCase(),
-      role: 'PlatformAdmin',
-      isPlatformAdmin: true,
-    };
-    onLoginSuccess(user);
-    navigate('/platform/applications');
-  };
+    setIsSubmitting(true);
 
-  const handleQuickPlatformAdminLogin = () => {
-    const user: AuthUser = {
-      id: 'usr_admin',
-      name: 'Resto Platform Administrator',
-      email: 'admin@resto.com',
-      role: 'PlatformAdmin',
-      isPlatformAdmin: true,
-    };
-    onLoginSuccess(user);
-    navigate('/platform/applications');
+    try {
+      const user = await apiClient.login({
+        email: email.trim(),
+        password,
+        locale: language,
+        deviceName: 'system-console',
+      });
+
+      onLoginSuccess(user);
+      navigate('/applications');
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(
+          caught.status === 429
+            ? strings.tooManyAttempts
+            : caught.status === 0
+              ? strings.offline
+              : caught.message
+        );
+      } else {
+        setError(strings.genericError);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div style={{ maxWidth: '480px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.background,
+        fontFamily: theme.typography.fontFamily,
+      }}
+    >
       <div
         style={{
+          width: '440px',
+          maxWidth: '92%',
           backgroundColor: theme.colors.surfaceElevated,
-          color: theme.colors.textPrimary,
           borderRadius: theme.borderRadius.xl,
           padding: theme.spacing['2xl'],
           boxShadow: theme.shadows.lg,
           border: `1px solid ${theme.colors.border}`,
+          direction: isFa ? 'rtl' : 'ltr',
+          textAlign: isFa ? 'right' : 'left',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: theme.spacing['2xl'] }}>
@@ -69,147 +102,130 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
             style={{
               width: '56px',
               height: '56px',
-              borderRadius: theme.borderRadius.xl,
-              backgroundColor: theme.colors.infoLight,
+              margin: '0 auto 12px',
+              borderRadius: theme.borderRadius.lg,
+              backgroundColor: theme.colors.primary,
+              color: '#FFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: theme.colors.info,
-              fontSize: '28px',
-              margin: '0 auto 16px auto',
+              fontSize: '26px',
+              fontWeight: 800,
             }}
           >
-            🛡️
+            R
           </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: theme.colors.textPrimary, margin: '0 0 8px 0' }}>
-            {isFa ? 'ورود به پنل راهبری پلتفرم (Platform Admin)' : 'Resto Platform Admin Portal'}
-          </h2>
-          <p style={{ color: theme.colors.textSecondary, fontSize: '14px', margin: 0 }}>
-            {isFa ? 'ویژه بررسی درخواست‌های ثبت سازمان و راه‌اندازی تننت‌ها' : 'Administrative access for application reviews & tenant provisioning'}
+          <h1 style={{ margin: 0, fontSize: '20px', color: theme.colors.textPrimary }}>
+            {isFa ? 'ورود به مدیریت سامانه' : 'System administration sign in'}
+          </h1>
+          <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: theme.colors.textSecondary }}>
+            {isFa ? strings.loginSubtitle : 'Enter your email and password to continue.'}
           </p>
         </div>
 
-        {error && (
-          <div
-            style={{
-              backgroundColor: theme.colors.errorLight,
-              color: theme.colors.error,
-              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-              borderRadius: theme.borderRadius.lg,
-              fontSize: '14px',
-              marginBottom: theme.spacing.lg,
-            }}
-          >
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleSubmit} noValidate>
+          <label htmlFor="platform-email" style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: theme.colors.textPrimary }}>
+            {strings.email}
+          </label>
+          <input
+            id="platform-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            inputMode="email"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            dir="ltr"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder={strings.emailPlaceholder}
+            style={inputStyle(theme, isDark)}
+          />
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
-              {isFa ? 'ایمیل راهبر پلتفرم:' : 'Platform Admin Email:'} *
-            </label>
+          <label htmlFor="platform-password" style={{ display: 'block', fontSize: '13px', fontWeight: 600, margin: '16px 0 6px 0', color: theme.colors.textPrimary }}>
+            {strings.password}
+          </label>
+          <div style={{ position: 'relative' }}>
             <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@resto.com"
-              style={{
-                width: '100%',
-                padding: theme.spacing.md,
-                borderRadius: theme.borderRadius.lg,
-                border: `1px solid ${theme.colors.borderStrong}`,
-                backgroundColor: theme.colors.surface,
-                color: theme.colors.textPrimary,
-                fontSize: '15px',
-                boxSizing: 'border-box',
-              }}
+              id="platform-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              dir="ltr"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              style={{ ...inputStyle(theme, isDark), paddingInlineEnd: '44px' }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? strings.hidePassword : strings.showPassword}
+              style={revealButtonStyle(theme, isDark)}
+            >
+              {showPassword ? '🙈' : '👁'}
+            </button>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontWeight: 700, fontSize: '14px', marginBottom: '6px', color: theme.colors.textPrimary }}>
-              {isFa ? 'رمز عبور راهبری:' : 'Admin Password:'} *
-            </label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: theme.spacing.md,
-                  paddingLeft: isFa ? '12px' : '40px',
-                  paddingRight: isFa ? '40px' : '12px',
-                  borderRadius: theme.borderRadius.lg,
-                  border: `1px solid ${theme.colors.borderStrong}`,
-                  backgroundColor: theme.colors.surface,
-                  color: theme.colors.textPrimary,
-                  fontSize: '15px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', left: isFa ? '12px' : 'auto', right: isFa ? 'auto' : '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}
-              >
-                {showPassword ? '👁️' : '🙈'}
-              </button>
+          {error && (
+            <div
+              role="alert"
+              style={{
+                marginTop: '16px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                backgroundColor: isDark ? theme.colors.errorLight : '#FEF2F2',
+                color: isDark ? theme.colors.error : '#B91C1C',
+              }}
+            >
+              {error}
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
-            style={{
-              backgroundColor: theme.colors.info,
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.lg,
-              fontSize: '16px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              marginTop: '8px',
-            }}
-          >
-            🚀 {isFa ? 'ورود به پنل راهبر' : 'Login to Admin Panel'}
-          </button>
-        </form>
-
-        {/* Demo Quick Access */}
-        <div style={{ marginTop: theme.spacing['2xl'], paddingTop: theme.spacing.xl, borderTop: `1px solid ${theme.colors.border}` }}>
-          <button
-            onClick={handleQuickPlatformAdminLogin}
+            disabled={isSubmitting}
             style={{
               width: '100%',
-              backgroundColor: isDark ? theme.colors.surfaceHover : theme.colors.surfaceSelected,
-              color: isDark ? theme.colors.info : theme.colors.info,
+              marginTop: '20px',
+              padding: '12px',
+              borderRadius: '8px',
               border: 'none',
-              borderRadius: theme.borderRadius.lg,
-              padding: theme.spacing.md,
+              backgroundColor: theme.colors.primary,
+              color: '#FFFFFF',
+              fontSize: '15px',
               fontWeight: 700,
-              fontSize: '14px',
-              cursor: 'pointer',
+              cursor: isSubmitting ? 'default' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1,
+              fontFamily: theme.typography.fontFamily,
             }}
           >
-            🛡️ {isFa ? 'ورود مستقیم تست (Platform Admin Demo)' : 'Quick Demo Login as Platform Admin'}
+            {isSubmitting ? strings.signingIn : strings.signIn}
           </button>
-        </div>
 
-        <div style={{ marginTop: theme.spacing.xl, textAlign: 'center', fontSize: '13px' }}>
           <button
             type="button"
-            onClick={() => navigate('/login')}
-            style={{ border: 'none', background: 'none', color: theme.colors.info, cursor: 'pointer', fontWeight: 600 }}
+            onClick={() => navigate('/forgot-password')}
+            style={{
+              display: 'block',
+              width: '100%',
+              marginTop: '12px',
+              background: 'none',
+              border: 'none',
+              color: theme.colors.info,
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: theme.typography.fontFamily,
+            }}
           >
-            {isFa ? 'بازگشت به ورود کاربران معمولی (Tenant Login)' : 'Switch to Tenant User Login'}
+            {strings.forgotPassword}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
 };
+
+export default PlatformLoginPage;

@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { PublicShell } from '../components/PublicShell';
 import { TenantAppShell } from '../components/TenantAppShell';
 import { TenantModal } from '../components/TenantModal';
+import { AuthProvider, useAuth } from '../auth/AuthContext';
+import { getBusinessContext } from '../auth/session';
+import { setUnauthorizedHandler } from '../api/apiClient';
 import { PublicRegisterPage } from '../pages/PublicRegisterPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { AcceptInvitationPage } from '../pages/AcceptInvitationPage';
+import { ProfilePage } from '../pages/ProfilePage';
+import { StaffPage } from '../pages/StaffPage';
 import { ActivationPage } from '../pages/ActivationPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { PosPage } from '../pages/PosPage';
@@ -14,232 +22,206 @@ import { CustomersPage } from '../pages/CustomersPage';
 import { ExpensesPage } from '../pages/ExpensesPage';
 import { MessagesPage } from '../pages/MessagesPage';
 import { AccountingPage } from '../pages/AccountingPage';
-import { EmptyState } from '../components/EmptyState';
-import { AuthUser } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { Language } from '../i18n/authStrings';
 
-export const BusinessApp: React.FC = () => {
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    return window.location.pathname || '/';
-  });
+const BusinessAppRoutes: React.FC = () => {
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname || '/');
+  const [language, setLanguage] = useState<Language>('fa');
+  const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
 
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('resto_auth_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const [language, setLanguage] = useState<'fa' | 'en'>('fa');
-  const [activeOrgName, setActiveOrgName] = useState('کسب‌وکار من');
-  const [activeStoreName, setActiveStoreName] = useState('شعبه اصلی');
-  const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
-
-  const isFa = language === 'fa';
+  const { user, isRestoring, signOut, can } = useAuth();
   const { theme, effectiveMode } = useTheme();
+  const isFa = language === 'fa';
   const isDark = effectiveMode === 'warmDark';
 
-  const navigate = (path: string) => {
+  // Re-read whenever the path changes so a switch made in the modal is
+  // reflected immediately.
+  const [context, setContext] = useState(() => getBusinessContext());
+  useEffect(() => setContext(getBusinessContext()), [currentPath, user]);
+
+  const navigate = useCallback((path: string) => {
     if (window.location.pathname !== path) {
       window.history.pushState(null, '', path);
     }
     setCurrentPath(path);
-  };
+  }, []);
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/');
-    };
+    const handlePopState = () => setCurrentPath(window.location.pathname || '/');
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleLoginSuccess = (user: AuthUser) => {
-    setAuthUser(user);
-    localStorage.setItem('resto_auth_user', JSON.stringify(user));
-  };
+  // An expired or revoked session sends the person back to the sign-in screen
+  // with nothing of the previous person's identity left on display.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void signOut();
+      setCurrentPath('/login');
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [signOut]);
 
-  const handleLogout = () => {
-    setAuthUser(null);
-    localStorage.removeItem('resto_auth_user');
-    navigate('/login');
-  };
+  // The person is signed in but their session ended: return to sign in.
+  useEffect(() => {
+    if (!isRestoring && !user && currentPath.startsWith('/app/')) {
+      setCurrentPath('/login');
+    }
+  }, [isRestoring, user, currentPath]);
 
   const path = currentPath === '/' ? '' : currentPath;
 
-  // Separation Notice for Legacy Platform Admin Routes on Business Web
-  if (path.startsWith('/platform') || path.startsWith('/admin')) {
+  if (isRestoring) {
     return (
-      <PublicShell currentPath="/login" navigate={navigate} language={language} setLanguage={setLanguage}>
-        <div style={{ maxWidth: '600px', margin: '60px auto', padding: '32px', backgroundColor: isDark ? theme.colors.infoLight : '#EFF6FF', border: isDark ? `1px solid ${theme.colors.borderStrong}` : '1px solid #BFDBFE', borderRadius: '16px', color: isDark ? theme.colors.info : '#1E40AF', fontFamily: theme.typography.fontFamily, direction: isFa ? 'rtl' : 'ltr', textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
-          <h2 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: 800 }}>
-            {isFa ? 'انتقال بخش مدیریت پلتفرم به سامانه اپراتور (Operator Console)' : 'Platform Admin Console Moved to Port 3001'}
-          </h2>
-          <p style={{ margin: '0 0 24px 0', fontSize: '14px', lineHeight: 1.6 }}>
-            {isFa
-              ? 'این بخش (پورت ۳۰۰۰) منحصراً ویژه برنامه کسب‌وکار و تننت‌ها است. کنسول مدیریت پلتفرم و بررسی درخواست‌ها به سامانه مجزای راهبری انتقال یافته است.'
-              : 'This site (port 3000) is the Business Web Application. Platform Administration & Application Review has been moved to a separate runtime on port 3001.'}
-          </p>
-          <a
-            href="http://localhost:3001/login"
-            style={{ backgroundColor: theme.colors.info, color: '#FFFFFF', textDecoration: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, fontSize: '15px', display: 'inline-block' }}
-          >
-            🚀 {isFa ? 'ورود به پنل راهبری پلتفرم (localhost:3001)' : 'Launch Operator Console (localhost:3001)'}
-          </a>
-        </div>
-      </PublicShell>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.background,
+          color: theme.colors.textSecondary,
+          fontFamily: theme.typography.fontFamily,
+        }}
+      >
+        …
+      </div>
     );
   }
 
-  // 1. Root Route '/' Resolver
-  if (path === '' || path === '/') {
-    if (!authUser) {
-      return (
-        <PublicShell currentPath="/register" navigate={navigate} language={language} setLanguage={setLanguage}>
-          <PublicRegisterPage language={language} navigate={navigate} />
-        </PublicShell>
-      );
-    }
+  /* ------------------------------------------------------------- public */
+
+  if (!user) {
+    const renderPublic = () => {
+      switch (path) {
+        case '/login':
+          return <LoginPage language={language} navigate={navigate} />;
+        case '/forgot-password':
+          return <ForgotPasswordPage language={language} navigate={navigate} />;
+        case '/reset-password':
+          return <ResetPasswordPage language={language} navigate={navigate} />;
+        case '/accept-invitation':
+          return <AcceptInvitationPage language={language} navigate={navigate} />;
+        case '/activation':
+          return <ActivationPage language={language} navigate={navigate} />;
+        default:
+          return <PublicRegisterPage language={language} navigate={navigate} />;
+      }
+    };
+
     return (
-      <TenantAppShell
-        currentPath="/app/dashboard"
+      <PublicShell
+        currentPath={path || '/register'}
         navigate={navigate}
         language={language}
         setLanguage={setLanguage}
-        activeOrgName={activeOrgName}
-        activeStoreName={activeStoreName}
-        onOpenTenantModal={() => setIsTenantModalOpen(true)}
-        authUser={authUser}
-        onLogout={handleLogout}
       >
-        <DashboardPage language={language} />
-        {isTenantModalOpen && (
-          <TenantModal
-            language={language}
-            onClose={() => setIsTenantModalOpen(false)}
-            onSelectTenant={(org, store) => {
-              setActiveOrgName(org);
-              setActiveStoreName(store);
-            }}
-          />
-        )}
-      </TenantAppShell>
-    );
-  }
-
-  // 2. Public Experience Routes
-  if (path === '/register' || path === '/login' || path === '/activation') {
-    let pageContent = <PublicRegisterPage language={language} navigate={navigate} />;
-    if (path === '/login') {
-      pageContent = <LoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
-    } else if (path === '/activation') {
-      pageContent = <ActivationPage language={language} navigate={navigate} />;
-    }
-
-    return (
-      <PublicShell currentPath={path} navigate={navigate} language={language} setLanguage={setLanguage}>
-        {pageContent}
+        {renderPublic()}
       </PublicShell>
     );
   }
 
-  // 3. Tenant Experience Routes (/app/*)
-  if (path.startsWith('/app/')) {
-    if (!authUser) {
-      return (
-        <PublicShell currentPath="/login" navigate={navigate} language={language} setLanguage={setLanguage}>
-          <LoginPage language={language} onLoginSuccess={handleLoginSuccess} navigate={navigate} />;
-        </PublicShell>
-      );
+  /* ------------------------------------------------------------ signed in */
+
+  const businessName = user.memberships.find((m) => m.id === context.organizationId)?.name ?? '';
+  const store = user.memberships.flatMap((m) => m.stores).find((s) => s.id === context.storeId);
+  const warehouse = store?.warehouses.find((w) => w.id === context.warehouseId);
+
+  const renderModule = () => {
+    switch (path) {
+      case '/app/pos':
+        return <PosPage language={language} />;
+      case '/app/inventory':
+      case '/app/products':
+        return <InventoryPage language={language} />;
+      case '/app/purchases':
+        return <PurchasesPage language={language} />;
+      case '/app/suppliers':
+        return <SuppliersPage language={language} />;
+      case '/app/customers':
+        return <CustomersPage language={language} />;
+      case '/app/expenses':
+        return <ExpensesPage language={language} />;
+      case '/app/messages':
+        return <MessagesPage language={language} />;
+      case '/app/accounting':
+      case '/app/reports':
+        return <AccountingPage language={language} />;
+      case '/app/profile':
+        return <ProfilePage language={language} />;
+      case '/app/staff':
+        return can('staff.view') ? (
+          <StaffPage language={language} />
+        ) : (
+          <AccessDenied language={language} />
+        );
+      default:
+        return <DashboardPage language={language} />;
     }
+  };
 
-    let tenantContent = <DashboardPage language={language} />;
-    if (path === '/app/pos') {
-      tenantContent = <PosPage language={language} />;
-    } else if (path === '/app/inventory' || path === '/app/products') {
-      tenantContent = <InventoryPage language={language} />;
-    } else if (path === '/app/purchases') {
-      tenantContent = <PurchasesPage language={language} />;
-    } else if (path === '/app/suppliers') {
-      tenantContent = <SuppliersPage language={language} />;
-    } else if (path === '/app/customers') {
-      tenantContent = <CustomersPage language={language} />;
-    } else if (path === '/app/expenses') {
-      tenantContent = <ExpensesPage language={language} />;
-    } else if (path === '/app/messages') {
-      tenantContent = <MessagesPage language={language} />;
-    } else if (path === '/app/accounting' || path === '/app/reports') {
-      tenantContent = <AccountingPage language={language} />;
-    } else if (path === '/app/settings') {
-      tenantContent = (
-        <EmptyState
-          title={isFa ? 'تنظیمات کسب‌وکار' : 'Settings'}
-          description={isFa ? 'پیکربندی حسابداری، ارز پایه و جزئیات فروشگاه' : 'Configure store currency, accounts, and profile'}
-          actionText={isFa ? 'بازگشت به داشبورد' : 'Back to Dashboard'}
-          onAction={() => navigate('/app/dashboard')}
-          icon="⚙️"
-        />
-      );
-    }
-
-    return (
-      <TenantAppShell
-        currentPath={path}
-        navigate={navigate}
-        language={language}
-        setLanguage={setLanguage}
-        activeOrgName={activeOrgName}
-        activeStoreName={activeStoreName}
-        onOpenTenantModal={() => setIsTenantModalOpen(true)}
-        authUser={authUser}
-        onLogout={handleLogout}
-      >
-        {tenantContent}
-
-        {isTenantModalOpen && (
-          <TenantModal
-            language={language}
-            onClose={() => setIsTenantModalOpen(false)}
-            onSelectTenant={(org, store) => {
-              setActiveOrgName(org);
-              setActiveStoreName(store);
-            }}
-          />
-        )}
-      </TenantAppShell>
-    );
-  }
-
-  // 4. Fallback for Unknown Routes -> Register / Dashboard
-  if (!authUser) {
-    return (
-      <PublicShell currentPath="/register" navigate={navigate} language={language} setLanguage={setLanguage}>
-        <PublicRegisterPage language={language} navigate={navigate} />
-      </PublicShell>
-    );
-  }
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <TenantAppShell
-      currentPath="/app/dashboard"
+      currentPath={path || '/app/dashboard'}
       navigate={navigate}
       language={language}
       setLanguage={setLanguage}
-      activeOrgName={activeOrgName}
-      activeStoreName={activeStoreName}
-      onOpenTenantModal={() => setIsTenantModalOpen(true)}
-      authUser={authUser}
-      onLogout={handleLogout}
+      activeOrgName={businessName}
+      activeStoreName={store?.name ?? ''}
+      activeWarehouseName={warehouse?.name ?? ''}
+      onOpenBusinessModal={() => setIsBusinessModalOpen(true)}
+      currentUserName={user.displayName || user.email}
+      onLogout={handleSignOut}
     >
-      <DashboardPage language={language} />
+      {renderModule()}
+
+      {isBusinessModalOpen && (
+        <TenantModal
+          language={language}
+          onClose={() => setIsBusinessModalOpen(false)}
+          onSelected={() => {
+            setIsBusinessModalOpen(false);
+            setCurrentPath('/app/dashboard');
+          }}
+        />
+      )}
     </TenantAppShell>
   );
 };
+
+const AccessDenied: React.FC<{ language: Language }> = ({ language }) => {
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
+
+  return (
+    <div
+      style={{
+        padding: '32px',
+        textAlign: 'center',
+        borderRadius: '12px',
+        backgroundColor: isDark ? theme.colors.errorLight : '#FEF2F2',
+        color: isDark ? theme.colors.error : '#B91C1C',
+        fontFamily: theme.typography.fontFamily,
+        direction: language === 'fa' ? 'rtl' : 'ltr',
+      }}
+    >
+      {language === 'fa'
+        ? 'شما اجازه دسترسی به این بخش را ندارید.'
+        : 'You do not have permission to view this section.'}
+    </div>
+  );
+};
+
+export const BusinessApp: React.FC = () => (
+  <AuthProvider>
+    <BusinessAppRoutes />
+  </AuthProvider>
+);
 
 export default BusinessApp;

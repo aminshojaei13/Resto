@@ -43,10 +43,10 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
             📲
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: theme.colors.textPrimary, margin: '0 0 8px 0' }}>
-            {isFa ? 'راهنمای فعال‌سازی و ورود سازمان' : 'Organization Activation & Access Guide'}
+            {isFa ? 'راهنمای فعال‌سازی کسب‌وکار' : 'Business activation guide'}
           </h2>
           <p style={{ color: theme.colors.textSecondary, fontSize: '14px', margin: 0 }}>
-            {isFa ? 'اطلاعات مربوط به روند تایید و فعال‌سازی حساب کاربری در Resto SaaS' : 'Information regarding tenant provisioning and owner credential setup'}
+            {isFa ? 'مراحل تایید درخواست و فعال‌سازی حساب کاربری شما' : 'How your request is reviewed and your account is activated'}
           </p>
         </div>
 
@@ -61,32 +61,29 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
           }}
         >
           <div style={{ fontWeight: 700, color: isDark ? theme.colors.info : '#1E40AF', fontSize: '14px', marginBottom: '6px' }}>
-            📌 {isFa ? 'وضعیت مکانیزم کدهای فعال‌سازی (Activation Code Status):' : 'Activation Code Mechanism Status:'}
-          </div>
-          <div style={{ fontFamily: 'monospace', fontWeight: 700, color: isDark ? theme.colors.primary : '#1D4ED8', fontSize: '13px', marginBottom: '8px' }}>
-            ACTIVATION_CODE_STATUS: NOT_IMPLEMENTED
+            📌 {isFa ? 'نحوه فعال‌سازی حساب' : 'How your account is activated'}
           </div>
           <p style={{ margin: 0, color: isDark ? theme.colors.textSecondary : '#1E3A8A', fontSize: '13px', lineHeight: 1.6 }}>
             {isFa
-              ? 'در نسخه فعلی پلتفرم ابری رستو، نیازی به وارد کردن کد دعوت یا کد فعال‌سازی عددی نیست. فعال‌سازی سازمان‌ها مستقیماً پس از بررسی و تایید راهبر پلتفرم انجام می‌پذیرد.'
-              : 'In the current version of Resto SaaS, explicit invitation/activation codes are not used. Tenant workspaces are activated directly upon review and approval by the Platform Administrator.'}
+              ? 'پس از تایید درخواست، یک لینک فعال‌سازی برای ایمیل ثبت‌شده شما ارسال می‌شود. با باز کردن این لینک، خودتان رمز عبورتان را می‌سازید. هیچ رمز عبوری برای شما تعیین نمی‌شود.'
+              : 'Once your request is approved, an activation link is emailed to the address you registered. Open it and choose your own password — no password is ever set on your behalf.'}
           </p>
         </div>
 
         {/* Flow Description */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg, marginBottom: theme.spacing['2xl'] }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0 }}>
-            {isFa ? 'مراحل دریافت دسترسی سازمان:' : 'Steps to Access Your Tenant Dashboard:'}
+            {isFa ? 'مراحل دریافت دسترسی:' : 'Steps to get access:'}
           </h3>
 
           <div style={{ display: 'flex', gap: theme.spacing.md }}>
             <div style={{ fontWeight: 800, color: theme.colors.primary, fontSize: '18px' }}>1.</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
-                {isFa ? 'ثبت درخواست اولیه سازمان' : 'Submit Business Application'}
+                {isFa ? 'ثبت درخواست کسب‌وکار' : 'Submit your business request'}
               </div>
               <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-                {isFa ? 'فرم ثبت‌نام آنلاین در صفحه /register را تکمیل کنید.' : 'Complete the online registration form at /register.'}
+                {isFa ? 'فرم ثبت‌نام آنلاین در صفحه /register را تکمیل کنید.' : 'Complete the registration form on the start page.'}
               </div>
             </div>
           </div>
@@ -95,10 +92,10 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
             <div style={{ fontWeight: 800, color: theme.colors.primary, fontSize: '18px' }}>2.</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
-                {isFa ? 'بررسی توسط راهبر پلتفرم (Platform Admin)' : 'Review by Platform Admin'}
+                {isFa ? 'بررسی درخواست' : 'Request review'}
               </div>
               <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-                {isFa ? 'درخواست شما در وضعیت PENDING قرار گرفته و بررسی می‌شود.' : 'Your application enters PENDING status for administrative review.'}
+                {isFa ? 'درخواست شما ثبت می‌شود و توسط مدیریت سامانه بررسی می‌گردد.' : 'Your request is registered and reviewed by the system administrator.'}
               </div>
             </div>
           </div>
@@ -107,12 +104,12 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
             <div style={{ fontWeight: 800, color: theme.colors.primary, fontSize: '18px' }}>3.</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
-                {isFa ? 'راه‌اندازی اتوماتیک تننت و حساب مالک' : 'Automatic Provisioning'}
+                {isFa ? 'راه‌اندازی کسب‌وکار' : 'Setting up the business'}
               </div>
               <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
                 {isFa
-                  ? 'پس از تایید، تننت سازمان، انبار، فروشگاه و حساب مالک با ایمیل ثبت‌شده ایجاد می‌شود.'
-                  : 'Upon approval, your tenant workspace, stores, warehouses, and owner account are provisioned.'}
+                  ? 'پس از تایید، کسب‌وکار، فروشگاه، انبار و حساب شما ساخته می‌شود.'
+                  : 'On approval, your business, store, warehouse and account are created.'}
               </div>
             </div>
           </div>
@@ -121,12 +118,12 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
             <div style={{ fontWeight: 800, color: theme.colors.primary, fontSize: '18px' }}>4.</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '14px', color: theme.colors.textPrimary }}>
-                {isFa ? 'ورود مستقیم به داشبورد' : 'Login & Access'}
+                {isFa ? 'ورود به حساب کاربری' : 'Sign in'}
               </div>
               <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
                 {isFa
-                  ? 'با استفاده از ایمیل ثبت‌شده خود در صفحه ورود (/login) وارد شوید.'
-                  : 'Log in using your registered email at /login to manage your business.'}
+                  ? 'پس از باز کردن لینک فعال‌سازی و تعیین رمز عبور، با ایمیل ثبت‌شده خود وارد شوید.'
+                  : 'After opening the activation link and choosing a password, sign in with the email you registered.'}
               </div>
             </div>
           </div>
@@ -148,7 +145,7 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
               cursor: 'pointer',
             }}
           >
-            🔑 {isFa ? 'انتقال به صفحه ورود به حساب' : 'Proceed to Tenant Login'}
+            🔑 {isFa ? 'انتقال به صفحه ورود' : 'Go to sign in'}
           </button>
 
           <button
@@ -165,7 +162,7 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
               cursor: 'pointer',
             }}
           >
-            🚀 {isFa ? 'ثبت درخواست سازمان جدید' : 'Submit New Business Application'}
+            🚀 {isFa ? 'ثبت درخواست کسب‌وکار جدید' : 'Submit a new business request'}
           </button>
         </div>
       </div>
