@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { ApiError, apiClient } from '../api/apiClient';
+import { useAuth } from '../auth/AuthContext';
 import { AuthUser } from '../types';
 import { inputStyle, revealButtonStyle } from './LoginPage';
 import { Language, t } from '../i18n/authStrings';
@@ -25,6 +26,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
   navigate,
 }) => {
   const { theme, effectiveMode } = useTheme();
+  const { signIn } = useAuth();
   const strings = t(language);
   const isFa = language === 'fa';
   const isDark = effectiveMode === 'warmDark';
@@ -54,6 +56,7 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
         deviceName: 'system-console',
       });
 
+      signIn(user);
       onLoginSuccess(user);
       navigate('/applications');
     } catch (caught) {
