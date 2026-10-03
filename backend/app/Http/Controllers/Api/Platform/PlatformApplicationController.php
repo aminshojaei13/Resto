@@ -83,10 +83,10 @@ class PlatformApplicationController extends Controller
             $reviewer = $request->user();
 
             // 1. Create or Find Owner User
-            //
-            // No password is ever chosen, displayed or stored here. The owner
-            // receives an invitation link and sets their own password.
             $user = User::where('email', $application->email)->first();
+            $initialStatus = $application->password ? User::STATUS_ACTIVE : User::STATUS_PENDING_INVITE;
+            $initialPassword = $application->password ?? Hash::make(Str::random(64));
+
             if (!$user) {
                 $nameParts = preg_split('/\s+/u', trim((string) $application->owner_name), 2) ?: [];
                 $user = User::create([
@@ -96,13 +96,17 @@ class PlatformApplicationController extends Controller
                     'last_name' => $nameParts[1] ?? null,
                     'email' => $application->email,
                     'phone' => $application->phone,
-                    // Placeholder: the account is unusable until the owner
-                    // completes the invitation and sets a real password.
-                    'password' => Hash::make(Str::random(64)),
+                    'password' => $initialPassword,
                     'role' => 'Owner',
-                    'status' => User::STATUS_PENDING_INVITE,
+                    'status' => $initialStatus,
                     'is_platform_admin' => false,
                 ]);
+            } else {
+                if ($application->password) {
+                    $user->password = $application->password;
+                    $user->status = User::STATUS_ACTIVE;
+                    $user->save();
+                }
             }
 
             // 2. Create Organization / Tenant
