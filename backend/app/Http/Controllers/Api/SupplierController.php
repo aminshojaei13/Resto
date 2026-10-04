@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MembershipContext;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,7 +12,7 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
         $query = $request->query('query');
 
         $builder = Supplier::where('organization_id', $orgId);
@@ -27,15 +28,16 @@ class SupplierController extends Controller
         return response()->json($builder->get());
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $supplier = Supplier::with(['purchases.items'])->findOrFail($id);
-        return response()->json($supplier);
+        $orgId = MembershipContext::activeOrganizationId($request);
+
+        return response()->json(Supplier::where('organization_id', $orgId)->with(['purchases.items'])->findOrFail($id));
     }
 
     public function store(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $request->validate([
             'name' => 'required|string',
@@ -58,7 +60,8 @@ class SupplierController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $supplier = Supplier::findOrFail($id);
+        $orgId = MembershipContext::activeOrganizationId($request);
+        $supplier = Supplier::where('organization_id', $orgId)->findOrFail($id);
 
         $request->validate([
             'name' => 'sometimes|required|string',
@@ -72,10 +75,12 @@ class SupplierController extends Controller
         return response()->json($supplier);
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $supplier = Supplier::findOrFail($id);
-        $supplier->delete();
-        return response()->json(['message' => 'Supplier deleted/archived successfully']);
+        $orgId = MembershipContext::activeOrganizationId($request);
+
+        Supplier::where('organization_id', $orgId)->findOrFail($id)->delete();
+
+        return response()->json(['message' => 'تأمین‌کننده حذف شد.']);
     }
 }

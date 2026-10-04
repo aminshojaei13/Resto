@@ -129,7 +129,7 @@ class RealWorldMultiTenantValidationTest extends TestCase
             'price' => 25.00,
             'cost_price' => 12.00,
             'category' => 'Coffee Beans',
-            'unit' => 'bag',
+            'unit' => 'pack',
         ], $headers);
         $prodRes->assertStatus(201);
         $prodId = $prodRes->json('id');
@@ -191,10 +191,11 @@ class RealWorldMultiTenantValidationTest extends TestCase
         // 8. Record Expense ($15.00 utility)
         $expRes = $this->postJson('/api/v1/expenses', [
             'store_id' => 'store_alpha_1',
-            'category' => 'Store Utilities',
+            'title' => 'Coffee grinder maintenance',
+            'category' => 'REPAIRS',
             'amount' => 15.00,
             'date' => date('Y-m-d'),
-            'notes' => 'Coffee grinder maintenance',
+            'notes' => 'Monthly servicing',
         ], $headers);
         $expRes->assertStatus(201);
 

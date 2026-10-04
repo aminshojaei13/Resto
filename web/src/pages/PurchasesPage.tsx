@@ -1,559 +1,489 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient, getCurrentContext } from '../api/apiClient';
-import { useAuth } from '../auth/AuthContext';
-import { Product, Purchase, Supplier, Warehouse } from '../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ApiError, apiClient } from '../api/apiClient';
+import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { StatusBadge, StatusVariant } from '../components/StatusBadge';
+import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
+import { Product, Purchase, Supplier } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { opsStrings } from '../i18n/opsStrings';
+import { formatMoney } from '../util/money';
+import { quantityWithUnit } from '../util/units';
 
 interface PurchasesPageProps {
   language?: 'fa' | 'en';
+  navigate?: (path: string) => void;
 }
 
-interface NewPurchaseItem {
+interface DraftLine {
   productId: string;
   quantity: number;
   unitCost: number;
 }
 
-export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa' }) => {
+/**
+ * Purchase orders: what the business agreed to buy from a supplier.
+ *
+ * Recording a purchase does not move stock — goods only appear in a warehouse
+ * through Receiving. Keeping that separate is the whole point of this screen.
+ */
+export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa', navigate }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedPurchaseDetail, setSelectedPurchaseDetail] = useState<Purchase | null>(null);
-
-  // Create Form State
-  const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  // Start from the warehouse the person already selected for this business.
-  // Nothing is defaulted to a fixture: the list below comes from the server.
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => getCurrentContext().warehouseId);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [orderItems, setOrderItems] = useState<NewPurchaseItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [inputQuantity, setInputQuantity] = useState<number | ''>(1);
-  const [inputUnitCost, setInputUnitCost] = useState<number | ''>(100);
-
-  // Payment Form State
-  const [paymentAmount, setPaymentAmount] = useState<number | ''>(0);
-  const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [notice, setNotice] = useState('');
 
-  const isFa = language === 'fa';
-  const { theme } = useTheme();
-  const { user } = useAuth();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [payFor, setPayFor] = useState<Purchase | null>(null);
 
-  const warehousesForActiveStore = React.useMemo<Warehouse[]>(() => {
-    const storeId = getCurrentContext().storeId;
-
-    return (
-      user?.memberships
-        .flatMap((membership) => membership.stores)
-        .find((store) => store.id === storeId)
-        ?.warehouses.map((warehouse) => ({ ...warehouse, storeId, organizationId: '', code: '' })) ?? []
-    );
-  }, [user]);
-
-  useEffect(() => {
-    setWarehouses(warehousesForActiveStore);
-  }, [warehousesForActiveStore]);
-
-  useEffect(() => {
-    loadPurchases();
-    apiClient.getSuppliers().then(setSuppliers);
-    apiClient.getProducts().then(setProducts);
-  }, []);
-
-  const loadPurchases = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
+    setErrorMessage('');
+
     try {
-      const list = await apiClient.getPurchases();
-      setPurchases(list);
-    } catch {
-      // Handled in apiClient
+      setPurchases(await apiClient.getPurchases());
+    } catch (err) {
+      setErrorMessage(
+        err instanceof ApiError ? err.message : isFa ? 'دریافت سفارش‌های خرید ناموفق بود.' : 'Could not load purchases.'
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isFa]);
 
-  const openCreateModal = () => {
-    setSelectedSupplierId(suppliers[0]?.id || '');
-    setSelectedWarehouseId(getCurrentContext().warehouseId);
-    setOrderItems([]);
-    setErrorMessage('');
-    setIsCreateModalOpen(true);
-  };
+  useEffect(() => {
+    void load();
+    apiClient.getSuppliers().then(setSuppliers).catch(() => setSuppliers([]));
+    apiClient.getProducts().then(setProducts).catch(() => setProducts([]));
+  }, []);
 
-  const closeModals = () => {
-    setIsCreateModalOpen(false);
-    setSelectedPurchaseDetail(null);
-    setErrorMessage('');
-  };
-
-  const addItemToOrder = () => {
-    if (!selectedProductId) return;
-    const prod = products.find((p) => p.id === selectedProductId);
-    const qty = Number(inputQuantity) || 1;
-    const cost = Number(inputUnitCost) || (prod ? prod.costPrice : 100);
-
-    setOrderItems((prev) => [
-      ...prev,
-      {
-        productId: selectedProductId,
-        quantity: qty,
-        unitCost: cost,
-      },
-    ]);
-
-    setSelectedProductId('');
-    setInputQuantity(1);
-    setInputUnitCost(100);
-  };
-
-  const removeItemFromOrder = (index: number) => {
-    setOrderItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const orderTotal = orderItems.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
-
-  const handleCreatePurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSupplierId) {
-      setErrorMessage(isFa ? 'لطفاً تامین‌کننده را انتخاب کنید.' : 'Please select a supplier.');
-      return;
-    }
-    if (orderItems.length === 0) {
-      setErrorMessage(isFa ? 'حداقل یک کالا باید به سفارش اضافه شود.' : 'Please add at least one product item.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-
-    try {
-      if (!selectedWarehouseId) {
-        setIsSubmitting(false);
-        setErrorMessage(
-          isFa ? 'پیش از ثبت سفارش خرید باید انبار مقصد را انتخاب کنید.' : 'Choose a destination warehouse before saving.'
-        );
-        return;
-      }
-
-      await apiClient.createPurchase({
-        store_id: getCurrentContext().storeId,
-        warehouse_id: selectedWarehouseId,
-        supplier_id: selectedSupplierId,
-        items: orderItems.map((item) => ({
-          product_id: item.productId,
-          quantity: item.quantity,
-          unit_cost: item.unitCost,
-        })),
-      });
-
-      setIsSubmitting(false);
-      closeModals();
-      alert(isFa ? 'سفارش خرید با موفقیت ثبت شد.' : 'Purchase Order created successfully.');
-      loadPurchases();
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || (isFa ? 'خطا در ثبت سفارش خرید' : 'Failed to create purchase order'));
+  const receivingBadge = (status: Purchase['status']): { label: string; variant: StatusVariant } => {
+    switch (status) {
+      case 'RECEIVED':
+        return { label: s.received, variant: 'success' };
+      case 'PARTIALLY_RECEIVED':
+        return { label: s.partiallyReceived, variant: 'warning' };
+      case 'CANCELLED':
+        return { label: s.statusCancelled, variant: 'error' };
+      default:
+        return { label: s.ordered, variant: 'neutral' };
     }
   };
 
-  const handleReceiveGoods = async (purchase: Purchase) => {
-    const confirmMsg = isFa
-      ? `آیا از تحویل قطعی کالاهای فاکتور (${purchase.purchaseNumber}) و افزایش موجودی انبار اطمینان دارید؟`
-      : `Are you sure you want to receive goods for (${purchase.purchaseNumber}) into inventory?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await apiClient.receivePurchase(purchase.id);
-      alert(isFa ? 'کالاها با موفقیت تحویل انبار شدند و سند حسابداری صادر گردید.' : 'Goods received into inventory and accounting posted.');
-      closeModals();
-      loadPurchases();
-    } catch (err: any) {
-      alert(err.message || (isFa ? 'خطا در تحویل کالا به انبار' : 'Failed to receive goods into inventory'));
-    }
-  };
-
-  const handlePaySupplier = async (purchase: Purchase) => {
-    const amount = Number(paymentAmount);
-    if (!amount || amount <= 0) {
-      alert(isFa ? 'لطفاً مبلغ معتبری وارد کنید.' : 'Please enter a valid payment amount.');
-      return;
-    }
-
-    try {
-      await apiClient.payPurchase(purchase.id, amount, paymentMethod);
-      alert(isFa ? 'پرداخت به تامین‌کننده با موفقیت ثبت گردید.' : 'Supplier payment recorded successfully.');
-      setPaymentAmount(0);
-      closeModals();
-      loadPurchases();
-    } catch (err: any) {
-      alert(err.message || (isFa ? 'خطا در ثبت پرداخت' : 'Failed to record payment'));
-    }
-  };
-
-  const handleViewDetail = async (id: string) => {
-    try {
-      const detailed = await apiClient.getPurchaseById(id);
-      setSelectedPurchaseDetail(detailed);
-      setPaymentAmount(detailed.totalAmount);
-    } catch {
-      // Fallback
+  const paymentBadge = (status: Purchase['paymentStatus']): { label: string; variant: StatusVariant } => {
+    switch (status) {
+      case 'PAID':
+        return { label: s.paid, variant: 'success' };
+      case 'PARTIAL':
+        return { label: s.partialPaid, variant: 'warning' };
+      default:
+        return { label: s.unpaid, variant: 'neutral' };
     }
   };
 
   return (
-    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: theme.colors.textPrimary }}>{isFa ? 'مدیریت خریدهای تامین و تحویل کالا' : 'Purchasing & Goods Receiving'}</h2>
-        <button
-          onClick={openCreateModal}
-          style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          {isFa ? '+ ثبت سفارش خرید جدید' : '+ New Purchase Order'}
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
+      <PageHeader
+        title={s.purchasesTitle}
+        description={s.purchasesSubtitle}
+        actions={<PrimaryButton onClick={() => setIsCreateOpen(true)}>➕ {s.newPurchase}</PrimaryButton>}
+      />
 
-      {/* Purchases List Table */}
+      <FormError message={errorMessage} />
+      <FormError message={notice} />
+
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری فاکتورهای خرید...' : 'Loading purchase orders...'}</div>
+        <p style={{ color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
       ) : purchases.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textMuted, backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}` }}>
-          {isFa ? 'هیچ فاکتور خریدی ثبت نشده است.' : 'No purchase orders found.'}
-        </div>
+        <EmptyState
+          title={isFa ? 'سفارش خریدی ثبت نشده است' : 'No purchase orders yet'}
+          description={s.purchasesSubtitle}
+          actionText={s.newPurchase}
+          onAction={() => setIsCreateOpen(true)}
+          icon="🛍️"
+        />
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: theme.colors.surface, borderRadius: '8px', overflow: 'hidden', boxShadow: theme.shadows.card, color: theme.colors.textPrimary }}>
-          <thead>
-            <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', borderBottom: `2px solid ${theme.colors.border}`, fontSize: '12px', fontWeight: 700, color: theme.colors.textSecondary }}>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'شماره فاکتور' : 'PO Number'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'تامین‌کننده' : 'Supplier'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'مبلغ کل' : 'Total Amount'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'وضعیت تحویل' : 'Receiving Status'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'وضعیت پرداخت' : 'Payment Status'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'عملیات' : 'Actions'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {purchases.map((p) => (
-              <tr key={p.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold' }}>{p.purchaseNumber}</td>
-                <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{p.supplierName || 'TechImport Global Co.'}</td>
-                <td style={{ padding: '12px 16px', color: theme.colors.primary, fontWeight: 'bold' }}>
-                  {isFa ? `${p.totalAmount.toLocaleString('fa-IR')} تومان` : `$${p.totalAmount.toFixed(2)}`}
-                </td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    backgroundColor: p.status === 'RECEIVED' ? theme.colors.successLight : theme.colors.warningLight,
-                    color: p.status === 'RECEIVED' ? theme.colors.success : theme.colors.warning
-                  }}>
-                    {p.status === 'RECEIVED' ? (isFa ? '📦 تحویل‌شده به انبار' : 'RECEIVED') : (isFa ? '⏳ در انتظار تحویل' : 'ORDERED')}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    backgroundColor: p.paymentStatus === 'PAID' ? theme.colors.successLight : theme.colors.errorLight,
-                    color: p.paymentStatus === 'PAID' ? theme.colors.success : theme.colors.error
-                  }}>
-                    {p.paymentStatus === 'PAID' ? (isFa ? '💳 تسویه‌شده' : 'PAID') : (isFa ? '⚠️ تسویه‌نشده' : 'UNPAID')}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => handleViewDetail(p.id)}
-                    style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}`, borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '👁️ جزئیات' : '👁️ Details'}
-                  </button>
-                  {p.status === 'ORDERED' && (
-                    <button
-                      onClick={() => handleReceiveGoods(p)}
-                      style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                      {isFa ? '📦 تحویل کالا' : '📦 Receive Goods'}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Create Purchase Order Modal */}
-      {isCreateModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '640px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
-              {isFa ? 'ثبت فاکتور سفارش خرید جدید' : 'New Purchase Order'}
-            </h3>
-
-            {errorMessage && (
-              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleCreatePurchase} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'انتخاب تامین‌کننده *' : 'Select Supplier *'}</label>
-                  <select
-                    value={selectedSupplierId}
-                    onChange={(e) => setSelectedSupplierId(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  >
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'انبار مقصد تحویل *' : 'Target Warehouse *'}</label>
-                  <select
-                    value={selectedWarehouseId}
-                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  >
-                    <option value="">{isFa ? 'انبار را انتخاب کنید…' : 'Choose a warehouse…'}</option>
-                    {warehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </option>
-                    ))}
-                  </select>
-                  {warehouses.length === 0 && (
-                    <p style={{ fontSize: '12px', color: theme.colors.textSecondary, margin: '6px 0 0 0' }}>
-                      {isFa
-                        ? 'برای این فروشگاه انباری ثبت نشده است. ابتدا از بخش کسب‌وکار انبار بسازید.'
-                        : 'This store has no warehouse yet. Add one from the business settings first.'}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Add Item Builder */}
-              <div style={{ backgroundColor: theme.colors.backgroundSecondary, padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, marginTop: '8px' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>{isFa ? 'افزودن کالا به فاکتور خرید' : 'Add Items to Order'}</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
-                  <select
-                    value={selectedProductId}
-                    onChange={(e) => {
-                      setSelectedProductId(e.target.value);
-                      const prod = products.find((p) => p.id === e.target.value);
-                      if (prod) setInputUnitCost(prod.costPrice);
-                    }}
-                    style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '13px' }}
-                  >
-                    <option value="">{isFa ? '-- انتخاب کالا --' : '-- Select Product --'}</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder={isFa ? 'تعداد' : 'Qty'}
-                    value={inputQuantity}
-                    onChange={(e) => setInputQuantity(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '13px' }}
-                  />
-
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder={isFa ? 'قیمت خرید' : 'Unit Cost'}
-                    value={inputUnitCost}
-                    onChange={(e) => setInputUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '13px' }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={addItemToOrder}
-                    disabled={!selectedProductId}
-                    style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '+ افزودن' : '+ Add'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: theme.colors.backgroundSecondary }}>
-                      <th style={{ padding: '6px', textAlign: isFa ? 'right' : 'left' }}>{isFa ? 'کالا' : 'Product'}</th>
-                      <th style={{ padding: '6px' }}>{isFa ? 'تعداد' : 'Qty'}</th>
-                      <th style={{ padding: '6px' }}>{isFa ? 'قیمت واحد' : 'Unit Cost'}</th>
-                      <th style={{ padding: '6px' }}>{isFa ? 'جمع' : 'Total'}</th>
-                      <th style={{ padding: '6px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderItems.map((item, idx) => {
-                      const prod = products.find((p) => p.id === item.productId);
-                      return (
-                        <tr key={idx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                          <td style={{ padding: '6px' }}>{prod?.name || item.productId}</td>
-                          <td style={{ padding: '6px', textAlign: 'center' }}>{item.quantity}</td>
-                          <td style={{ padding: '6px', textAlign: 'center' }}>{isFa ? `${item.unitCost.toLocaleString('fa-IR')} تومان` : `$${item.unitCost}`}</td>
-                          <td style={{ padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{isFa ? `${(item.quantity * item.unitCost).toLocaleString('fa-IR')} تومان` : `$${item.quantity * item.unitCost}`}</td>
-                          <td style={{ padding: '6px', textAlign: 'center' }}>
-                            <button type="button" onClick={() => removeItemFromOrder(idx)} style={{ color: theme.colors.error, border: 'none', background: 'none', cursor: 'pointer' }}>✕</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `2px solid ${theme.colors.border}`, paddingTop: '12px', marginTop: '8px' }}>
-                <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{isFa ? 'مبلغ کل فاکتور:' : 'Total Cost:'}</span>
-                <span style={{ fontSize: '20px', fontWeight: 'bold', color: theme.colors.primary }}>
-                  {isFa ? `${orderTotal.toLocaleString('fa-IR')} تومان` : `$${orderTotal.toFixed(2)}`}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  onClick={closeModals}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {isFa ? 'انصراف' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || orderItems.length === 0}
-                  style={{ backgroundColor: orderItems.length > 0 ? theme.colors.primary : theme.colors.surfaceHover, color: orderItems.length > 0 ? theme.colors.primaryTextOnBrand : theme.colors.textMuted, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Submitting...') : (isFa ? 'ثبت نهائی سفارش خرید' : 'Submit Purchase Order')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Purchase Order Detail Modal */}
-      {selectedPurchaseDetail && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '600px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-                {isFa ? `جزئیات فاکتور خرید (${selectedPurchaseDetail.purchaseNumber})` : `PO Details (${selectedPurchaseDetail.purchaseNumber})`}
-              </h3>
-              <button onClick={closeModals} style={{ backgroundColor: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textSecondary }}>✕</button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px', marginBottom: '16px', backgroundColor: theme.colors.backgroundSecondary, padding: '12px', borderRadius: '8px', color: theme.colors.textSecondary }}>
-              <div><strong>{isFa ? 'تامین‌کننده:' : 'Supplier:'}</strong> {selectedPurchaseDetail.supplierName || 'TechImport Global Co.'}</div>
-              <div><strong>{isFa ? 'وضعیت تحویل:' : 'Receiving Status:'}</strong> {selectedPurchaseDetail.status}</div>
-              <div><strong>{isFa ? 'انبار مقصد:' : 'Warehouse:'}</strong> {selectedPurchaseDetail.warehouseId}</div>
-              <div><strong>{isFa ? 'وضعیت پرداخت:' : 'Payment Status:'}</strong> {selectedPurchaseDetail.paymentStatus}</div>
-            </div>
-
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 'bold' }}>{isFa ? 'اقلام سفارش خرید:' : 'Order Items:'}</h4>
-            <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse', marginBottom: '16px' }}>
+        <div
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.borderRadius.xl,
+            border: `1px solid ${theme.colors.border}`,
+            overflow: 'hidden',
+            boxShadow: theme.shadows.card,
+          }}
+        >
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', minWidth: 860 }}>
               <thead>
-                <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left' }}>
-                  <th style={{ padding: '8px' }}>{isFa ? 'کالا' : 'Product'}</th>
-                  <th style={{ padding: '8px' }}>{isFa ? 'تعداد' : 'Qty'}</th>
-                  <th style={{ padding: '8px' }}>{isFa ? 'قیمت واحد' : 'Unit Cost'}</th>
-                  <th style={{ padding: '8px' }}>{isFa ? 'مبلغ کل' : 'Total'}</th>
+                <tr
+                  style={{
+                    backgroundColor: theme.colors.background,
+                    borderBottom: `2px solid ${theme.colors.border}`,
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: theme.colors.textSecondary,
+                  }}
+                >
+                  <th style={{ padding: theme.spacing.lg }}>{s.purchaseNumber}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.supplier}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.purchaseDate}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.purchaseTotal}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.paymentStatus}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.receivingStatus}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{isFa ? 'عملیات' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody>
-                {selectedPurchaseDetail.items.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                    <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.productName || item.productId}</td>
-                    <td style={{ padding: '8px' }}>{item.quantity}</td>
-                    <td style={{ padding: '8px' }}>{isFa ? `${item.unitCost.toLocaleString('fa-IR')} تومان` : `$${item.unitCost.toFixed(2)}`}</td>
-                    <td style={{ padding: '8px', fontWeight: 'bold' }}>{isFa ? `${item.totalCost.toLocaleString('fa-IR')} تومان` : `$${item.totalCost.toFixed(2)}`}</td>
+                {purchases.map((purchase) => (
+                  <tr key={purchase.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                    <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {purchase.purchaseNumber}
+                    </td>
+                    <td style={{ padding: theme.spacing.lg, color: theme.colors.textPrimary }}>{purchase.supplierName || '—'}</td>
+                    <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>
+                      {purchase.purchaseDate || purchase.createdAt?.slice(0, 10) || '—'}
+                    </td>
+                    <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.primaryDark }}>
+                      {formatMoney(purchase.totalAmount, isFa)}
+                    </td>
+                    <td style={{ padding: theme.spacing.lg }}>
+                      <StatusBadge label={paymentBadge(purchase.paymentStatus).label} variant={paymentBadge(purchase.paymentStatus).variant} />
+                    </td>
+                    <td style={{ padding: theme.spacing.lg }}>
+                      <StatusBadge label={receivingBadge(purchase.status).label} variant={receivingBadge(purchase.status).variant} />
+                    </td>
+                    <td style={{ padding: theme.spacing.lg }}>
+                      <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+                        {purchase.status !== 'RECEIVED' && purchase.status !== 'CANCELLED' && navigate && (
+                          <button
+                            onClick={() => navigate('/app/receiving')}
+                            style={{
+                              backgroundColor: theme.colors.primaryLight,
+                              color: theme.colors.primaryDark,
+                              border: 'none',
+                              borderRadius: theme.borderRadius.md,
+                              padding: '6px 10px',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {isFa ? 'دریافت کالا' : 'Receive'}
+                          </button>
+                        )}
+                        {purchase.paymentStatus !== 'PAID' && (
+                          <button
+                            onClick={() => setPayFor(purchase)}
+                            style={{
+                              backgroundColor: theme.colors.surfaceHover,
+                              color: theme.colors.textPrimary,
+                              border: `1px solid ${theme.colors.borderStrong}`,
+                              borderRadius: theme.borderRadius.md,
+                              padding: '6px 10px',
+                              fontWeight: 600,
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {s.markPaid}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-
-            {/* Goods Receiving Action */}
-            {selectedPurchaseDetail.status === 'ORDERED' && (
-              <div style={{ backgroundColor: theme.colors.infoLight, border: `1px solid ${theme.colors.border}`, padding: '12px', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: theme.colors.info }}>{isFa ? 'تحویل قطعی کالا به انبار' : 'Receive Goods into Warehouse'}</div>
-                  <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'تحویل کالا باعث افزایش موجودی انبار و ثبت سند حسابداری می‌شود.' : 'Receiving increments warehouse stock and posts AP journal.'}</div>
-                </div>
-                <button
-                  onClick={() => handleReceiveGoods(selectedPurchaseDetail)}
-                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {isFa ? '📦 تحویل کالا' : '📦 Confirm Receive'}
-                </button>
-              </div>
-            )}
-
-            {/* Supplier Payment Section */}
-            {selectedPurchaseDetail.paymentStatus !== 'PAID' && (
-              <div style={{ backgroundColor: theme.colors.warningLight, border: `1px solid ${theme.colors.border}`, padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: theme.colors.warning }}>{isFa ? 'پرداخت به تامین‌کننده (بدهی حساب)' : 'Pay Supplier (Payable)'}</h4>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder={isFa ? 'مبلغ پرداخت' : 'Payment Amount'}
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '13px' }}
-                  />
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    style={{ padding: '8px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '13px' }}
-                  >
-                    <option value="BANK_TRANSFER">{isFa ? 'حواله بانکی' : 'Bank Transfer'}</option>
-                    <option value="CASH">{isFa ? 'نقدی' : 'Cash'}</option>
-                  </select>
-                  <button
-                    onClick={() => handlePaySupplier(selectedPurchaseDetail)}
-                    style={{ backgroundColor: theme.colors.success, color: '#0A2E1E', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '💳 ثبت پرداخت' : '💳 Record Payment'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button
-                onClick={closeModals}
-                style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {isFa ? 'بستن' : 'Close'}
-              </button>
-            </div>
           </div>
         </div>
+      )}
+
+      {isCreateOpen && (
+        <CreatePurchaseModal
+          language={language}
+          suppliers={suppliers}
+          products={products}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={(message) => {
+            setIsCreateOpen(false);
+            setNotice(message);
+            void load();
+          }}
+        />
+      )}
+
+      {payFor && (
+        <PaymentModal
+          language={language}
+          purchase={payFor}
+          onClose={() => setPayFor(null)}
+          onPaid={(message) => {
+            setPayFor(null);
+            setNotice(message);
+            void load();
+          }}
+        />
       )}
     </div>
   );
 };
+
+const CreatePurchaseModal: React.FC<{
+  language: 'fa' | 'en';
+  suppliers: Supplier[];
+  products: Product[];
+  onClose: () => void;
+  onCreated: (message: string) => void;
+}> = ({ language, suppliers, products, onClose, onCreated }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
+  const [supplierId, setSupplierId] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [lines, setLines] = useState<DraftLine[]>([]);
+  const [productId, setProductId] = useState('');
+  const [quantity, setQuantity] = useState<number | ''>(1);
+  const [unitCost, setUnitCost] = useState<number | ''>('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const total = lines.reduce((sum, line) => sum + line.quantity * line.unitCost, 0);
+
+  const addLine = () => {
+    if (!productId) {
+      setErrors({ product: isFa ? 'کالا را انتخاب کنید.' : 'Choose a product.' });
+      return;
+    }
+
+    const product = products.find((p) => p.id === productId);
+
+    setLines((prev) => [
+      ...prev,
+      {
+        productId,
+        quantity: Number(quantity) || 1,
+        unitCost: unitCost === '' ? product?.costPrice ?? 0 : Number(unitCost),
+      },
+    ]);
+
+    setProductId('');
+    setQuantity(1);
+    setUnitCost('');
+    setErrors((prev) => ({ ...prev, product: '' }));
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const next: Record<string, string> = {};
+    if (!supplierId) next.supplier_id = isFa ? 'تأمین‌کننده را انتخاب کنید.' : 'Choose a supplier.';
+    if (lines.length === 0) next.items = isFa ? 'حداقل یک کالا اضافه کنید.' : 'Add at least one item.';
+
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      await apiClient.createPurchase({
+        supplier_id: supplierId,
+        purchase_date: purchaseDate,
+        items: lines.map((line) => ({
+          product_id: line.productId,
+          quantity: line.quantity,
+          unit_cost: line.unitCost,
+        })),
+      });
+
+      onCreated(isFa ? 'سفارش خرید ثبت شد. برای افزودن کالا به انبار، بخش دریافت کالا را باز کنید.' : 'Purchase order created. Open Receiving to add the goods to a warehouse.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors(toFieldErrors(err.fieldErrors));
+        setFormError(err.message);
+      } else {
+        setFormError(isFa ? 'ثبت سفارش خرید ناموفق بود.' : 'Could not create the purchase order.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={s.newPurchase} onClose={onClose} maxWidth={640}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <FormError message={formError} />
+
+        <SelectInput label={s.supplier} required value={supplierId} error={errors.supplier_id} onChange={(e) => setSupplierId(e.target.value)}>
+          <option value="">{isFa ? 'انتخاب کنید' : 'Select a supplier'}</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.name}
+            </option>
+          ))}
+        </SelectInput>
+
+        <TextInput label={s.purchaseDate} type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
+
+        <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: theme.spacing.md }}>
+          <SelectInput label={isFa ? 'کالا' : 'Product'} value={productId} error={errors.product} onChange={(e) => setProductId(e.target.value)}>
+            <option value="">{isFa ? 'انتخاب کنید' : 'Select a product'}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </SelectInput>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: theme.spacing.md, marginTop: theme.spacing.md, alignItems: 'end' }}>
+            <TextInput
+              label={s.quantity}
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+            <TextInput
+              label={isFa ? 'قیمت واحد' : 'Unit cost'}
+              type="number"
+              min={0}
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+            <SecondaryButton type="button" onClick={addLine}>
+              {isFa ? 'افزودن' : 'Add'}
+            </SecondaryButton>
+          </div>
+        </div>
+
+        {errors.items && <p style={{ margin: 0, fontSize: '12px', color: theme.colors.error }}>{errors.items}</p>}
+
+        {lines.length > 0 && (
+          <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.md, padding: theme.spacing.md }}>
+            {lines.map((line, index) => {
+              const product = products.find((p) => p.id === line.productId);
+
+              return (
+                <div
+                  key={`${line.productId}-${index}`}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '13px' }}
+                >
+                  <span style={{ color: theme.colors.textPrimary }}>
+                    {product?.name}{' '}
+                    <span style={{ color: theme.colors.textMuted }}>
+                      × {quantityWithUnit(line.quantity, product?.unit, language)}
+                    </span>
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+                    <span style={{ color: theme.colors.textPrimary, fontWeight: 700 }}>
+                      {formatMoney(line.quantity * line.unitCost, isFa)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.error }}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 800 }}>
+          <span>{s.purchaseTotal}</span>
+          <span>{formatMoney(total, isFa)}</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.md }}>
+          <SecondaryButton type="button" onClick={onClose} disabled={isSubmitting}>
+            {isFa ? 'انصراف' : 'Cancel'}
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? s.submitting : isFa ? 'ثبت سفارش خرید' : 'Create purchase order'}
+          </PrimaryButton>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+
+const PaymentModal: React.FC<{
+  language: 'fa' | 'en';
+  purchase: Purchase;
+  onClose: () => void;
+  onPaid: (message: string) => void;
+}> = ({ language, purchase, onClose, onPaid }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
+  const [amount, setAmount] = useState<number | ''>(purchase.totalAmount);
+  const [method, setMethod] = useState('BANK_TRANSFER');
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      await apiClient.payPurchase(purchase.id, Number(amount), method);
+      onPaid(isFa ? 'پرداخت به تأمین‌کننده ثبت شد.' : 'Supplier payment recorded.');
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : isFa ? 'ثبت پرداخت ناموفق بود.' : 'Payment failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={s.markPaid} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <FormError message={formError} />
+        <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary }}>
+          {purchase.purchaseNumber} · {formatMoney(purchase.totalAmount, isFa)}
+        </p>
+
+        <TextInput
+          label={s.amount}
+          required
+          type="number"
+          min={0.01}
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+        />
+
+        <SelectInput label={s.paymentMethod} value={method} onChange={(e) => setMethod(e.target.value)}>
+          <option value="CASH">{isFa ? 'نقدی' : 'Cash'}</option>
+          <option value="BANK_TRANSFER">{isFa ? 'حواله بانکی' : 'Bank transfer'}</option>
+          <option value="CARD">{isFa ? 'کارت' : 'Card'}</option>
+        </SelectInput>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md }}>
+          <SecondaryButton type="button" onClick={onClose} disabled={isSubmitting}>
+            {isFa ? 'انصراف' : 'Cancel'}
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? s.submitting : s.markPaid}
+          </PrimaryButton>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+const toFieldErrors = (fieldErrors: Record<string, string[]>): Record<string, string> =>
+  Object.fromEntries(Object.entries(fieldErrors).map(([key, value]) => [key, value[0] ?? '']));

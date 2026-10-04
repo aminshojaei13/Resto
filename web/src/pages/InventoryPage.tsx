@@ -1,174 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient } from '../api/apiClient';
-import { Product } from '../types';
-import { EmptyState } from '../components/EmptyState';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ApiError, apiClient, getCurrentContext } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { StatusBadge } from '../components/StatusBadge';
+import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
+import { BusinessWarehouse, Product, StockMovement, StockRow } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { opsStrings } from '../i18n/opsStrings';
+import { quantityWithUnit } from '../util/units';
 
 interface InventoryPageProps {
   language?: 'fa' | 'en';
 }
 
+/**
+ * "What do I have right now?"
+ *
+ * Stock is read per warehouse from the server. Recording new stock is a
+ * separate, explicit operation that requires the warehouse to be chosen — a
+ * business with one warehouse has it preselected and still sees its name; a
+ * business with none is told to create one rather than being handed a
+ * warehouse it does not have.
+ */
 export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' }) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // Form state
-  const [name, setName] = useState('');
-  const [sku, setSku] = useState('');
-  const [barcode, setBarcode] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState<number | ''>(0);
-  const [costPrice, setCostPrice] = useState<number | ''>(0);
-  const [category, setCategory] = useState('');
-  const [unit, setUnit] = useState('pcs');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
+  const s = opsStrings(language);
   const isFa = language === 'fa';
-  const { theme, effectiveMode } = useTheme();
-  const isDark = effectiveMode === 'warmDark';
+  const { theme } = useTheme();
+
+  const [stock, setStock] = useState<StockRow[]>([]);
+  const [warehouses, setWarehouses] = useState<BusinessWarehouse[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  // "This business genuinely has no warehouse" and "the request failed" are
+  // different facts. Only the first one may lead to the create-a-warehouse
+  // screen; conflating them would tell the user to fix something that is not
+  // broken and would hide a real outage.
+  const [warehousesLoaded, setWarehousesLoaded] = useState(false);
+
+  const [isStockInOpen, setIsStockInOpen] = useState(false);
+  const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      // Everything this screen shows comes from the server. A failed request
+      // is reported; it is never replaced with an empty, healthy-looking list.
+      const [warehouseList, stockRows, productList] = await Promise.all([
+        apiClient.getWarehouses(),
+        apiClient.getStock(warehouseFilter || undefined),
+        apiClient.getProducts(),
+      ]);
+
+      setWarehouses(warehouseList);
+      setStock(stockRows);
+      setProducts(productList);
+      setMovements(await apiClient.getStockMovements(warehouseFilter ? { warehouseId: warehouseFilter } : {}));
+      setWarehousesLoaded(true);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof ApiError ? err.message : isFa ? 'دریافت موجودی ناموفق بود.' : 'Could not load stock.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [warehouseFilter, isFa]);
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    void load();
+  }, [load]);
 
-  const loadProducts = () => {
-    apiClient.getProducts().then(setProducts);
-  };
+  if (!isLoading && warehousesLoaded && warehouses.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
+        <PageHeader title={s.currentStockTitle} description={s.currentStockSubtitle} />
 
-  const openCreateModal = () => {
-    setEditingProduct(null);
-    setName('');
-    setSku(`SKU-${Math.floor(1000 + Math.random() * 9000)}`);
-    setBarcode('');
-    setDescription('');
-    setPrice(0);
-    setCostPrice(0);
-    setCategory(isFa ? 'عمومی' : 'General');
-    setUnit('pcs');
-    setErrorMessage('');
-    setIsCreateModalOpen(true);
-  };
+        <div
+          style={{
+            backgroundColor: theme.colors.surface,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: theme.borderRadius.xl,
+            padding: theme.spacing['3xl'],
+            textAlign: 'center',
+            boxShadow: theme.shadows.card,
+          }}
+        >
+          <div style={{ fontSize: '40px', marginBottom: theme.spacing.md }}>🏭</div>
+          <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: theme.colors.textPrimary }}>{s.noWarehouseTitle}</h3>
+          <p style={{ margin: '0 auto 20px', maxWidth: 460, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.8 }}>
+            {s.noWarehouseBody}
+          </p>
+          <PrimaryButton onClick={() => setIsWarehouseOpen(true)}>🏗 {s.createWarehouse}</PrimaryButton>
+        </div>
 
-  const openEditModal = (p: Product) => {
-    setEditingProduct(p);
-    setName(p.name);
-    setSku(p.sku);
-    setBarcode(p.barcode || '');
-    setDescription(p.description || '');
-    setPrice(p.price);
-    setCostPrice(p.costPrice);
-    setCategory(p.category || '');
-    setUnit(p.unit || 'pcs');
-    setErrorMessage('');
-    setIsCreateModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setEditingProduct(null);
-    setIsCreateModalOpen(false);
-    setErrorMessage('');
-  };
-
-  const handleSaveProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      setErrorMessage(isFa ? 'نام کالا الزامی است.' : 'Product name is required.');
-      return;
-    }
-    if (!sku.trim()) {
-      setErrorMessage(isFa ? 'کد SKU الزامی است.' : 'SKU is required.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-
-    try {
-      if (editingProduct) {
-        await apiClient.updateProduct(editingProduct.id, {
-          name: name.trim(),
-          sku: sku.trim(),
-          barcode: barcode.trim(),
-          description: description.trim(),
-          price: Number(price) || 0,
-          cost_price: Number(costPrice) || 0,
-          category: category.trim(),
-          unit: unit.trim(),
-        });
-      } else {
-        await apiClient.createProduct({
-          name: name.trim(),
-          sku: sku.trim(),
-          barcode: barcode.trim(),
-          description: description.trim(),
-          price: Number(price) || 0,
-          cost_price: Number(costPrice) || 0,
-          category: category.trim(),
-          unit: unit.trim(),
-        });
-      }
-
-      setIsSubmitting(false);
-      closeModal();
-      loadProducts();
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || (isFa ? 'خطا در ثبت اطلاعات کالا' : 'Failed to save product'));
-    }
-  };
-
-  const handleAdjust = async (productId: string) => {
-    try {
-      await apiClient.adjustStock(productId, '', 5, 'اصلاح موجودی دستی انبار');
-      alert(isFa ? 'موجودی انبار با موفقیت ۵ عدد افزایش یافت.' : 'Stock increased by 5 units.');
-      loadProducts();
-    } catch (err: any) {
-      alert(err.message || (isFa ? 'خطا در افزایش موجودی' : 'Stock adjustment failed'));
-    }
-  };
+        {isWarehouseOpen && (
+          <WarehouseModal
+            language={language}
+            onClose={() => setIsWarehouseOpen(false)}
+            onCreated={() => {
+              setIsWarehouseOpen(false);
+              void load();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
       <PageHeader
-        title={isFa ? 'کنترل موجودی انبار و کالاها' : 'Inventory & Product Catalog'}
-        description={isFa ? 'مدیریت متمرکز کالاها، قیمت‌ها، دسته‌بندی و موجودی انبارها' : 'Manage products, stock levels, warehouse stock, and pricing'}
+        title={s.currentStockTitle}
+        description={s.currentStockSubtitle}
         actions={
-          <button
-            onClick={openCreateModal}
-            style={{
-              backgroundColor: theme.colors.primary,
-              color: '#FFF',
-              border: 'none',
-              borderRadius: theme.borderRadius.md,
-              padding: '10px 20px',
-              fontSize: '13px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-            }}
-          >
-            <span>➕</span>
-            <span>{isFa ? 'افزودن کالای جدید' : 'Add New Product'}</span>
-          </button>
+          <PrimaryButton onClick={() => setIsStockInOpen(true)}>➕ {s.submitStockIn}</PrimaryButton>
         }
       />
 
-      {products.length === 0 ? (
+      <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{s.warehouse}:</span>
+        <select
+          value={warehouseFilter}
+          onChange={(e) => setWarehouseFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: theme.borderRadius.md,
+            border: `1px solid ${theme.colors.border}`,
+            backgroundColor: theme.colors.surfaceElevated,
+            color: theme.colors.textPrimary,
+            fontSize: '13px',
+          }}
+        >
+          <option value="">{isFa ? 'همه انبارها' : 'All warehouses'}</option>
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <FormError message={errorMessage} />
+      <FormError message={notice} />
+
+      {isLoading ? (
+        <p style={{ color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
+      ) : stock.length === 0 ? (
         <EmptyState
-          title={isFa ? 'هنوز کالایی ثبت نشده است' : 'No Products Created Yet'}
-          description={
-            isFa
-              ? 'کالاهای خود را اضافه کنید تا موجودی انبار، ثبت سفارش‌ها و خریدهای شما در یکجا مدیریت شوند.'
-              : 'Add your products to track warehouse stock levels, register online orders, and manage purchases in one place.'
-          }
-          actionText={isFa ? 'افزودن اولین کالا' : 'Add First Product'}
-          onAction={openCreateModal}
+          title={isFa ? 'موجودی ثبت نشده است' : 'No stock recorded yet'}
+          description={isFa ? 'برای ثبت موجودی از دکمه بالا استفاده کنید.' : 'Use the button above to record stock coming in.'}
+          actionText={s.submitStockIn}
+          onAction={() => setIsStockInOpen(true)}
           icon="📦"
         />
       ) : (
@@ -182,232 +169,349 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
           }}
         >
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', minWidth: 680 }}>
               <thead>
-                <tr style={{ backgroundColor: theme.colors.background, borderBottom: `2px solid ${theme.colors.border}`, fontSize: '12px', fontWeight: 700, color: theme.colors.textSecondary }}>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'نام کالا' : 'Product Name'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'کد SKU' : 'SKU'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'قیمت فروش' : 'Selling Price'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'قیمت خرید' : 'Cost Price'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'موجودی کل' : 'Total Stock'}</th>
-                  <th style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>{isFa ? 'عملیات' : 'Actions'}</th>
+                <tr
+                  style={{
+                    backgroundColor: theme.colors.background,
+                    borderBottom: `2px solid ${theme.colors.border}`,
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: theme.colors.textSecondary,
+                  }}
+                >
+                  <th style={{ padding: theme.spacing.lg }}>{isFa ? 'کالا' : 'Product'}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.warehouse}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.quantityWithUnit}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.availableStock}</th>
+                  <th style={{ padding: theme.spacing.lg }}>{s.reservedStock}</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => {
-                  const totalStock = Object.values(p.stockQuantityByWarehouse || {}).reduce((acc, v) => acc + Number(v), 0);
-                  return (
-                    <tr key={p.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontWeight: 700, color: theme.colors.textPrimary }}>
-                        {p.name}
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontFamily: 'monospace', color: theme.colors.textSecondary }}>
-                        {p.sku}
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>
-                        <span style={{ backgroundColor: theme.colors.background, border: `1px solid ${theme.colors.border}`, padding: '4px 10px', borderRadius: theme.borderRadius.full, fontSize: '12px' }}>
-                          {p.category || (isFa ? 'عمومی' : 'General')}
-                        </span>
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontWeight: 700, color: theme.colors.primaryDark }}>
-                        {isFa ? `${p.price.toLocaleString('fa-IR')} تومان` : `$${p.price.toFixed(2)}`}
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, color: theme.colors.textSecondary }}>
-                        {isFa ? `${p.costPrice.toLocaleString('fa-IR')} تومان` : `$${p.costPrice.toFixed(2)}`}
-                      </td>                       <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}`, fontWeight: 700, color: totalStock <= 5 ? theme.colors.error : theme.colors.success }}>
-                        {isFa ? `${totalStock.toLocaleString('fa-IR')} ${p.unit || 'عدد'}` : `${totalStock} ${p.unit || 'pcs'}`}
-                      </td>
-                      <td style={{ padding: `${theme.spacing.lg} ${theme.spacing.xl}` }}>
-                        <div style={{ display: 'flex', gap: theme.spacing.sm }}>
-                          <button
-                            onClick={() => openEditModal(p)}
-                            style={{
-                              backgroundColor: theme.colors.primaryLight,
-                              color: theme.colors.primaryDark,
-                              border: 'none',
-                              borderRadius: theme.borderRadius.md,
-                              padding: '6px 12px',
-                              fontWeight: 700,
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✏️ {isFa ? 'ویرایش' : 'Edit'}
-                          </button>
-                          <button
-                            onClick={() => handleAdjust(p.id)}
-                            style={{
-                              backgroundColor: theme.colors.surfaceHover,
-                              color: theme.colors.textPrimary,
-                              border: `1px solid ${theme.colors.borderStrong}`,
-                              borderRadius: theme.borderRadius.md,
-                              padding: '6px 12px',
-                              fontWeight: 600,
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ➕ {isFa ? 'افزایش موجودی' : '+5 Stock'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {stock.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                    <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {row.productName}
+                      <div style={{ fontWeight: 400, fontSize: '11px', color: theme.colors.textMuted }}>{row.sku}</div>
+                    </td>
+                    <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>{row.warehouseName}</td>
+                    <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {quantityWithUnit(row.quantity, row.unit, language)}
+                    </td>
+                    <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>
+                      {quantityWithUnit(row.availableQuantity, row.unit, language)}
+                    </td>
+                    <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>
+                      {quantityWithUnit(row.reservedQuantity, row.unit, language)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Modal for Product Creation & Editing */}
-      {isCreateModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, width: '100%', maxWidth: '540px', padding: theme.spacing['2xl'], boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', fontFamily: theme.typography.fontFamily, border: `1px solid ${theme.colors.border}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: theme.colors.textPrimary }}>
-                {editingProduct
-                  ? (isFa ? `ویرایش مشخصات کالا (${editingProduct.name})` : `Edit Product (${editingProduct.name})`)
-                  : (isFa ? 'افزودن کالای جدید به انبار' : 'Add New Product to Inventory')}
-              </h3>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textMuted }}>✕</button>
+      {movements.length > 0 && (
+        <section>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: theme.colors.textPrimary }}>
+            {s.stockMovementsTitle}
+          </h3>
+          <p style={{ margin: '2px 0 12px', fontSize: '13px', color: theme.colors.textSecondary }}>
+            {s.stockMovementsSubtitle}
+          </p>
+
+          <div
+            style={{
+              backgroundColor: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.xl,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: 560 }}>
+                <tbody>
+                  {movements.slice(0, 20).map((movement) => (
+                    <tr key={movement.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                      <td style={{ padding: '10px 16px', width: 90 }}>
+                        <StatusBadge
+                          label={movement.type === 'IN' ? s.inStock : s.outOfStock}
+                          variant={Number(movement.quantity) >= 0 ? 'success' : 'warning'}
+                        />
+                      </td>
+                      <td style={{ padding: '10px 16px', color: theme.colors.textPrimary }}>{movement.reason}</td>
+                      <td style={{ padding: '10px 16px', color: theme.colors.textSecondary }}>
+                        {new Date(movement.created_at).toLocaleString(isFa ? 'fa-IR' : 'en-GB')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-            {errorMessage && (               <div style={{ backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2', color: isDark ? theme.colors.error : '#991B1B', padding: theme.spacing.md, borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.lg, fontSize: '13px', fontWeight: 600 }}>
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                  {isFa ? 'نام کالا *' : 'Product Name *'}
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'کد SKU *' : 'SKU *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'بارکد کالا' : 'Barcode'}
-                  </label>
-                  <input
-                    type="text"
-                    value={barcode}
-                    onChange={(e) => setBarcode(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'قیمت فروش *' : 'Selling Price *'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'قیمت خرید (خالص)' : 'Cost Price'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'دسته‌بندی' : 'Category'}
-                  </label>
-                  <input
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                    {isFa ? 'واحد سنجش' : 'Unit'}
-                  </label>
-                  <input
-                    type="text"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: theme.colors.textPrimary }}>
-                  {isFa ? 'توضیحات تکمیلی' : 'Description'}
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '14px', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.background, color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, padding: '10px 20px', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}
-                >
-                  {isFa ? 'انصراف' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.primary, color: '#FFF', border: 'none', borderRadius: theme.borderRadius.md, padding: '10px 24px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}
-                >
-                  {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Saving...') : (isFa ? 'ذخیره کالا' : 'Save Product')}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
+        </section>
+      )}
+
+      {isStockInOpen && (
+        <StockInModal
+          language={language}
+          warehouses={warehouses}
+          products={products}
+          onClose={() => setIsStockInOpen(false)}
+          onDone={(message) => {
+            setNotice(message);
+            setIsStockInOpen(false);
+            void load();
+          }}
+        />
+      )}
+
+      {isWarehouseOpen && (
+        <WarehouseModal
+          language={language}
+          onClose={() => setIsWarehouseOpen(false)}
+          onCreated={() => {
+            setIsWarehouseOpen(false);
+            void load();
+          }}
+        />
       )}
     </div>
   );
 };
+
+/**
+ * The explicit stock-in form: product, warehouse, quantity, the product's own
+ * unit, and a reason. Every field is validated where it is typed.
+ */
+const StockInModal: React.FC<{
+  language: 'fa' | 'en';
+  warehouses: BusinessWarehouse[];
+  products: Product[];
+  onClose: () => void;
+  onDone: (message: string) => void;
+}> = ({ language, warehouses, products, onClose, onDone }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
+  const [productId, setProductId] = useState('');
+  const [warehouseId, setWarehouseId] = useState(() =>
+    warehouses.length === 1 ? warehouses[0].id : getCurrentContext().warehouseId
+  );
+  const [quantity, setQuantity] = useState<number | ''>('');
+  const [reason, setReason] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const product = products.find((p) => p.id === productId);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const next: Record<string, string> = {};
+
+    if (!productId) next.product = isFa ? 'کالا را انتخاب کنید.' : 'Choose a product.';
+    if (!warehouseId) next.warehouse = isFa ? 'انبار را انتخاب کنید.' : 'Choose a warehouse.';
+
+    const amount = Number(quantity);
+    if (quantity === '' || Number.isNaN(amount) || amount <= 0) {
+      next.quantity = isFa ? 'مقدار باید بزرگ‌تر از صفر باشد.' : 'Quantity must be greater than zero.';
+    }
+
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      await apiClient.stockIn({
+        warehouseId,
+        productId,
+        quantity: amount,
+        reason: reason.trim() || undefined,
+      });
+
+      onDone(s.stockInDone);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors(toFieldErrors(err.fieldErrors));
+        setFormError(err.message);
+      } else {
+        setFormError(isFa ? 'ثبت موجودی ناموفق بود.' : 'Could not record stock.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={s.increaseStockTitle} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary, marginBottom: 4 }}>
+          {s.increaseStockSubtitle}
+        </p>
+
+        <FormError message={formError} />
+
+        <SelectInput
+          label={isFa ? 'کالا' : 'Product'}
+          required
+          value={productId}
+          error={errors.product}
+          onChange={(e) => setProductId(e.target.value)}
+        >
+          <option value="">{isFa ? 'انتخاب کنید' : 'Select a product'}</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </SelectInput>
+
+        <SelectInput
+          label={s.warehouse}
+          required
+          value={warehouseId}
+          error={errors.warehouse_id ?? errors.warehouse}
+          onChange={(e) => setWarehouseId(e.target.value)}
+          hint={warehouses.length === 1 ? s.warehouse : undefined}
+        >
+          <option value="">{s.selectWarehouse}</option>
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+              {w.storeName ? ` — ${w.storeName}` : ''}
+            </option>
+          ))}
+        </SelectInput>
+
+        <TextInput
+          label={s.quantity}
+          required
+          type="number"
+          min={1}
+          step={1}
+          value={quantity}
+          error={errors.quantity}
+          onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+          placeholder="0"
+        />
+
+        {/* The unit belongs to the product; it is shown, never chosen. */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 12px',
+            borderRadius: theme.borderRadius.md,
+            backgroundColor: theme.colors.background,
+            border: `1px solid ${theme.colors.border}`,
+            fontSize: '13px',
+          }}
+        >
+          <span style={{ color: theme.colors.textSecondary }}>{s.unitOfProduct}</span>
+          <strong style={{ color: theme.colors.textPrimary }}>
+            {product ? product.unitLabel ?? product.unit : isFa ? '—' : '—'}
+          </strong>
+        </div>
+
+        <TextInput
+          label={s.reasons}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder={isFa ? 'مثال: شمارش دستی صبح' : 'e.g. Morning stock count'}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.md }}>
+          <SecondaryButton type="button" onClick={onClose} disabled={isSubmitting}>
+            {isFa ? 'انصراف' : 'Cancel'}
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? s.submitting : s.submitStockIn}
+          </PrimaryButton>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+
+const WarehouseModal: React.FC<{
+  language: 'fa' | 'en';
+  onClose: () => void;
+  onCreated: () => void;
+}> = ({ language, onClose, onCreated }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
+  const [name, setName] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const storeId = getCurrentContext().storeId;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name.trim()) {
+      setErrors({ name: isFa ? 'نام انبار را وارد کنید.' : 'Enter a warehouse name.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      await apiClient.createWarehouse({
+        storeId,
+        name: name.trim(),
+        code: `WH-${name.trim().slice(0, 6).toUpperCase().replace(/\s+/g, '')}`,
+      });
+
+      onCreated();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors(toFieldErrors(err.fieldErrors));
+        setFormError(err.message);
+      } else {
+        setFormError(isFa ? 'ایجاد انبار ناموفق بود.' : 'Could not create the warehouse.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={s.createWarehouse} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <FormError message={formError} />
+
+        <TextInput
+          label={isFa ? 'نام انبار' : 'Warehouse name'}
+          required
+          value={name}
+          error={errors.name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={isFa ? 'انبار مرکزی' : 'Main warehouse'}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.md }}>
+          <SecondaryButton type="button" onClick={onClose} disabled={isSubmitting}>
+            {isFa ? 'انصراف' : 'Cancel'}
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? s.submitting : s.createWarehouse}
+          </PrimaryButton>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+const toFieldErrors = (fieldErrors: Record<string, string[]>): Record<string, string> =>
+  Object.fromEntries(Object.entries(fieldErrors).map(([key, value]) => [key, value[0] ?? '']));

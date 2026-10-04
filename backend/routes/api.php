@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountingController;
+use App\Http\Controllers\Api\BusinessSettingsController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
@@ -95,6 +96,14 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
         Route::delete('/staff/{userId}', [StaffController::class, 'destroy'])
             ->middleware('permission:' . RolePermission::STAFF_MANAGE);
 
+        // Business settings — the authoritative home of the sales tax rate.
+        Route::get('/business/settings', [BusinessSettingsController::class, 'show'])
+            ->middleware('permission:' . RolePermission::BUSINESS_VIEW);
+        Route::put('/business/settings', [BusinessSettingsController::class, 'update'])
+            ->middleware('permission:' . RolePermission::BUSINESS_MANAGE);
+        Route::get('/units', [BusinessSettingsController::class, 'units'])
+            ->middleware('permission:' . RolePermission::CATALOG_VIEW);
+
         // Business settings
         Route::get('/organizations', [OrganizationController::class, 'index']);
         Route::get('/organizations/{id}', [OrganizationController::class, 'show']);
@@ -146,6 +155,10 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
         // Purchasing & receiving
         Route::get('/purchases', [PurchaseController::class, 'index'])
             ->middleware('permission:' . RolePermission::PURCHASING_VIEW);
+        // Registered before /purchases/{id} so the literal segment is not
+        // swallowed by the id pattern.
+        Route::get('/purchases/receiving-queue', [PurchaseController::class, 'receivingQueue'])
+            ->middleware('permission:' . RolePermission::INVENTORY_VIEW);
         Route::get('/purchases/{id}', [PurchaseController::class, 'show'])
             ->middleware('permission:' . RolePermission::PURCHASING_VIEW);
         Route::post('/purchases', [PurchaseController::class, 'store'])
@@ -156,8 +169,14 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
             ->middleware('permission:' . RolePermission::PURCHASING_MANAGE);
 
         // Inventory
+        Route::get('/inventory/warehouses', [InventoryController::class, 'warehouses'])
+            ->middleware('permission:' . RolePermission::INVENTORY_VIEW);
         Route::get('/inventory/stock', [InventoryController::class, 'stock'])
             ->middleware('permission:' . RolePermission::INVENTORY_VIEW);
+        Route::get('/inventory/movements', [InventoryController::class, 'movements'])
+            ->middleware('permission:' . RolePermission::INVENTORY_VIEW);
+        Route::post('/inventory/stock-in', [InventoryController::class, 'stockIn'])
+            ->middleware('permission:' . RolePermission::INVENTORY_ADJUST);
         Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])
             ->middleware('permission:' . RolePermission::INVENTORY_ADJUST);
         Route::post('/inventory/transfer', [InventoryController::class, 'transfer'])
@@ -169,6 +188,10 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
         Route::get('/orders/{id}', [SalesOrderController::class, 'show'])
             ->middleware('permission:' . RolePermission::SALES_VIEW);
         Route::post('/orders/checkout', [SalesOrderController::class, 'checkout'])
+            ->middleware('permission:' . RolePermission::SALES_CREATE);
+        Route::post('/orders/{id}/prepare', [SalesOrderController::class, 'prepare'])
+            ->middleware('permission:' . RolePermission::SALES_CREATE);
+        Route::post('/orders/{id}/pay', [SalesOrderController::class, 'pay'])
             ->middleware('permission:' . RolePermission::SALES_CREATE);
         Route::post('/orders/{id}/cancel', [SalesOrderController::class, 'cancel'])
             ->middleware('permission:' . RolePermission::SALES_CREATE);
@@ -189,6 +212,11 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
 
         // Expenses
         Route::get('/expenses', [ExpenseController::class, 'index'])
+            ->middleware('permission:' . RolePermission::EXPENSES_VIEW);
+        // Registered before /expenses/{id} for the same reason as purchases.
+        Route::get('/expenses/categories', [ExpenseController::class, 'categories'])
+            ->middleware('permission:' . RolePermission::EXPENSES_VIEW);
+        Route::get('/expenses/summary', [ExpenseController::class, 'summary'])
             ->middleware('permission:' . RolePermission::EXPENSES_VIEW);
         Route::get('/expenses/{id}', [ExpenseController::class, 'show'])
             ->middleware('permission:' . RolePermission::EXPENSES_VIEW);

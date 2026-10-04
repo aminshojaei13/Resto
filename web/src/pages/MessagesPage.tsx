@@ -1,289 +1,459 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient } from '../api/apiClient';
+import React, { useEffect, useState } from 'react';
+import { ApiError, apiClient, getCurrentContext } from '../api/apiClient';
+import { PageHeader } from '../components/PageHeader';
+import { FormError, InfoNote, PrimaryButton, SecondaryButton } from '../components/Field';
 import { useTheme } from '../theme/ThemeContext';
+import { messageExamples, opsStrings } from '../i18n/opsStrings';
+import { formatMoney } from '../util/money';
+import { formatPercent, formatPercentFa, quantityWithUnit } from '../util/units';
 
 interface MessagesPageProps {
   language?: 'fa' | 'en';
 }
 
-export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) => {
-  const [activeSubTab, setActiveTab] = useState<'import' | 'history'>('import');
-  const [rawText, setRawText] = useState('');
-  const [parsedPayload, setParsedPayload] = useState<any | null>(null);
-  const [importedMessages, setImportedMessages] = useState<any[]>([]);
-  const [isParsing, setIsSubmitting] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+interface DraftLine {
+  productId: string;
+  productName: string;
+  sku: string;
+  unit?: string;
+  unitLabel?: string;
+  price: number;
+  quantity: number;
+  discountPercent: number;
+}
 
+interface Draft {
+  id: string;
+  customer: { id?: string; name?: string; phone?: string; address?: string; is_new: boolean };
+  items: DraftLine[];
+  unmatched_items: { raw_text: string; product_name: string; quantity: number; reason: string }[];
+  tax_rate: number;
+  payment_method: string;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  grand_total: number;
+}
+
+const STEPS = ['messageStep1', 'messageStep2', 'messageStep3', 'messageStep4', 'messageStep5', 'messageStep6'] as const;
+
+/**
+ * Order from a customer message.
+ *
+ * Paste what the customer wrote, read the draft, correct anything the parser
+ * could not read, then register the order through the normal order flow. The
+ * parsing is deterministic rule matching — it is not described as AI, because
+ * it is not AI.
+ */
+export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) => {
+  const s = opsStrings(language);
   const isFa = language === 'fa';
   const { theme } = useTheme();
 
-  const sampleTemplate = `RESTO_ORDER
-Customer: Ali Rezaei
-Phone: +1 (555) 888-9999
-SKU: APX-LAP-001
-Quantity: 2
-Address: Tehran, Freedom Square
-Payment: Cash`;
+  const [rawText, setRawText] = useState('');
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
+  const [warehouseId, setWarehouseId] = useState('');
+  const [showExamples, setShowExamples] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [notice, setNotice] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
-    if (activeSubTab === 'history') {
-      loadMessageHistory();
-    }
-  }, [activeSubTab]);
+    apiClient
+      .getWarehouses()
+      .then((list) => {
+        setWarehouses(list);
+        setWarehouseId(list.length === 1 ? list[0].id : getCurrentContext().warehouseId);
+      })
+      .catch(() => setWarehouses([]));
+  }, []);
 
-  const loadMessageHistory = async () => {
-    try {
-      const list = await apiClient.getImportedMessages();
-      setImportedMessages(list);
-    } catch {
-      // Fallback
-    }
-  };
-
-  const handleInsertSample = () => {
-    setRawText(sampleTemplate);
-    setParsedPayload(null);
-    setErrorMessage('');
-  };
-
-  const handleParseMessage = async (e: React.FormEvent) => {
+  const review = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rawText.trim()) {
-      setErrorMessage(isFa ? 'لطفاً متن پیام سفارش را وارد کنید.' : 'Please enter message text.');
-      return;
-    }
 
-    setIsSubmitting(true);
+    if (!rawText.trim()) return;
+
+    setIsParsing(true);
     setErrorMessage('');
 
     try {
-      const result = await apiClient.parseMessage(rawText, 'manual_paste');
-      setParsedPayload(result);
-      setIsSubmitting(false);
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || (isFa ? 'خطا در پردازش پیام سفارش' : 'Failed to parse order message'));
+      const result = await apiClient.parseMessage(rawText.trim(), 'manual_paste');
+      setDraft(result);
+      setCustomerName(result.customer?.name ?? '');
+      setCustomerPhone(result.customer?.phone ?? '');
+      setPaymentMethod(result.payment_method ?? 'CASH');
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : isFa ? 'بررسی پیام ناموفق بود.' : 'Could not read the message.');
+    } finally {
+      setIsParsing(false);
     }
   };
 
-  const handleConfirmOrder = async () => {
-    if (!parsedPayload) return;
+  const updateLine = (index: number, patch: Partial<DraftLine>) => {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((line, i) => (i === index ? { ...line, ...patch } : line)),
+          }
+        : prev
+    );
+  };
+
+  const removeLine = (index: number) => {
+    setDraft((prev) => (prev ? { ...prev, items: prev.items.filter((_, i) => i !== index) } : prev));
+  };
+
+  /**
+   * The preview is recalculated from the corrected lines using the same
+   * arithmetic as the server; the server recomputes it again on checkout and
+   * that value is what is stored.
+   */
+  const draftLines = draft?.items ?? [];
+  const draftTaxRate = draft?.tax_rate ?? 0;
+
+  const totals = draftLines.reduce(
+    (acc, line) => {
+      const subtotal = Math.round(line.price * line.quantity * 100) / 100;
+      const discount = Math.round(subtotal * (line.discountPercent / 100) * 100) / 100;
+      const taxable = Math.round((subtotal - discount) * 100) / 100;
+      const tax = Math.round(taxable * (draftTaxRate / 100) * 100) / 100;
+
+      acc.subtotal += subtotal;
+      acc.discount += discount;
+      acc.tax += tax;
+      return acc;
+    },
+    { subtotal: 0, discount: 0, tax: 0 }
+  );
+
+  const grandTotal = Math.round((totals.subtotal - totals.discount + totals.tax) * 100) / 100;
+
+  const checkout = async () => {
+    if (!draft || draft.items.length === 0) return;
 
     setIsCheckingOut(true);
+    setErrorMessage('');
+
     try {
       const order = await apiClient.checkout({
-        customer_id: parsedPayload.customer?.id,
-        customer_name: parsedPayload.customer?.name || 'Social Customer',
-        payment_method: parsedPayload.payment_method || 'CASH',
-        items: parsedPayload.items.map((i: any) => ({
-          product_id: i.product_id,
-          product_name: i.product_name,
-          sku: i.sku,
-          price: i.price,
-          quantity: i.quantity,
+        warehouseId,
+        customerId: draft.customer.id,
+        customerName: customerName.trim() || undefined,
+        paymentMethod,
+        source: 'MESSAGE',
+        items: draft.items.map((line) => ({
+          productId: line.productId,
+          quantity: Math.max(1, line.quantity),
+          discountPercent: line.discountPercent,
         })),
       });
 
-      setIsCheckingOut(false);
-      alert(isFa ? `سفارش شماره ${order.orderNumber} با موفقیت ثبت شد و موجودی انبار کسر گردید!` : `Order ${order.orderNumber} created successfully! Stock deducted.`);
-      setParsedPayload(null);
+      setNotice(
+        isFa
+          ? `سفارش ${order.orderNumber} ثبت شد و موجودی انبار کسر گردید.`
+          : `Order ${order.orderNumber} registered and stock deducted.`
+      );
+
+      setDraft(null);
       setRawText('');
-    } catch (err: any) {
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : isFa ? 'ثبت سفارش ناموفق بود.' : 'Could not register the order.');
+    } finally {
       setIsCheckingOut(false);
-      alert(err.message || (isFa ? 'خطا در ثبت نهایی سفارش' : 'Failed to checkout order'));
     }
   };
 
+  const examples = messageExamples(language);
+
   return (
-    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ margin: '0 0 4px 0', color: theme.colors.textPrimary }}>{isFa ? 'ورود و پردازش پیام‌های سفارش (Social Message Import)' : 'Social Order Message Import'}</h2>
-        <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '13px' }}>
-          {isFa ? 'استخراج قطعی و دقیق مشخصات مشتری و کالا از پیام‌های اینستاگرام، تلگرام و واتس‌اپ بدون واسطه AI' : 'Deterministic parsing of social order messages into sales orders and stock deductions'}
-        </p>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
+      <PageHeader title={s.messageTitle} description={s.messageSubtitle} />
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '12px', borderBottom: `2px solid ${theme.colors.border}`, marginBottom: '20px' }}>
-        <button
-          onClick={() => setActiveTab('import')}
-          style={{
-            padding: '10px 16px',
-            border: 'none',
-            background: 'none',
-            fontWeight: 'bold',
-            fontSize: '14px',
-            cursor: 'pointer',
-            borderBottom: activeSubTab === 'import' ? `3px solid ${theme.colors.primary}` : 'none',
-            color: activeSubTab === 'import' ? theme.colors.primary : theme.colors.textSecondary,
-          }}
-        >
-          {isFa ? '📋 پردازش و ثبت پیام جدید' : '📋 Import New Message'}
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          style={{
-            padding: '10px 16px',
-            border: 'none',
-            background: 'none',
-            fontWeight: 'bold',
-            fontSize: '14px',
-            cursor: 'pointer',
-            borderBottom: activeSubTab === 'history' ? `3px solid ${theme.colors.primary}` : 'none',
-            color: activeSubTab === 'history' ? theme.colors.primary : theme.colors.textSecondary,
-          }}
-        >
-          {isFa ? '📂 سابقه پیام‌های دریافتی' : '📂 Message History'}
-        </button>
-      </div>
+      {/* The six steps, always visible so the flow is never a mystery. */}
+      <ol
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: theme.spacing.sm,
+          listStyle: 'none',
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        {STEPS.map((step, index) => (
+          <li
+            key={step}
+            style={{
+              backgroundColor: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.md,
+              fontSize: '12px',
+              fontWeight: 600,
+              color: theme.colors.textSecondary,
+            }}
+          >
+            <span style={{ color: theme.colors.primary, fontWeight: 800, marginInlineEnd: 6 }}>{index + 1}.</span>
+            {s[step]}
+          </li>
+        ))}
+      </ol>
 
-      {activeSubTab === 'import' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: parsedPayload ? '1fr 1fr' : '1fr', gap: '24px' }}>
-          {/* Form Input Area */}
-          <div style={{ backgroundColor: theme.colors.surface, padding: '20px', borderRadius: '12px', border: `1px solid ${theme.colors.border}`, boxShadow: theme.shadows.card }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: theme.colors.textPrimary }}>{isFa ? 'متن پیام دریافتی را وارد کنید:' : 'Enter Received Message Text:'}</h3>
-              <button
-                type="button"
-                onClick={handleInsertSample}
-                style={{ backgroundColor: theme.colors.infoLight, color: theme.colors.info, border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {isFa ? '📋 درج نمونه پیام سفارش' : '📋 Insert Sample Message'}
-              </button>
-            </div>
+      <FormError message={errorMessage} />
+      <FormError message={notice} />
 
-            {errorMessage && (
-              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleParseMessage} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <textarea
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder={isFa ? "متن پیام را کپی و اینجا پیست کنید...\nمثال:\nCALCUAPP_ORDER\nCustomer: علی رضایی\nPhone: 09121234567\nSKU: APX-LAP-001\nQuantity: 2" : "Paste message text here..."}
-                rows={10}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box', backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary }}
-                required
-              />
-
-              <button
-                type="submit"
-                disabled={isParsing || !rawText.trim()}
-                style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '12px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {isParsing ? (isFa ? 'در حال پردازش قطعی...' : 'Parsing...') : (isFa ? '🔍 پردازش و استخراج اطلاعات سفارش' : '🔍 Parse Order Message')}
-              </button>
-            </form>
-          </div>
-
-          {/* Parsed Preview Card */}
-          {parsedPayload && (
-            <div style={{ backgroundColor: theme.colors.surface, padding: '20px', borderRadius: '12px', border: `1px solid ${theme.colors.primary}`, boxShadow: theme.shadows.md }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: `1px solid ${theme.colors.border}`, paddingBottom: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: theme.colors.primary }}>
-                  {isFa ? 'پیش‌نمایش سفارش استخراج‌شده' : 'Parsed Order Preview'}
-                </h3>
-                <span style={{ backgroundColor: theme.colors.successLight, color: theme.colors.success, padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
-                  {isFa ? 'تاییدشده' : 'Parsed Valid'}
-                </span>
-              </div>
-
-              {/* Customer Info */}
-              <div style={{ backgroundColor: theme.colors.backgroundSecondary, padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px' }}>
-                <div><strong>{isFa ? 'مشتری:' : 'Customer:'}</strong> {parsedPayload.customer.name} {parsedPayload.customer.is_new ? (isFa ? '(مشتری جدید)' : '(New Customer)') : ''}</div>
-                <div><strong>{isFa ? 'تلفن:' : 'Phone:'}</strong> {parsedPayload.customer.phone || '-'}</div>
-                <div><strong>{isFa ? 'آدرس تحویل:' : 'Address:'}</strong> {parsedPayload.customer.address || '-'}</div>
-              </div>
-
-              {/* Matched Products */}
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: theme.colors.textPrimary }}>{isFa ? 'اقلام تطبیق‌یافته کاتالوگ:' : 'Matched Catalog Items:'}</h4>
-              <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse', marginBottom: '16px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left' }}>
-                    <th style={{ padding: '6px' }}>{isFa ? 'نام کالا' : 'Product'}</th>
-                    <th style={{ padding: '6px' }}>{isFa ? 'SKU' : 'SKU'}</th>
-                    <th style={{ padding: '6px' }}>{isFa ? 'تعداد' : 'Qty'}</th>
-                    <th style={{ padding: '6px' }}>{isFa ? 'مبلغ' : 'Subtotal'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedPayload.items.map((item: any, idx: number) => (
-                    <tr key={idx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                      <td style={{ padding: '6px', fontWeight: 'bold' }}>{item.product_name}</td>
-                      <td style={{ padding: '6px', fontFamily: 'monospace' }}>{item.sku}</td>
-                      <td style={{ padding: '6px' }}>{item.quantity}</td>
-                      <td style={{ padding: '6px', fontWeight: 'bold' }}>
-                        {isFa ? `${item.subtotal.toLocaleString('fa-IR')} تومان` : `$${item.subtotal.toFixed(2)}`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Order Totals */}
-              <div style={{ backgroundColor: theme.colors.backgroundSecondary, padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>{isFa ? 'جمع کل اقلام:' : 'Subtotal:'}</span>
-                  <span>{isFa ? `${parsedPayload.subtotal.toLocaleString('fa-IR')} تومان` : `$${parsedPayload.subtotal.toFixed(2)}`}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                  <span>{isFa ? 'مالیات (۸٪):' : 'Tax (8%):'}</span>
-                  <span>{isFa ? `${parsedPayload.tax_amount.toLocaleString('fa-IR')} تومان` : `$${parsedPayload.tax_amount.toFixed(2)}`}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold', color: theme.colors.primary, borderTop: `1px solid ${theme.colors.borderStrong}`, paddingTop: '8px', marginTop: '4px' }}>
-                  <span>{isFa ? 'مبلغ قابل پرداخت:' : 'Grand Total:'}</span>
-                  <span>{isFa ? `${parsedPayload.grand_total.toLocaleString('fa-IR')} تومان` : `$${parsedPayload.grand_total.toFixed(2)}`}</span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleConfirmOrder}
-                disabled={isCheckingOut || parsedPayload.items.length === 0}
-                style={{ width: '100%', backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '14px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {isCheckingOut ? (isFa ? 'در حال ثبت سفارش...' : 'Processing Order...') : (isFa ? '🛒 تایید نهایی و ثبت فاکتور فروش' : '🛒 Confirm & Checkout Sales Order')}
-              </button>
-            </div>
-          )}
+      {/* 1. paste */}
+      <form onSubmit={review} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textPrimary }}>{s.messageInputLabel}</label>
+          <SecondaryButton type="button" onClick={() => setShowExamples((v) => !v)}>
+            {showExamples ? s.hideExamples : s.showExamples}
+          </SecondaryButton>
         </div>
-      ) : (
-        /* History Sub-tab */
-        <div style={{ backgroundColor: theme.colors.surface, borderRadius: '12px', padding: '20px', border: `1px solid ${theme.colors.border}` }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold', color: theme.colors.textPrimary }}>{isFa ? 'سابقه پیام‌های ورودی دریافتی' : 'Imported Messages Trail'}</h3>
 
-          {importedMessages.length === 0 ? (
-            <p style={{ color: theme.colors.textMuted, textAlign: 'center', padding: '40px 0' }}>{isFa ? 'هیچ پیامی قبلاً ثبت نشده است.' : 'No imported messages logged yet.'}</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary }}>
-                  <th style={{ padding: '8px 12px' }}>{isFa ? 'منبع' : 'Source'}</th>
-                  <th style={{ padding: '8px 12px' }}>{isFa ? 'متن پیام' : 'Raw Text'}</th>
-                  <th style={{ padding: '8px 12px' }}>{isFa ? 'وضعیت' : 'Status'}</th>
-                  <th style={{ padding: '8px 12px' }}>{isFa ? 'تاریخ' : 'Date'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importedMessages.map((msg: any) => (
-                  <tr key={msg.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>{msg.source}</td>
-                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.raw_text}</td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '10px', backgroundColor: theme.colors.successLight, color: theme.colors.success, fontWeight: 'bold', fontSize: '11px' }}>
-                        {msg.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 12px' }}>{msg.created_at || '-'}</td>
-                  </tr>
+        <textarea
+          value={rawText}
+          onChange={(e) => setRawText(e.target.value)}
+          placeholder={s.messageInputPlaceholder}
+          rows={8}
+          style={{
+            width: '100%',
+            padding: theme.spacing.md,
+            borderRadius: theme.borderRadius.lg,
+            border: `1px solid ${theme.colors.border}`,
+            backgroundColor: theme.colors.surfaceElevated,
+            color: theme.colors.textPrimary,
+            fontSize: '14px',
+            lineHeight: 1.9,
+            boxSizing: 'border-box',
+            fontFamily: isFa ? 'inherit' : 'ui-monospace, monospace',
+          }}
+        />
+
+        <PrimaryButton type="submit" disabled={isParsing || !rawText.trim()}>
+          {isParsing ? (isFa ? 'در حال بررسی…' : 'Reading…') : `🔍 ${s.reviewMessage}`}
+        </PrimaryButton>
+      </form>
+
+      {showExamples && (
+        <InfoNote title={s.examplesTitle}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {examples.map((example, index) => (
+              <button
+                key={index}
+                onClick={() => setRawText(example)}
+                style={{
+                  textAlign: isFa ? 'right' : 'left',
+                  backgroundColor: theme.colors.background,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: theme.spacing.md,
+                  color: theme.colors.textPrimary,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.9,
+                }}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+        </InfoNote>
+      )}
+
+      {/* 2-5. review and correct */}
+      {!draft ? (
+        <p style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>{s.nothingToReview}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+          {/* customer */}
+          <section
+            style={{
+              backgroundColor: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.xl,
+              padding: theme.spacing.lg,
+            }}
+          >
+            <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+              {s.customer}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
+              <input
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder={isFa ? 'نام مشتری' : 'Customer name'}
+                style={inputStyle(theme)}
+              />
+              <input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder={isFa ? 'شماره تماس' : 'Phone'}
+                style={inputStyle(theme)}
+              />
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={inputStyle(theme)}>
+                <option value="CASH">{isFa ? 'نقدی' : 'Cash'}</option>
+                <option value="CARD">{isFa ? 'کارت' : 'Card'}</option>
+                <option value="BANK_TRANSFER">{isFa ? 'حواله' : 'Bank transfer'}</option>
+              </select>
+              <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} style={inputStyle(theme)}>
+                <option value="">{s.selectWarehouse}</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+          </section>
+
+          {/* items */}
+          <section
+            style={{
+              backgroundColor: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.xl,
+              padding: theme.spacing.lg,
+            }}
+          >
+            <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+              {isFa ? 'کالاها' : 'Items'}
+            </h3>
+
+            {draft.items.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary }}>
+                {isFa ? 'هیچ کالایی از این پیام خوانده نشد.' : 'No items could be read from this message.'}
+              </p>
+            ) : (
+              draft.items.map((line, index) => (
+                <div
+                  key={`${line.productId}-${index}`}
+                  style={{
+                    display: 'flex',
+                    gap: theme.spacing.sm,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    padding: '10px 0',
+                    borderBottom: `1px solid ${theme.colors.border}`,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: theme.colors.textPrimary }}>{line.productName}</div>
+                    <div style={{ fontSize: '11px', color: theme.colors.textMuted }}>
+                      {line.sku} · {formatMoney(line.price, isFa)} / {line.unitLabel ?? line.unit}
+                    </div>
+                  </div>
+
+                  <input
+                    type="number"
+                    min={1}
+                    value={line.quantity}
+                    onChange={(e) => updateLine(index, { quantity: Math.max(1, Number(e.target.value) || 1) })}
+                    style={{ ...inputStyle(theme), width: 90 }}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={line.discountPercent}
+                    onChange={(e) => updateLine(index, { discountPercent: Number(e.target.value) || 0 })}
+                    style={{ ...inputStyle(theme), width: 90 }}
+                    title={s.discount}
+                  />
+
+                  <button
+                    onClick={() => removeLine(index)}
+                    style={{ background: 'none', border: 'none', color: theme.colors.error, cursor: 'pointer', fontSize: '15px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
+
+          {/* lines the parser could not read */}
+          {draft.unmatched_items.length > 0 && (
+            <section
+              style={{
+                backgroundColor: theme.colors.warningLight,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.xl,
+                padding: theme.spacing.lg,
+              }}
+            >
+              <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                {s.unmatchedLines}
+              </h3>
+              <p style={{ margin: '0 0 8px', fontSize: '13px', color: theme.colors.textSecondary }}>{s.unmatchedExplain}</p>
+              {draft.unmatched_items.map((line, index) => (
+                <div key={index} style={{ fontSize: '13px', color: theme.colors.textPrimary }}>
+                  • {line.raw_text}
+                </div>
+              ))}
+            </section>
           )}
+
+          {/* totals */}
+          <section
+            style={{
+              backgroundColor: theme.colors.background,
+              borderRadius: theme.borderRadius.xl,
+              padding: theme.spacing.lg,
+              fontSize: '13px',
+            }}
+          >
+            <TotalRow label={s.subtotal} value={formatMoney(totals.subtotal, isFa)} />
+            <TotalRow label={s.discount} value={formatMoney(totals.discount, isFa)} />
+            <TotalRow
+              label={`${s.tax} (${isFa ? formatPercentFa(draft.tax_rate) : `${formatPercent(draft.tax_rate)}%`}) — ${s.taxFromBusiness}`}
+              value={formatMoney(totals.tax, isFa)}
+            />
+            <TotalRow label={s.total} value={formatMoney(grandTotal, isFa)} strong />
+          </section>
+
+          <PrimaryButton
+            onClick={checkout}
+            disabled={isCheckingOut || draft.items.length === 0 || !warehouseId}
+          >
+            {isCheckingOut ? (isFa ? 'در حال ثبت…' : 'Registering…') : `🛒 ${s.fixAndCheckout}`}
+          </PrimaryButton>
         </div>
       )}
     </div>
   );
 };
+
+const TotalRow: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '5px 0',
+      fontWeight: strong ? 800 : 400,
+      fontSize: strong ? '16px' : '13px',
+    }}
+  >
+    <span>{label}</span>
+    <span>{value}</span>
+  </div>
+);
+
+const inputStyle = (theme: any): React.CSSProperties => ({
+  padding: '10px 12px',
+  borderRadius: theme.borderRadius.md,
+  border: `1px solid ${theme.colors.border}`,
+  backgroundColor: theme.colors.surfaceElevated,
+  color: theme.colors.textPrimary,
+  fontSize: '13px',
+  boxSizing: 'border-box',
+  width: '100%',
+});

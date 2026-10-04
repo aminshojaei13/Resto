@@ -54,28 +54,36 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
 
   const navGroups: NavGroup[] = [
     {
-      groupTitle: { fa: 'مشاغل اصلی', en: 'Core Jobs' },
+      groupTitle: { fa: 'فروش', en: 'Sales' },
       items: [
-        { path: '/app/dashboard', labelFa: 'نمای کلی کسب‌وکار', labelEn: 'Business Control Center', icon: '📊' },
-        { path: '/app/inventory', labelFa: 'موجودی و کالاها', labelEn: 'Inventory & Products', icon: '📦' },
-        { path: '/app/pos', labelFa: 'ثبت سفارش (آنلاین/POS)', labelEn: 'Register New Order', icon: '🛒' },
-        { path: '/app/messages', labelFa: 'ثبت سفارش از پیام', labelEn: 'Social Message Import', icon: '📩' },
-        { path: '/app/orders', labelFa: 'سفارش‌های ثبت‌شده', labelEn: 'Sales Orders', icon: '🧾' },
+        { path: '/app/dashboard', labelFa: 'نمای کلی کسب‌وکار', labelEn: 'Business Overview', icon: '📊' },
+        { path: '/app/pos', labelFa: 'ثبت سفارش', labelEn: 'Register Order', icon: '🛒' },
+        { path: '/app/messages', labelFa: 'ثبت سفارش از پیام', labelEn: 'Order From Message', icon: '📩' },
+        { path: '/app/orders', labelFa: 'سفارش‌ها', labelEn: 'Orders', icon: '🧾' },
+        { path: '/app/customers', labelFa: 'مشتریان', labelEn: 'Customers', icon: '👥' },
       ],
     },
     {
-      groupTitle: { fa: 'عملیات کسب‌وکار', en: 'Business Workspace' },
+      groupTitle: { fa: 'خریدها', en: 'Purchasing' },
       items: [
-        { path: '/app/customers', labelFa: 'مشتریان', labelEn: 'Customers', icon: '👥' },
-        { path: '/app/purchases', labelFa: 'خرید و تامین کالا', labelEn: 'Purchases & Receiving', icon: '🛍️' },
-        { path: '/app/suppliers', labelFa: 'تامین‌کنندگان', labelEn: 'Suppliers', icon: '🏢' },
+        { path: '/app/purchases', labelFa: 'سفارش خرید', labelEn: 'Purchase Orders', icon: '🛍️' },
+        { path: '/app/receiving', labelFa: 'دریافت کالا', labelEn: 'Receive Stock', icon: '📥' },
+        { path: '/app/suppliers', labelFa: 'تأمین‌کنندگان', labelEn: 'Suppliers', icon: '🏢' },
+      ],
+    },
+    {
+      groupTitle: { fa: 'موجودی', en: 'Inventory' },
+      items: [
+        { path: '/app/inventory', labelFa: 'موجودی فعلی', labelEn: 'Current Stock', icon: '📦' },
+        { path: '/app/products', labelFa: 'کالاها', labelEn: 'Products', icon: '🏷️' },
       ],
     },
     {
       groupTitle: { fa: 'مالی و تنظیمات', en: 'Finance & Settings' },
       items: [
-        { path: '/app/expenses', labelFa: 'هزینه‌های جاری', labelEn: 'Expenses', icon: '💸' },
+        { path: '/app/expenses', labelFa: 'هزینه‌ها', labelEn: 'Expenses', icon: '💸' },
         { path: '/app/accounting', labelFa: 'دفتر کل و گزارش‌ها', labelEn: 'Ledger & Reports', icon: '⚖️' },
+        { path: '/app/settings', labelFa: 'تنظیمات کسب‌وکار', labelEn: 'Business Settings', icon: '🔧' },
         { path: '/app/staff', labelFa: 'کارمندان', labelEn: 'Staff', icon: '👤' },
         { path: '/app/profile', labelFa: 'حساب کاربری من', labelEn: 'My account', icon: '⚙️' },
       ],

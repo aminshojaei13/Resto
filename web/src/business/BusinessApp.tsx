@@ -4,7 +4,7 @@ import { TenantAppShell } from '../components/TenantAppShell';
 import { TenantModal } from '../components/TenantModal';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { getBusinessContext } from '../auth/session';
-import { setUnauthorizedHandler } from '../api/apiClient';
+import { setApiLocale, setUnauthorizedHandler } from '../api/apiClient';
 import { PublicRegisterPage } from '../pages/PublicRegisterPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
@@ -16,6 +16,10 @@ import { ActivationPage } from '../pages/ActivationPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { PosPage } from '../pages/PosPage';
 import { InventoryPage } from '../pages/InventoryPage';
+import { ProductsPage } from '../pages/ProductsPage';
+import { ReceivingPage } from '../pages/ReceivingPage';
+import { OrdersPage } from '../pages/OrdersPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import { PurchasesPage } from '../pages/PurchasesPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { CustomersPage } from '../pages/CustomersPage';
@@ -34,6 +38,11 @@ const BusinessAppRoutes: React.FC = () => {
   const { theme, effectiveMode } = useTheme();
   const isFa = language === 'fa';
   const isDark = effectiveMode === 'warmDark';
+
+  // Server-side labels follow the language of the screen.
+  useEffect(() => {
+    setApiLocale(language);
+  }, [language]);
 
   // Re-read whenever the path changes so a switch made in the modal is
   // reflected immediately.
@@ -133,10 +142,17 @@ const BusinessAppRoutes: React.FC = () => {
       case '/app/pos':
         return <PosPage language={language} />;
       case '/app/inventory':
-      case '/app/products':
         return <InventoryPage language={language} />;
+      case '/app/products':
+        return <ProductsPage language={language} />;
+      case '/app/receiving':
+        return <ReceivingPage language={language} />;
+      case '/app/orders':
+        return <OrdersPage language={language} />;
       case '/app/purchases':
-        return <PurchasesPage language={language} />;
+        return <PurchasesPage language={language} navigate={navigate} />;
+      case '/app/settings':
+        return <SettingsPage language={language} />;
       case '/app/suppliers':
         return <SuppliersPage language={language} />;
       case '/app/customers':

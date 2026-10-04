@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MembershipContext;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,7 +12,7 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
         $query = $request->query('query');
 
         $builder = Customer::where('organization_id', $orgId);
@@ -27,15 +28,16 @@ class CustomerController extends Controller
         return response()->json($builder->get());
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $customer = Customer::with(['addresses'])->findOrFail($id);
-        return response()->json($customer);
+        $orgId = MembershipContext::activeOrganizationId($request);
+
+        return response()->json(Customer::where('organization_id', $orgId)->with(['addresses'])->findOrFail($id));
     }
 
     public function store(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $request->validate([
             'name' => 'required|string',
@@ -58,7 +60,8 @@ class CustomerController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $customer = Customer::findOrFail($id);
+        $orgId = MembershipContext::activeOrganizationId($request);
+        $customer = Customer::where('organization_id', $orgId)->findOrFail($id);
 
         $request->validate([
             'name' => 'sometimes|required|string',
@@ -72,10 +75,12 @@ class CustomerController extends Controller
         return response()->json($customer);
     }
 
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $customer = Customer::findOrFail($id);
-        $customer->delete();
-        return response()->json(['message' => 'Customer deleted/archived successfully']);
+        $orgId = MembershipContext::activeOrganizationId($request);
+
+        Customer::where('organization_id', $orgId)->findOrFail($id)->delete();
+
+        return response()->json(['message' => 'مشتری حذف شد.']);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MembershipContext;
 use App\Models\Account;
 use App\Models\Expense;
 use App\Models\JournalEntry;
@@ -22,14 +23,14 @@ class AccountingController extends Controller
 
     public function accounts(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
         $accounts = Account::where('organization_id', $orgId)->get();
         return response()->json($accounts);
     }
 
     public function createAccount(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $request->validate([
             'chart_of_account_id' => 'required|string',
@@ -51,7 +52,7 @@ class AccountingController extends Controller
 
     public function journal(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
         $entries = JournalEntry::where('organization_id', $orgId)
             ->with('lines.account')
             ->orderBy('created_at', 'desc')
@@ -62,7 +63,7 @@ class AccountingController extends Controller
 
     public function postEntry(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $request->validate([
             'store_id' => 'required',
@@ -84,7 +85,7 @@ class AccountingController extends Controller
 
     public function summary(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $totalRevenue = Order::where('organization_id', $orgId)->sum('total_amount');
         $todayRevenue = Order::where('organization_id', $orgId)
@@ -113,7 +114,7 @@ class AccountingController extends Controller
 
     public function profitAndLoss(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $totalRevenue = Order::where('organization_id', $orgId)->where('payment_status', 'PAID')->sum('total_amount');
         $totalExpenses = Expense::where('organization_id', $orgId)->sum('amount');
@@ -129,7 +130,7 @@ class AccountingController extends Controller
 
     public function balanceSheet(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
 
         $accounts = Account::where('organization_id', $orgId)->get();
 
@@ -148,7 +149,7 @@ class AccountingController extends Controller
 
     public function trialBalance(Request $request)
     {
-        $orgId = $request->header('X-Tenant-ID') ?? $request->get('org_id') ?? $request->input('org_id') ?? '';
+        $orgId = MembershipContext::activeOrganizationId($request);
         $accounts = Account::where('organization_id', $orgId)->get();
 
         $rows = $accounts->map(function($acc) {

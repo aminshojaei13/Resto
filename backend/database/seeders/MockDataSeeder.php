@@ -221,7 +221,7 @@ class MockDataSeeder extends Seeder
             'price' => 1299.99,
             'cost_price' => 850.00,
             'category' => 'Electronics',
-            'unit' => 'pcs',
+            'unit' => 'piece',
             'image_url' => 'https://picsum.photos/id/0/300/300',
         ]);
 
@@ -243,7 +243,7 @@ class MockDataSeeder extends Seeder
             'price' => 249.99,
             'cost_price' => 120.00,
             'category' => 'Audio',
-            'unit' => 'pcs',
+            'unit' => 'piece',
             'image_url' => 'https://picsum.photos/id/1057/300/300',
         ]);
 
@@ -265,7 +265,7 @@ class MockDataSeeder extends Seeder
             'price' => 599.99,
             'cost_price' => 380.00,
             'category' => 'Electronics',
-            'unit' => 'pcs',
+            'unit' => 'piece',
             'image_url' => 'https://picsum.photos/id/1060/300/300',
         ]);
 

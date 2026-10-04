@@ -1,507 +1,478 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient } from '../api/apiClient';
-import { Expense } from '../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ApiError, apiClient } from '../api/apiClient';
+import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { FormError, InfoNote, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
+import { Expense, ExpenseCategory, ExpenseSummary } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { opsStrings } from '../i18n/opsStrings';
+import { formatMoney } from '../util/money';
 
 interface ExpensesPageProps {
   language?: 'fa' | 'en';
 }
 
+/**
+ * Operating expenses: money the business spends to keep running.
+ *
+ * Deliberately separate from purchasing. Buying goods is a purchase order that
+ * creates stock; this is a cost of the period that creates neither stock nor a
+ * payable. The screen says so, because the two being confused is the reported
+ * problem.
+ */
 export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) => {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
-
-  // Form State
-  const [category, setCategory] = useState('Store Utilities');
-  const [amount, setAmount] = useState<number | ''>(100);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
+  const s = opsStrings(language);
   const isFa = language === 'fa';
   const { theme } = useTheme();
 
-  const categoryOptions = [
-    'Store Utilities',
-    'Marketing & Ads',
-    'Packaging & Shipping',
-    'Gateway & Platform Fees',
-    'Rent & Lease',
-    'Office Supplies',
-    'Miscellaneous'
-  ];
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [summary, setSummary] = useState<ExpenseSummary | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [notice, setNotice] = useState('');
 
-  useEffect(() => {
-    loadExpenses();
-  }, []);
+  const [editing, setEditing] = useState<Expense | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const loadExpenses = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
+    setErrorMessage('');
+
     try {
-      const list = await apiClient.getExpenses();
-      setExpenses(list);
-    } catch {
-      // Handled in apiClient
+      const [expenseList, categoryList, dashboard] = await Promise.all([
+        apiClient.getExpenses(),
+        apiClient.getExpenseCategories(),
+        apiClient.getExpenseSummary(),
+      ]);
+
+      setExpenses(expenseList);
+      setCategories(categoryList);
+      setSummary(dashboard);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof ApiError ? err.message : isFa ? 'دریافت هزینه‌ها ناموفق بود.' : 'Could not load expenses.'
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const openCreateModal = () => {
-    setCategory('Store Utilities');
-    setAmount(100);
-    setDate(new Date().toISOString().split('T')[0]);
-    setPaymentMethod('CASH');
-    setNotes('');
-    setErrorMessage('');
-    setIsCreateModalOpen(true);
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const openEditModal = (exp: Expense) => {
-    setEditingExpense(exp);
-    setCategory(exp.category);
-    setAmount(exp.amount);
-    setDate(exp.date || new Date().toISOString().split('T')[0]);
-    setPaymentMethod(exp.paymentMethod || 'CASH');
-    setNotes(exp.notes || '');
-    setErrorMessage('');
-  };
+  const visible = categoryFilter ? expenses.filter((e) => e.category === categoryFilter) : expenses;
 
-  const closeModals = () => {
-    setIsCreateModalOpen(false);
-    setEditingExpense(null);
-    setDetailExpense(null);
-    setErrorMessage('');
-  };
-
-  const handleCreateExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0) {
-      setErrorMessage(isFa ? 'لطفاً مبلغ معتبری وارد کنید.' : 'Please enter a valid amount.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-
+  const remove = async (expense: Expense) => {
     try {
-      await apiClient.createExpense({
-        category: category.trim(),
-        amount: numAmount,
-        date: date,
-        payment_method: paymentMethod,
-        notes: notes.trim(),
-      });
-
-      setIsSubmitting(false);
-      closeModals();
-      alert(isFa ? 'هزینه با موفقیت ثبت شد و سند حسابداری صادر گردید.' : 'Expense recorded successfully and accounting posted.');
-      loadExpenses();
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || (isFa ? 'خطا در ثبت هزینه' : 'Failed to record expense'));
+      await apiClient.deleteExpense(expense.id);
+      setNotice(isFa ? 'هزینه حذف شد و سند حسابداری آن برگشت خورد.' : 'Expense removed and its journal entry reversed.');
+      await load();
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : isFa ? 'حذف هزینه ناموفق بود.' : 'Could not remove the expense.');
     }
   };
 
-  const handleUpdateExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingExpense) return;
-
-    const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0) {
-      setErrorMessage(isFa ? 'لطفاً مبلغ معتبری وارد کنید.' : 'Please enter a valid amount.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage('');
-
-    try {
-      await apiClient.updateExpense(editingExpense.id, {
-        category: category.trim(),
-        amount: numAmount,
-        date: date,
-        payment_method: paymentMethod,
-        notes: notes.trim(),
-      });
-
-      setIsSubmitting(false);
-      closeModals();
-      alert(isFa ? 'اطلاعات هزینه با موفقیت بروزرسانی شد.' : 'Expense details updated successfully.');
-      loadExpenses();
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || (isFa ? 'خطا در ویرایش هزینه' : 'Failed to update expense'));
-    }
-  };
-
-  const handleDeleteExpense = async (exp: Expense) => {
-    const confirmMsg = isFa
-      ? `آیا از حذف هزینه (${exp.category} - ${exp.amount.toLocaleString('fa-IR')} تومان) اطمینان دارید؟`
-      : `Are you sure you want to delete expense (${exp.category} - $${exp.amount.toFixed(2)})?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await apiClient.deleteExpense(exp.id);
-      alert(isFa ? 'هزینه با موفقیت حذف شد.' : 'Expense deleted successfully.');
-      loadExpenses();
-    } catch (err: any) {
-      alert(err.message || (isFa ? 'خطا در حذف هزینه' : 'Failed to delete expense'));
-    }
-  };
-
-  const filteredExpenses = expenses.filter((e) => {
-    const matchesCategory = !selectedCategoryFilter || e.category === selectedCategoryFilter;
-    const matchesQuery = !searchQuery || e.category.toLowerCase().includes(searchQuery.toLowerCase()) || (e.notes && e.notes.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesQuery;
-  });
-
-  const totalExpenseAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const maxTrend = summary ? Math.max(1, ...summary.trend.map((t) => t.total)) : 1;
+  const maxCategory = summary && summary.byCategory.length > 0 ? Math.max(1, ...summary.byCategory.map((c) => c.total)) : 1;
 
   return (
-    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ margin: '0 0 4px 0', color: theme.colors.textPrimary }}>{isFa ? 'مدیریت هزینه‌های جاری و عملیاتی' : 'Operating Expenses Management'}</h2>
-          <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '13px' }}>
-            {isFa ? 'ثبت هزینه‌های فروشگاه با صدور خودکار سند حسابداری بدهکار/بستانکار' : 'Track operating expenses with automatic double-entry journal posting'}
-          </p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          {isFa ? '+ ثبت هزینه جدید' : '+ Record New Expense'}
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
+      <PageHeader
+        title={s.expensesTitle}
+        description={s.expensesSubtitle}
+        actions={<PrimaryButton onClick={() => { setEditing(null); setIsOpen(true); }}>➕ {s.newExpense}</PrimaryButton>}
+      />
 
-      {/* Filter Controls */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-        <input
-          type="text"
-          placeholder={isFa ? 'جستجو در شرح یا بابت هزینه...' : 'Search category or notes...'}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px' }}
-        />
+      <InfoNote>{s.expensesPurpose}</InfoNote>
+      <InfoNote>{s.expensesVsPurchase}</InfoNote>
 
-        <select
-          value={selectedCategoryFilter}
-          onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-          style={{ padding: '10px 14px', borderRadius: '8px', border: `1px solid ${theme.colors.borderStrong}`, fontSize: '14px', backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary }}
-        >
-          <option value="">{isFa ? 'همه دسته‌بندی‌ها' : 'All Categories'}</option>
-          {categoryOptions.map((cat, idx) => (
-            <option key={idx} value={cat}>{cat}</option>
-          ))}
-        </select>
-      </div>
+      <FormError message={errorMessage} />
+      <FormError message={notice} />
 
-      {/* Expense Summary KPI Banner */}
-      <div style={{ backgroundColor: theme.colors.surface, borderRadius: '12px', padding: '16px 20px', border: `1px solid ${theme.colors.border}`, marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: theme.shadows.card }}>
-        <span style={{ fontSize: '15px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
-          {isFa ? `مجموع هزینه‌های ثبت‌شده (${filteredExpenses.length} فقره):` : `Total Expenses (${filteredExpenses.length} items):`}
-        </span>
-        <span style={{ fontSize: '22px', fontWeight: 'bold', color: theme.colors.error }}>
-          {isFa ? `${totalExpenseAmount.toLocaleString('fa-IR')} تومان` : `$${totalExpenseAmount.toFixed(2)}`}
-        </span>
-      </div>
-
-      {/* Expenses Table */}
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری هزینه‌ها...' : 'Loading expenses...'}</div>
-      ) : filteredExpenses.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: theme.colors.textMuted, backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}` }}>
-          {isFa ? 'هیچ هزینه‌ای ثبت نشده است.' : 'No expenses recorded.'}
-        </div>
+        <p style={{ color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: theme.colors.surface, borderRadius: '8px', overflow: 'hidden', boxShadow: theme.shadows.card, color: theme.colors.textPrimary }}>
-          <thead>
-            <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', borderBottom: `2px solid ${theme.colors.border}`, fontSize: '12px', fontWeight: 700, color: theme.colors.textSecondary }}>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'تاریخ' : 'Date'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'توضیحات / بابت' : 'Notes / Description'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'روش پرداخت' : 'Payment Method'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'مبلغ' : 'Amount'}</th>
-              <th style={{ padding: '12px 16px' }}>{isFa ? 'عملیات' : 'Actions'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredExpenses.map((exp) => (
-              <tr key={exp.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold' }}>{exp.date}</td>
-                <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{exp.category}</td>
-                <td style={{ padding: '12px 16px', color: theme.colors.textSecondary }}>{exp.notes || '-'}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold', backgroundColor: theme.colors.surfaceHover, color: theme.colors.textSecondary }}>
-                    {exp.paymentMethod}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', color: theme.colors.error, fontWeight: 'bold', fontSize: '15px' }}>
-                  {isFa ? `${exp.amount.toLocaleString('fa-IR')} تومان` : `$${exp.amount.toFixed(2)}`}
-                </td>
-                <td style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setDetailExpense(exp)}
-                    style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '👁️ جزئیات' : '👁️ View'}
-                  </button>
-                  <button
-                    onClick={() => openEditModal(exp)}
-                    style={{ backgroundColor: theme.colors.primaryLight, color: theme.colors.primaryDark, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '✏️ ویرایش' : '✏️ Edit'}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteExpense(exp)}
-                    style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                  >
-                    {isFa ? '🗑️ حذف' : '🗑️ Delete'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Create Expense Modal */}
-      {isCreateModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
-              {isFa ? 'ثبت هزینه جدید' : 'Record New Operating Expense'}
-            </h3>
-
-            {errorMessage && (
-              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'دسته‌بندی هزینه *' : 'Category *'}</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                  required
-                >
-                  {categoryOptions.map((cat, idx) => (
-                    <option key={idx} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'مبلغ هزینه *' : 'Amount *'}</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'تاریخ *' : 'Date *'}</label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'روش پرداخت' : 'Payment Method'}</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                >
-                  <option value="CASH">{isFa ? 'نقدی از صندق' : 'Cash'}</option>
-                  <option value="BANK_TRANSFER">{isFa ? 'حواله / کارت‌به‌کارت' : 'Bank Transfer'}</option>
-                  <option value="CARD">{isFa ? 'کارتخوان' : 'POS Card'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'بابت / توضیحات' : 'Notes / Description'}</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
+        <>
+          {summary && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
+                <Tile label={s.monthTotal} value={formatMoney(summary.monthTotal, isFa)} />
+                <Tile label={s.todayTotal} value={formatMoney(summary.todayTotal, isFa)} />
+                <Tile
+                  label={s.vsLastMonth}
+                  value={formatMoney(summary.previousMonthTotal, isFa)}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  onClick={closeModals}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: theme.spacing.lg }}>
+                <section
+                  style={{
+                    backgroundColor: theme.colors.surface,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.xl,
+                    padding: theme.spacing.lg,
+                  }}
                 >
-                  {isFa ? 'انصراف' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
+                  <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                    {s.byCategory}
+                  </h3>
+                  {summary.byCategory.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary }}>
+                      {isFa ? 'این ماه هنوز هزینه‌ای ثبت نشده است.' : 'No expenses recorded this month yet.'}
+                    </p>
+                  ) : (
+                    summary.byCategory.map((row) => (
+                      <div key={row.category} style={{ marginBottom: 10 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '12px',
+                            color: theme.colors.textSecondary,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <span>{row.label}</span>
+                          <span>{formatMoney(row.total, isFa)}</span>
+                        </div>
+                        <div style={{ height: 8, backgroundColor: theme.colors.background, borderRadius: 999 }}>
+                          <div
+                            style={{
+                              width: `${Math.round((row.total / maxCategory) * 100)}%`,
+                              height: '100%',
+                              borderRadius: 999,
+                              backgroundColor: theme.colors.primary,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </section>
+
+                <section
+                  style={{
+                    backgroundColor: theme.colors.surface,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.xl,
+                    padding: theme.spacing.lg,
+                  }}
                 >
-                  {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Saving...') : (isFa ? 'ثبت هزینه' : 'Save Expense')}
-                </button>
+                  <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                    {s.trend}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140 }}>
+                    {summary.trend.map((point) => (
+                      <div key={point.month} style={{ flex: 1, textAlign: 'center' }}>
+                        <div
+                          title={formatMoney(point.total, isFa)}
+                          style={{
+                            height: `${Math.max(4, Math.round((point.total / maxTrend) * 110))}px`,
+                            backgroundColor: theme.colors.primary,
+                            borderRadius: `${theme.borderRadius.sm} ${theme.borderRadius.sm} 0 0`,
+                          }}
+                        />
+                        <span style={{ fontSize: '11px', color: theme.colors.textSecondary }}>{point.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </div>
-            </form>
+            </>
+          )}
+
+          <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{s.category}:</span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: theme.borderRadius.md,
+                border: `1px solid ${theme.colors.border}`,
+                backgroundColor: theme.colors.surfaceElevated,
+                color: theme.colors.textPrimary,
+                fontSize: '13px',
+              }}
+            >
+              <option value="">{isFa ? 'همه' : 'All'}</option>
+              {categories.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
+
+          {visible.length === 0 ? (
+            <EmptyState
+              title={isFa ? 'هنوز هزینه‌ای ثبت نشده است' : 'No expenses yet'}
+              description={isFa ? 'خرج‌های جاری کسب‌وکار را اینجا ثبت کنید.' : 'Record the business running costs here.'}
+              actionText={s.newExpense}
+              onAction={() => { setEditing(null); setIsOpen(true); }}
+              icon="💸"
+            />
+          ) : (
+            <div
+              style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.borderRadius.xl,
+                border: `1px solid ${theme.colors.border}`,
+                overflow: 'hidden',
+                boxShadow: theme.shadows.card,
+              }}
+            >
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', minWidth: 760 }}>
+                  <thead>
+                    <tr
+                      style={{
+                        backgroundColor: theme.colors.background,
+                        borderBottom: `2px solid ${theme.colors.border}`,
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: theme.colors.textSecondary,
+                      }}
+                    >
+                      <th style={{ padding: theme.spacing.lg }}>{s.expenseTitle}</th>
+                      <th style={{ padding: theme.spacing.lg }}>{s.category}</th>
+                      <th style={{ padding: theme.spacing.lg }}>{s.date}</th>
+                      <th style={{ padding: theme.spacing.lg }}>{s.amount}</th>
+                      <th style={{ padding: theme.spacing.lg }}>{isFa ? 'عملیات' : 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((expense) => (
+                      <tr key={expense.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                        <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.textPrimary }}>
+                          {expense.title}
+                          {expense.notes ? (
+                            <div style={{ fontWeight: 400, fontSize: '11px', color: theme.colors.textMuted }}>{expense.notes}</div>
+                          ) : null}
+                        </td>
+                        <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>
+                          {expense.categoryLabel ?? expense.category}
+                        </td>
+                        <td style={{ padding: theme.spacing.lg, color: theme.colors.textSecondary }}>{expense.date}</td>
+                        <td style={{ padding: theme.spacing.lg, fontWeight: 700, color: theme.colors.primaryDark }}>
+                          {formatMoney(expense.amount, isFa)}
+                        </td>
+                        <td style={{ padding: theme.spacing.lg }}>
+                          <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                            <button
+                              onClick={() => { setEditing(expense); setIsOpen(true); }}
+                              style={{
+                                backgroundColor: theme.colors.primaryLight,
+                                color: theme.colors.primaryDark,
+                                border: 'none',
+                                borderRadius: theme.borderRadius.md,
+                                padding: '6px 10px',
+                                fontWeight: 700,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {isFa ? 'ویرایش' : 'Edit'}
+                            </button>
+                            <button
+                              onClick={() => remove(expense)}
+                              style={{
+                                backgroundColor: theme.colors.surfaceHover,
+                                color: theme.colors.error,
+                                border: `1px solid ${theme.colors.borderStrong}`,
+                                borderRadius: theme.borderRadius.md,
+                                padding: '6px 10px',
+                                fontWeight: 600,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {isFa ? 'حذف' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <InfoNote title={s.automationNoteTitle}>{s.automationNoteBody}</InfoNote>
+        </>
       )}
 
-      {/* Edit Expense Modal (Pre-Populated) */}
-      {editingExpense && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
-              {isFa ? 'ویرایش سند هزینه' : 'Edit Expense Details'}
-            </h3>
-
-            {errorMessage && (
-              <div style={{ backgroundColor: theme.colors.errorLight, color: theme.colors.error, padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-                {errorMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'دسته‌بندی هزینه *' : 'Category *'}</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                  required
-                >
-                  {categoryOptions.map((cat, idx) => (
-                    <option key={idx} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'مبلغ هزینه *' : 'Amount *'}</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'تاریخ *' : 'Date *'}</label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'روش پرداخت' : 'Payment Method'}</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                >
-                  <option value="CASH">{isFa ? 'نقدی از صندوق' : 'Cash'}</option>
-                  <option value="BANK_TRANSFER">{isFa ? 'حواله / کارت‌به‌کارت' : 'Bank Transfer'}</option>
-                  <option value="CARD">{isFa ? 'کارتخوان' : 'POS Card'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{isFa ? 'بابت / توضیحات' : 'Notes / Description'}</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${theme.colors.borderStrong}`, backgroundColor: theme.colors.surfaceElevated, color: theme.colors.textPrimary, fontSize: '14px', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                <button
-                  type="button"
-                  onClick={closeModals}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.surfaceHover, color: theme.colors.textPrimary, border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {isFa ? 'انصراف' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  {isSubmitting ? (isFa ? 'در حال ثبت...' : 'Saving...') : (isFa ? 'ثبت تغییرات' : 'Save Changes')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {detailExpense && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '440px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>{detailExpense.category}</h3>
-              <button onClick={closeModals} style={{ backgroundColor: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textSecondary }}>✕</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', backgroundColor: theme.colors.backgroundSecondary, padding: '12px', borderRadius: '8px', marginBottom: '20px', color: theme.colors.textPrimary }}>
-              <div><strong>{isFa ? 'تاریخ:' : 'Date:'}</strong> {detailExpense.date}</div>
-              <div><strong>{isFa ? 'مبلغ:' : 'Amount:'}</strong> {isFa ? `${detailExpense.amount.toLocaleString('fa-IR')} تومان` : `$${detailExpense.amount.toFixed(2)}`}</div>
-              <div><strong>{isFa ? 'روش پرداخت:' : 'Payment Method:'}</strong> {detailExpense.paymentMethod}</div>
-              <div><strong>{isFa ? 'توضیحات:' : 'Notes:'}</strong> {detailExpense.notes || '-'}</div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={closeModals}
-                style={{ backgroundColor: '#005AC1', color: '#FFF', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {isFa ? 'بستن' : 'Close'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {isOpen && (
+        <ExpenseModal
+          language={language}
+          expense={editing}
+          categories={categories}
+          onClose={() => setIsOpen(false)}
+          onSaved={(message) => {
+            setIsOpen(false);
+            setNotice(message);
+            void load();
+          }}
+        />
       )}
     </div>
   );
 };
+
+const Tile: React.FC<{ label: string; value: string }> = ({ label, value }) => {
+  const { theme } = useTheme();
+
+  return (
+    <div
+      style={{
+        backgroundColor: theme.colors.surface,
+        border: `1px solid ${theme.colors.border}`,
+        borderRadius: theme.borderRadius.xl,
+        padding: theme.spacing.lg,
+      }}
+    >
+      <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{label}</div>
+      <div style={{ fontSize: '20px', fontWeight: 800, color: theme.colors.textPrimary, marginTop: 4 }}>{value}</div>
+    </div>
+  );
+};
+
+const ExpenseModal: React.FC<{
+  language: 'fa' | 'en';
+  expense: Expense | null;
+  categories: ExpenseCategory[];
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}> = ({ language, expense, categories, onClose, onSaved }) => {
+  const s = opsStrings(language);
+  const isFa = language === 'fa';
+  const { theme } = useTheme();
+
+  const [title, setTitle] = useState(expense?.title ?? '');
+  const [category, setCategory] = useState(expense?.category ?? '');
+  const [amount, setAmount] = useState<number | ''>(expense?.amount ?? '');
+  const [date, setDate] = useState(expense?.date ?? new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState(expense?.paymentMethod ?? 'CASH');
+  const [notes, setNotes] = useState(expense?.notes ?? '');
+  const [attachmentUrl, setAttachmentUrl] = useState(expense?.attachmentUrl ?? '');
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const next: Record<string, string> = {};
+    if (!title.trim()) next.title = isFa ? 'عنوان هزینه را وارد کنید.' : 'Enter a title.';
+    if (!category) next.category = isFa ? 'دسته‌بندی را انتخاب کنید.' : 'Choose a category.';
+    if (amount === '' || Number(amount) <= 0) next.amount = isFa ? 'مبلغ باید بزرگ‌تر از صفر باشد.' : 'Amount must be greater than zero.';
+
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      const payload = {
+        title: title.trim(),
+        category,
+        amount: Number(amount),
+        date,
+        notes: notes.trim(),
+      };
+
+      if (expense) {
+        await apiClient.updateExpense(expense.id, payload);
+      } else {
+        await apiClient.createExpense({ ...payload, payment_method: method, attachment_url: attachmentUrl.trim() });
+      }
+
+      onSaved(isFa ? 'هزینه ثبت شد و سند حسابداری صادر گردید.' : 'Expense recorded and posted to accounting.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors(toFieldErrors(err.fieldErrors));
+        setFormError(err.message);
+      } else {
+        setFormError(isFa ? 'ثبت هزینه ناموفق بود.' : 'Could not save the expense.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell title={expense ? (isFa ? 'ویرایش هزینه' : 'Edit expense') : s.newExpense} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        <FormError message={formError} />
+
+        <TextInput
+          label={s.expenseTitle}
+          required
+          value={title}
+          error={errors.title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={s.expenseTitlePlaceholder}
+        />
+
+        <SelectInput label={s.category} required value={category} error={errors.category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">{isFa ? 'انتخاب کنید' : 'Select a category'}</option>
+          {categories.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </SelectInput>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>
+          <TextInput
+            label={s.amount}
+            required
+            type="number"
+            min={0.01}
+            step="0.01"
+            value={amount}
+            error={errors.amount}
+            onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+          />
+          <TextInput label={s.date} required type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+
+        {!expense && (
+          <SelectInput label={s.paymentMethod} value={method} onChange={(e) => setMethod(e.target.value)}>
+            <option value="CASH">{isFa ? 'نقدی' : 'Cash'}</option>
+            <option value="CARD">{isFa ? 'کارت' : 'Card'}</option>
+            <option value="BANK_TRANSFER">{isFa ? 'حواله بانکی' : 'Bank transfer'}</option>
+          </SelectInput>
+        )}
+
+        <TextInput label={s.notes} value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+        {!expense && (
+          <TextInput
+            label={s.attachment}
+            value={attachmentUrl}
+            onChange={(e) => setAttachmentUrl(e.target.value)}
+            placeholder={isFa ? 'نشانی فایل رسید (اختیاری)' : 'Receipt file URL (optional)'}
+          />
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: theme.spacing.md, marginTop: theme.spacing.md }}>
+          <SecondaryButton type="button" onClick={onClose} disabled={isSubmitting}>
+            {isFa ? 'انصراف' : 'Cancel'}
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
+            {isSubmitting ? s.submitting : isFa ? 'ذخیره هزینه' : 'Save expense'}
+          </PrimaryButton>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+const toFieldErrors = (fieldErrors: Record<string, string[]>): Record<string, string> =>
+  Object.fromEntries(Object.entries(fieldErrors).map(([key, value]) => [key, value[0] ?? '']));

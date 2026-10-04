@@ -12,8 +12,9 @@ class Order extends Model
     protected $fillable = [
         'id', 'order_number', 'organization_id', 'store_id', 'warehouse_id',
         'customer_id', 'customer_name', 'subtotal', 'discount_amount',
-        'tax_amount', 'total_amount', 'payment_method', 'payment_status',
-        'fulfillment_status', 'notes'
+        'tax_amount', 'tax_rate', 'total_amount', 'payment_method', 'payment_status',
+        'fulfillment_status', 'notes', 'source', 'created_by_user_id',
+        'cancelled_at', 'cancelled_by_user_id'
     ];
 
     public function items()

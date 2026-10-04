@@ -47,7 +47,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
   // Inventory Metrics derived from products
   const totalProductsCount = products.length;
   const lowStockProducts = products.filter((p) => {
-    const totalQty = Object.values(p.stockQuantityByWarehouse || {}).reduce((acc, v) => acc + v, 0);
+    const totalQty = (p.stockByWarehouse || []).reduce((acc, w) => acc + w.quantity, 0);
     return totalQty <= 5;
   });
 

@@ -92,7 +92,7 @@ class EntityCrudAndWorkflowTest extends TestCase
         // 3. Receive Goods into Inventory
         $receiveRes = $this->postJson("/api/v1/purchases/{$purchaseId}/receive", [], ['X-Tenant-ID' => 'org_apex']);
         $receiveRes->assertStatus(200)
-                   ->assertJsonFragment(['message' => 'Purchase goods received into inventory successfully']);
+                   ->assertJsonFragment(['message' => 'کالا به‌طور کامل دریافت و به انبار موجود اضافه شد.']);
 
         // 4. Pay Supplier
         $payRes = $this->postJson("/api/v1/purchases/{$purchaseId}/pay", [
@@ -125,10 +125,11 @@ class EntityCrudAndWorkflowTest extends TestCase
 
         $payload = [
             'store_id' => 'store_apex_1',
-            'category' => 'Store Supplies',
+            'title' => 'Paper and printer ink',
+            'category' => 'SERVICES',
             'amount' => 150.00,
             'date' => date('Y-m-d'),
-            'notes' => 'Paper and printer ink',
+            'notes' => 'Monthly stationery',
         ];
 
         // First Request
@@ -147,7 +148,7 @@ class EntityCrudAndWorkflowTest extends TestCase
         $res2->assertHeader('X-Cache-Lookup', 'HIT-IDEMPOTENT');
 
         // Verify expense was created only ONCE in database
-        $count = \App\Models\Expense::where('notes', 'Paper and printer ink')->count();
+        $count = \App\Models\Expense::where('title', 'Paper and printer ink')->count();
         $this->assertEquals(1, $count);
     }
 }

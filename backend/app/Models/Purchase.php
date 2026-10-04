@@ -10,7 +10,8 @@ class Purchase extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'organization_id', 'store_id', 'warehouse_id', 'supplier_id', 'purchase_number', 'total_amount', 'status', 'payment_status'
+        'id', 'organization_id', 'store_id', 'warehouse_id', 'supplier_id', 'purchase_number',
+        'purchase_date', 'total_amount', 'status', 'received_at', 'last_received_at', 'payment_status'
     ];
 
     public function supplier()

@@ -2,15 +2,25 @@ import {
   AccountingSummary,
   AuthUser,
   BusinessMembership,
+  BusinessSettings,
+  BusinessWarehouse,
   Customer,
   Expense,
+  ExpenseCategory,
+  ExpenseSummary,
   LedgerEntry,
+  OrderItem,
   Organization,
+  Paginated,
   Product,
   Purchase,
+  PurchaseItem,
   SalesOrder,
+  StockMovement,
+  StockRow,
   Store,
   Supplier,
+  UnitOption,
   Warehouse,
 } from '../types';
 import {
@@ -24,6 +34,20 @@ import {
 } from '../auth/session';
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+/**
+ * The language the person is looking at right now.
+ *
+ * Labels are localised server side so a Persian screen never shows an English
+ * unit name and an English screen never shows a Persian one.
+ */
+let activeLocale: 'fa' | 'en' = 'fa';
+
+export const setApiLocale = (locale: 'fa' | 'en'): void => {
+  activeLocale = locale;
+};
+
+const currentLocale = (): string => activeLocale;
 
 /**
  * Raised whenever the server refuses a request.
@@ -187,6 +211,109 @@ const mapOrganization = (org: any): Organization => ({
   currencyCode: org.currency_code ?? org.currencyCode ?? 'USD',
   subscriptionTier: org.subscription_tier ?? org.subscriptionTier ?? 'PRO',
   stores: (org.stores ?? []).map(mapStore),
+});
+
+const mapPurchaseItem = (i: any): PurchaseItem => ({
+  id: i.id,
+  purchaseId: i.purchase_id ?? i.purchaseId,
+  productId: i.product_id ?? i.productId,
+  productName: i.product?.name ?? '',
+  unit: i.unit ?? undefined,
+  quantity: Number(i.quantity ?? 0),
+  receivedQuantity: Number(i.received_quantity ?? i.receivedQuantity ?? 0),
+  unitCost: Number(i.unit_cost ?? i.unitCost ?? 0),
+  totalCost: Number(i.total_cost ?? i.totalCost ?? 0),
+});
+
+const mapOrderItem = (i: any): OrderItem => ({
+  productId: i.product_id ?? i.productId,
+  productName: i.product_name ?? i.productName,
+  sku: i.sku ?? '',
+  unit: i.unit ?? undefined,
+  unitPrice: Number(i.unit_price ?? i.price ?? 0),
+  quantity: Number(i.quantity ?? 1),
+  subtotal: Number(i.subtotal ?? 0),
+  discountAmount: Number(i.discount_amount ?? i.discountAmount ?? 0),
+  taxAmount: Number(i.tax_amount ?? i.taxAmount ?? 0),
+  totalPrice: Number(i.total_price ?? 0),
+});
+
+const mapProduct = (p: any, fallbackOrgId: string): Product => ({
+  id: p.id,
+  organizationId: p.organization_id ?? p.organizationId ?? fallbackOrgId,
+  sku: p.sku,
+  barcode: p.barcode,
+  name: p.name,
+  description: p.description,
+  price: Number(p.price ?? 0),
+  costPrice: Number(p.cost_price ?? p.costPrice ?? 0),
+  category: p.category,
+  unit: p.unit ?? 'piece',
+  unitLabel: p.unit_label ?? p.unitLabel,
+  imageUrl: p.image_url ?? p.imageUrl,
+  stockByWarehouse: (p.stock_by_warehouse ?? []).map((s: any) => ({
+    warehouseId: s.warehouse_id ?? s.warehouseId,
+    warehouseName: s.warehouse_name ?? s.warehouseName ?? '',
+    quantity: Number(s.quantity ?? 0),
+    reservedQuantity: Number(s.reserved_quantity ?? s.reservedQuantity ?? 0),
+  })),
+});
+
+const mapOrder = (data: any, fallbackOrgId: string, fallbackStoreId: string): SalesOrder => ({
+  id: data.id,
+  orderNumber: data.order_number ?? data.orderNumber,
+  organizationId: data.organization_id ?? fallbackOrgId,
+  storeId: data.store_id ?? fallbackStoreId,
+  warehouseId: data.warehouse_id ?? '',
+  customerId: data.customer_id ?? undefined,
+  customerName: data.customer_name ?? data.customerName ?? '',
+  items: (data.items || []).map(mapOrderItem),
+  subtotal: Number(data.subtotal ?? 0),
+  discountAmount: Number(data.discount_amount ?? data.discountAmount ?? 0),
+  taxAmount: Number(data.tax_amount ?? data.taxAmount ?? 0),
+  taxRate: Number(data.tax_rate ?? data.taxRate ?? 0),
+  totalAmount: Number(data.total_amount ?? data.totalAmount ?? 0),
+  paymentMethod: data.payment_method ?? data.paymentMethod ?? '',
+  paymentStatus: data.payment_status ?? data.paymentStatus ?? '',
+  fulfillmentStatus: data.fulfillment_status ?? data.fulfillmentStatus ?? '',
+  source: data.source ?? 'POS',
+  itemsCount: Number(data.items_count ?? data.itemsCount ?? (data.items || []).length),
+  notes: data.notes ?? '',
+  createdAt: data.created_at ?? data.createdAt ?? new Date().toISOString(),
+});
+
+const mapExpense = (e: any, fallbackOrgId: string, fallbackStoreId: string): Expense => ({
+  id: e.id,
+  organizationId: e.organization_id ?? fallbackOrgId,
+  storeId: e.store_id ?? fallbackStoreId,
+  title: e.title ?? e.category ?? '',
+  category: e.category,
+  categoryLabel: e.category_label ?? e.categoryLabel,
+  amount: Number(e.amount ?? 0),
+  paymentMethod: e.payment_method ?? e.paymentMethod ?? 'CASH',
+  date: e.date,
+  notes: e.notes || '',
+  attachmentUrl: e.attachment_url ?? null,
+  userId: e.user_id ?? undefined,
+  createdAt: e.created_at ?? e.createdAt,
+});
+
+const mapPurchase = (p: any, context: BusinessContext): Purchase => ({
+  id: p.id,
+  purchaseNumber: p.purchase_number ?? p.id,
+  organizationId: p.organization_id ?? context.organizationId,
+  storeId: p.store_id ?? context.storeId ?? '',
+  warehouseId: p.warehouse_id ?? '',
+  supplierId: p.supplier_id ?? '',
+  supplierName: p.supplier?.name ?? '',
+  supplier: p.supplier,
+  items: (p.items || []).map(mapPurchaseItem),
+  totalAmount: Number(p.total_amount ?? 0),
+  status: p.status ?? 'ORDERED',
+  paymentStatus: p.payment_status ?? 'UNPAID',
+  purchaseDate: p.purchase_date ?? undefined,
+  receivedAt: p.received_at ?? null,
+  createdAt: p.created_at ?? new Date().toISOString(),
 });
 
 const mapUser = (user: any): AuthUser => ({
@@ -369,81 +496,145 @@ export const apiClient = {
   /* ----------------------------------------------------------- products */
 
   getProducts: async (query?: string): Promise<Product[]> => {
-    const data = await request<any[]>('/products', { query: { query, org_id: getBusinessContext().organizationId } });
+    const data = await request<any[]>('/products', {
+      query: { query, locale: currentLocale() },
+    });
 
-    return (data ?? []).map((p: any) => ({
-      id: p.id,
-      organizationId: p.organization_id ?? p.organizationId ?? getBusinessContext().organizationId,
-      sku: p.sku,
-      barcode: p.barcode,
-      name: p.name,
-      description: p.description,
-      price: Number(p.price ?? 0),
-      costPrice: Number(p.cost_price ?? p.costPrice ?? 0),
-      category: p.category,
-      unit: p.unit ?? 'pcs',
-      imageUrl: p.image_url ?? p.imageUrl,
-      stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
-    }));
+    return (data ?? []).map((p: any) => mapProduct(p, getBusinessContext().organizationId));
   },
 
-  createProduct: async (productData: any): Promise<Product> => {
-    const p = await request<any>('/products', { method: 'POST', body: productData });
+  createProduct: async (productData: any): Promise<Product> =>
+    mapProduct(await request<any>('/products', { method: 'POST', body: productData }), getBusinessContext().organizationId),
+
+  updateProduct: async (id: string, productData: any): Promise<Product> =>
+    mapProduct(await request<any>(`/products/${id}`, { method: 'PUT', body: productData }), getBusinessContext().organizationId),
+
+  /* ---------------------------------------------------- business settings */
+
+  getBusinessSettings: async (): Promise<BusinessSettings> => {
+    const data = await request<any>('/business/settings');
+
     return {
-      id: p.id,
-      organizationId: p.organization_id,
-      sku: p.sku,
-      barcode: p.barcode,
-      name: p.name,
-      description: p.description,
-      price: Number(p.price),
-      costPrice: Number(p.cost_price),
-      category: p.category,
-      unit: p.unit || 'pcs',
-      stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
+      defaultTaxRate: Number(data.default_tax_rate ?? 0),
+      taxInclusivePricing: Boolean(data.tax_inclusive_pricing),
+      canOverrideTaxPerOrder: Boolean(data.can_override_tax_per_order),
+      minTaxRate: Number(data.min_tax_rate ?? 0),
+      maxTaxRate: Number(data.max_tax_rate ?? 100),
     };
   },
 
-  updateProduct: async (id: string, productData: any): Promise<Product> => {
-    const p = await request<any>(`/products/${id}`, { method: 'PUT', body: productData });
+  updateBusinessSettings: async (payload: { default_tax_rate: number }): Promise<BusinessSettings> => {
+    const data = await request<any>('/business/settings', { method: 'PUT', body: payload });
+
     return {
-      id: p.id,
-      organizationId: p.organization_id,
-      sku: p.sku,
-      barcode: p.barcode,
-      name: p.name,
-      description: p.description,
-      price: Number(p.price),
-      costPrice: Number(p.cost_price),
-      category: p.category,
-      unit: p.unit || 'pcs',
-      stockQuantityByWarehouse: p.stockQuantityByWarehouse ?? p.stock_quantity_by_warehouse ?? {},
+      defaultTaxRate: Number(data.settings?.default_tax_rate ?? payload.default_tax_rate),
+      taxInclusivePricing: Boolean(data.settings?.tax_inclusive_pricing),
+      canOverrideTaxPerOrder: Boolean(data.settings?.can_override_tax_per_order),
+      minTaxRate: Number(data.settings?.min_tax_rate ?? 0),
+      maxTaxRate: Number(data.settings?.max_tax_rate ?? 100),
     };
   },
+
+  getUnits: async (): Promise<UnitOption[]> =>
+    request<UnitOption[]>('/units', { query: { locale: currentLocale() } }),
 
   /* ---------------------------------------------------------- inventory */
 
   /**
-   * A warehouse must always be chosen explicitly. There is no default
-   * warehouse: an unspecified warehouse is a mistake, not something to guess.
+   * The warehouses this business really has. There is no default and no
+   * fixture id: the picker is built from exactly what the server returns.
    */
-  adjustStock: async (productId: string, warehouseId: string, delta: number, reason: string) => {
-    if (!warehouseId) {
-      throw new ApiError('پیش از اصلاح موجودی باید انبار را انتخاب کنید.', 422);
+  getWarehouses: async (): Promise<BusinessWarehouse[]> => {
+    const data = await request<any[]>('/inventory/warehouses');
+
+    return (data ?? []).map((w) => ({
+      id: w.id,
+      name: w.name,
+      code: w.code ?? '',
+      storeId: w.store_id ?? '',
+      storeName: w.store_name ?? '',
+    }));
+  },
+
+  getStock: async (warehouseId?: string): Promise<StockRow[]> => {
+    const data = await request<any[]>('/inventory/stock', {
+      query: { warehouse_id: warehouseId, locale: currentLocale() },
+    });
+
+    return (data ?? []).map((s) => ({
+      id: s.id,
+      warehouseId: s.warehouse_id ?? '',
+      warehouseName: s.warehouse_name ?? '',
+      productId: s.product_id ?? '',
+      productName: s.product_name ?? '',
+      sku: s.sku ?? '',
+      quantity: Number(s.quantity ?? 0),
+      reservedQuantity: Number(s.reserved_quantity ?? 0),
+      availableQuantity: Number(s.available_quantity ?? 0),
+      unit: s.unit ?? 'piece',
+      unitLabel: s.unit_label ?? 'عدد',
+    }));
+  },
+
+  getStockMovements: async (filters: { warehouseId?: string; productId?: string } = {}): Promise<StockMovement[]> => {
+    const data = await request<Paginated<StockMovement>>('/inventory/movements', {
+      query: { warehouse_id: filters.warehouseId, product_id: filters.productId },
+    });
+
+    return data?.data ?? [];
+  },
+
+  /**
+   * Record stock arriving in a warehouse.
+   *
+   * The warehouse is always explicit: there is no default and the server
+   * refuses a warehouse that is not this business's.
+   */
+  stockIn: async (payload: {
+    warehouseId: string;
+    productId: string;
+    quantity: number;
+    reason?: string;
+  }) => {
+    if (!payload.warehouseId) {
+      throw new ApiError('برای ثبت موجودی باید انبار انتخاب شود.', 422, {
+        warehouse_id: ['انبار انتخاب نشده است.'],
+      });
+    }
+
+    return request('/inventory/stock-in', {
+      method: 'POST',
+      body: {
+        warehouse_id: payload.warehouseId,
+        product_id: payload.productId,
+        quantity: payload.quantity,
+        reason: payload.reason,
+      },
+    });
+  },
+
+  adjustStock: async (payload: {
+    warehouseId: string;
+    productId: string;
+    delta: number;
+    reason: string;
+  }) => {
+    if (!payload.warehouseId) {
+      throw new ApiError('برای اصلاح موجودی باید انبار انتخاب شود.', 422, {
+        warehouse_id: ['انبار انتخاب نشده است.'],
+      });
     }
 
     return request('/inventory/adjust', {
       method: 'POST',
       body: {
-        warehouse_id: warehouseId,
-        product_id: productId,
-        delta,
-        reason,
+        warehouse_id: payload.warehouseId,
+        product_id: payload.productId,
+        delta: payload.delta,
+        reason: payload.reason,
       },
     });
   },
-
-  getStock: async (warehouseId?: string): Promise<any[]> => request('/inventory/stock', { query: { warehouse_id: warehouseId } }),
 
   transferStock: async (payload: {
     source_warehouse_id: string;
@@ -453,48 +644,117 @@ export const apiClient = {
     reason?: string;
   }) => request('/inventory/transfer', { method: 'POST', body: payload }),
 
+  createWarehouse: async (payload: { storeId: string; name: string; code: string }) => {
+    const context = getBusinessContext();
+
+    return request<any>('/warehouses', {
+      method: 'POST',
+      body: {
+        organization_id: context.organizationId,
+        store_id: payload.storeId,
+        name: payload.name,
+        code: payload.code,
+      },
+    });
+  },
+
   /* ---------------------------------------------------------------- POS */
 
-  checkout: async (payload: any): Promise<SalesOrder> => {
+  /**
+   * Register a sale.
+   *
+   * The server prices the order from the catalog and the business tax rate.
+   * Anything this method sends about price or total is ignored on purpose.
+   */
+  checkout: async (payload: {
+    warehouseId: string;
+    customerId?: string;
+    customerName?: string;
+    paymentMethod: string;
+    paymentStatus?: string;
+    fulfillmentStatus?: string;
+    taxRate?: number;
+    source?: string;
+    notes?: string;
+    items: { productId: string; quantity: number; discountPercent?: number }[];
+  }): Promise<SalesOrder> => {
     const context = getBusinessContext();
-    const warehouseId = payload.warehouse_id ?? payload.warehouseId ?? context.warehouseId;
 
-    if (!warehouseId) {
-      throw new ApiError('پیش از ثبت فروش باید انبار را انتخاب کنید.', 422);
+    if (!payload.warehouseId) {
+      throw new ApiError('برای ثبت فروش باید انبار انتخاب شود.', 422, {
+        warehouse_id: ['انبار انتخاب نشده است.'],
+      });
     }
 
     const data = await request<any>('/orders/checkout', {
       method: 'POST',
-      body: { ...payload, org_id: context.organizationId, store_id: context.storeId, warehouse_id: warehouseId },
+      body: {
+        store_id: context.storeId,
+        warehouse_id: payload.warehouseId,
+        customer_id: payload.customerId ?? null,
+        customer_name: payload.customerName,
+        payment_method: payload.paymentMethod,
+        payment_status: payload.paymentStatus,
+        fulfillment_status: payload.fulfillmentStatus,
+        tax_rate: payload.taxRate,
+        source: payload.source ?? 'POS',
+        notes: payload.notes,
+        items: payload.items.map((item) => ({
+          product_id: item.productId,
+          quantity: item.quantity,
+          discount_percent: item.discountPercent ?? 0,
+        })),
+      },
+    });
+
+    return mapOrder(data, context.organizationId, context.storeId);
+  },
+
+  /* -------------------------------------------------------------- orders */
+
+  /** The operational order list: searched and filtered on the server. */
+  getOrders: async (filters: {
+    q?: string;
+    status?: string;
+    perPage?: number;
+  } = {}): Promise<Paginated<SalesOrder>> => {
+    const context = getBusinessContext();
+    const data = await request<Paginated<any>>('/orders', {
+      query: { q: filters.q, status: filters.status, per_page: String(filters.perPage ?? '') },
     });
 
     return {
-      id: data.id,
-      orderNumber: data.order_number ?? data.orderNumber,
-      organizationId: data.organization_id ?? data.organizationId,
-      storeId: data.store_id ?? data.storeId,
-      warehouseId: data.warehouse_id ?? data.warehouseId,
-      customerId: data.customer_id ?? data.customerId,
-      customerName: data.customer_name ?? data.customerName,
-      items: (data.items || []).map((i: any) => ({
-        productId: i.product_id ?? i.productId,
-        productName: i.product_name ?? i.productName,
-        sku: i.sku,
-        unitPrice: Number(i.unit_price ?? i.price ?? 0),
-        quantity: Number(i.quantity ?? 1),
-        totalPrice: Number(i.total_price ?? 0),
-      })),
-      subtotal: Number(data.subtotal ?? 0),
-      discountAmount: Number(data.discount_amount ?? data.discountAmount ?? 0),
-      taxAmount: Number(data.tax_amount ?? data.taxAmount ?? 0),
-      totalAmount: Number(data.total_amount ?? data.totalAmount ?? 0),
-      paymentMethod: data.payment_method ?? data.paymentMethod,
-      paymentStatus: data.payment_status ?? data.paymentStatus,
-      fulfillmentStatus: data.fulfillment_status ?? data.fulfillmentStatus,
-      notes: data.notes,
-      createdAt: data.created_at ?? data.createdAt ?? new Date().toISOString(),
+      current_page: data?.current_page ?? 1,
+      last_page: data?.last_page ?? 1,
+      per_page: data?.per_page ?? 25,
+      total: data?.total ?? 0,
+      data: (data?.data ?? []).map((o) => mapOrder(o, context.organizationId, context.storeId)),
     };
   },
+
+  getOrder: async (id: string): Promise<SalesOrder> => {
+    const context = getBusinessContext();
+    const data = await request<any>(`/orders/${id}`);
+
+    return {
+      ...mapOrder(data, context.organizationId, context.storeId),
+      timeline: (data.timeline ?? []).map((e: any) => ({
+        status: e.status,
+        at: e.at,
+        label: e.label,
+      })),
+      availableActions: data.available_actions ?? ['view'],
+    };
+  },
+
+  prepareOrder: async (id: string) => request(`/orders/${id}/prepare`, { method: 'POST', body: {} }),
+
+  payOrder: async (id: string, paymentMethod?: string) =>
+    request(`/orders/${id}/pay`, { method: 'POST', body: { payment_method: paymentMethod } }),
+
+  cancelOrder: async (id: string) => request(`/orders/${id}/cancel`, { method: 'POST', body: {} }),
+
+  refundOrder: async (id: string) => request(`/orders/${id}/refund`, { method: 'POST', body: {} }),
 
   /* ---------------------------------------------------------- customers */
 
@@ -602,172 +862,158 @@ export const apiClient = {
 
   /* --------------------------------------------------------- purchasing */
 
-  getPurchases: async (): Promise<Purchase[]> => {
-    const data = await request<any[]>('/purchases', { query: { org_id: getBusinessContext().organizationId } });
+  getPurchases: async (query?: string): Promise<Purchase[]> => {
+    const context = getBusinessContext();
+    const data = await request<any[]>('/purchases', { query: { q: query } });
 
-    return (data ?? []).map((p: any) => ({
-      id: p.id,
-      purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
-      organizationId: p.organization_id ?? getBusinessContext().organizationId,
-      // Reported exactly as stored. A purchase with no warehouse is shown as
-      // unknown, never as somebody else's warehouse.
-      storeId: p.store_id ?? '',
-      warehouseId: p.warehouse_id ?? '',
-      supplierId: p.supplier_id ?? p.supplierId,
-      supplierName: p.supplier?.name ?? '',
-      supplier: p.supplier,
-      items: (p.items || []).map((i: any) => ({
-        id: i.id,
-        productId: i.product_id ?? i.productId,
-        productName: i.product?.name ?? '',
-        quantity: Number(i.quantity ?? 1),
-        unitCost: Number(i.unit_cost ?? i.unitCost ?? 0),
-        totalCost: Number(i.total_cost ?? i.totalCost ?? 0),
-      })),
-      totalAmount: Number(p.total_amount ?? p.totalAmount ?? 0),
-      status: p.status ?? 'ORDERED',
-      paymentStatus: p.payment_status ?? p.paymentStatus ?? 'UNPAID',
-      createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString(),
-    }));
+    return (data ?? []).map((p: any) => mapPurchase(p, context));
+  },
+
+  /** Purchases still waiting for goods: the receiving worklist. */
+  getReceivingQueue: async (): Promise<Purchase[]> => {
+    const context = getBusinessContext();
+    const data = await request<any[]>('/purchases/receiving-queue');
+
+    return (data ?? []).map((p: any) => mapPurchase(p, context));
   },
 
   getPurchaseById: async (id: string): Promise<Purchase> => {
-    const p = await request<any>(`/purchases/${id}`);
-    return {
-      id: p.id,
-      purchaseNumber: p.purchase_number ?? p.purchaseNumber ?? p.id,
-      organizationId: p.organization_id ?? getBusinessContext().organizationId,
-      storeId: p.store_id ?? '',
-      warehouseId: p.warehouse_id ?? '',
-      supplierId: p.supplier_id ?? p.supplierId,
-      supplierName: p.supplier?.name ?? '',
-      supplier: p.supplier,
-      items: (p.items || []).map((i: any) => ({
-        id: i.id,
-        productId: i.product_id ?? i.productId,
-        quantity: Number(i.quantity),
-        unitCost: Number(i.unit_cost),
-        totalCost: Number(i.total_cost),
-      })),
-      totalAmount: Number(p.total_amount),
-      status: p.status,
-      paymentStatus: p.payment_status,
-      createdAt: p.created_at,
-    };
+    const context = getBusinessContext();
+
+    return mapPurchase(await request<any>(`/purchases/${id}`), context);
   },
 
   createPurchase: async (payload: {
-    store_id: string;
-    warehouse_id: string;
     supplier_id: string;
-    items: any[];
+    warehouse_id?: string;
+    purchase_date?: string;
+    items: { product_id: string; quantity: number; unit_cost: number }[];
   }): Promise<Purchase> => {
-    const p = await request<any>('/purchases', {
-      method: 'POST',
-      body: { ...payload, org_id: getBusinessContext().organizationId },
-    });
-    return {
-      id: p.id,
-      purchaseNumber: p.purchase_number,
-      organizationId: p.organization_id,
-      storeId: p.store_id,
-      warehouseId: p.warehouse_id,
-      supplierId: p.supplier_id,
-      items: (p.items || []).map((i: any) => ({
-        id: i.id,
-        productId: i.product_id,
-        quantity: Number(i.quantity),
-        unitCost: Number(i.unit_cost),
-        totalCost: Number(i.total_cost),
-      })),
-      totalAmount: Number(p.total_amount),
-      status: p.status,
-      paymentStatus: p.payment_status,
-      createdAt: p.created_at,
-    };
+    const context = getBusinessContext();
+
+    return mapPurchase(
+      await request<any>('/purchases', {
+        method: 'POST',
+        body: {
+          store_id: context.storeId,
+          warehouse_id: payload.warehouse_id ?? null,
+          supplier_id: payload.supplier_id,
+          purchase_date: payload.purchase_date,
+          items: payload.items,
+        },
+      }),
+      context
+    );
   },
 
-  receivePurchase: async (id: string) => request(`/purchases/${id}/receive`, { method: 'POST' }),
+  /**
+   * Record a delivery into a warehouse.
+   *
+   * `lines` may name only what arrived: lines left out are simply not part of
+   * this delivery. Omitting them entirely means "receive everything still
+   * outstanding".
+   */
+  receivePurchase: async (
+    id: string,
+    payload: { warehouseId: string; lines?: { purchaseItemId: string; receivedQuantity: number }[] }
+  ) =>
+    request(`/purchases/${id}/receive`, {
+      method: 'POST',
+      body: {
+        warehouse_id: payload.warehouseId,
+        items: payload.lines?.map((l) => ({
+          purchase_item_id: l.purchaseItemId,
+          received_quantity: l.receivedQuantity,
+        })),
+      },
+    }),
 
   payPurchase: async (id: string, amount: number, paymentMethod: string) =>
-    request(`/purchases/${id}/pay`, { method: 'POST', body: { amount, payment_method: paymentMethod } }),
+    request(`/purchases/${id}/pay`, {
+      method: 'POST',
+      body: { amount, payment_method: paymentMethod },
+    }),
 
   /* ------------------------------------------------------------ expenses */
 
-  getExpenses: async (): Promise<Expense[]> => {
-    const data = await request<any[]>('/expenses', { query: { org_id: getBusinessContext().organizationId } });
+  getExpenseCategories: async (): Promise<ExpenseCategory[]> =>
+    request<ExpenseCategory[]>('/expenses/categories', { query: { locale: currentLocale() } }),
 
-    return (data ?? []).map((e: any) => ({
-      id: e.id,
-      organizationId: e.organization_id ?? e.organizationId ?? getBusinessContext().organizationId,
-      storeId: e.store_id ?? e.storeId ?? getBusinessContext().storeId,
-      category: e.category,
-      amount: Number(e.amount ?? 0),
-      paymentMethod: e.payment_method ?? e.paymentMethod ?? 'CASH',
-      date: e.date,
-      notes: e.notes || '',
-      userId: e.user_id ?? e.userId,
-      createdAt: e.created_at ?? e.createdAt,
-    }));
-  },
+  getExpenseSummary: async (): Promise<ExpenseSummary> => {
+    const data = await request<any>('/expenses/summary');
 
-  getExpenseById: async (id: string): Promise<Expense> => {
-    const e = await request<any>(`/expenses/${id}`);
     return {
-      id: e.id,
-      organizationId: e.organization_id ?? getBusinessContext().organizationId,
-      storeId: e.store_id ?? getBusinessContext().storeId,
-      category: e.category,
-      amount: Number(e.amount ?? 0),
-      paymentMethod: e.payment_method ?? 'CASH',
-      date: e.date,
-      notes: e.notes || '',
-      userId: e.user_id,
-      createdAt: e.created_at,
+      monthTotal: Number(data.month_total ?? 0),
+      todayTotal: Number(data.today_total ?? 0),
+      previousMonthTotal: Number(data.previous_month_total ?? 0),
+      byCategory: (data.by_category ?? []).map((c: any) => ({
+        category: c.category,
+        label: c.label,
+        total: Number(c.total ?? 0),
+        entries: Number(c.entries ?? 0),
+      })),
+      trend: (data.trend ?? []).map((t: any) => ({
+        month: t.month,
+        label: t.label,
+        total: Number(t.total ?? 0),
+      })),
     };
   },
 
+  getExpenses: async (query?: string): Promise<Expense[]> => {
+    const context = getBusinessContext();
+    const data = await request<any[]>('/expenses', { query: { q: query } });
+
+    return (data ?? []).map((e) => mapExpense(e, context.organizationId, context.storeId ?? ''));
+  },
+
+  getExpenseById: async (id: string): Promise<Expense> => {
+    const context = getBusinessContext();
+
+    return mapExpense(await request<any>(`/expenses/${id}`), context.organizationId, context.storeId);
+  },
+
   createExpense: async (data: {
+    title: string;
     category: string;
     amount: number;
     date: string;
     payment_method?: string;
     notes?: string;
+    attachment_url?: string;
   }): Promise<Expense> => {
     const context = getBusinessContext();
-    const e = await request<any>('/expenses', {
-      method: 'POST',
-      body: { ...data, org_id: context.organizationId, store_id: context.storeId },
-    });
-    return {
-      id: e.id,
-      organizationId: e.organization_id,
-      storeId: e.store_id,
-      category: e.category,
-      amount: Number(e.amount),
-      paymentMethod: e.payment_method,
-      date: e.date,
-      notes: e.notes || '',
-      userId: e.user_id,
-      createdAt: e.created_at,
-    };
+
+    return mapExpense(
+      await request<any>('/expenses', {
+        method: 'POST',
+        body: {
+          store_id: context.storeId,
+          title: data.title,
+          category: data.category,
+          amount: data.amount,
+          date: data.date,
+          payment_method: data.payment_method,
+          notes: data.notes,
+          attachment_url: data.attachment_url,
+        },
+      }),
+      context.organizationId,
+      context.storeId ?? ''
+    );
   },
 
   updateExpense: async (
     id: string,
-    data: { category?: string; amount?: number; date?: string; payment_method?: string; notes?: string }
+    data: { title?: string; category?: string; amount?: number; date?: string; notes?: string }
   ): Promise<Expense> => {
-    const e = await request<any>(`/expenses/${id}`, { method: 'PUT', body: data });
-    return {
-      id: e.id,
-      organizationId: e.organization_id,
-      storeId: e.store_id,
-      category: e.category,
-      amount: Number(e.amount),
-      paymentMethod: e.payment_method,
-      date: e.date,
-      notes: e.notes || '',
-    };
+    const context = getBusinessContext();
+
+    return mapExpense(
+      await request<any>(`/expenses/${id}`, { method: 'PUT', body: data }),
+      context.organizationId,
+      context.storeId ?? ''
+    );
   },
 
   deleteExpense: async (id: string) => request(`/expenses/${id}`, { method: 'DELETE' }),
