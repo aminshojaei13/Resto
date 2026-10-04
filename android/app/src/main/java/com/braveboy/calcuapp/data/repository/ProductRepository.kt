@@ -9,6 +9,7 @@ import com.braveboy.calcuapp.data.model.LedgerType
 import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.remote.CalcuappApiService
 import com.braveboy.calcuapp.data.remote.NetworkModule
+import com.braveboy.calcuapp.data.remote.dto.ProductDto
 import com.braveboy.calcuapp.data.remote.dto.StockAdjustRequestDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,7 @@ interface ProductRepository {
         storeId: String
     )
     suspend fun upsertProduct(product: Product)
+    suspend fun updateProduct(product: Product)
 }
 
 class ProductRepositoryImpl(
@@ -109,6 +111,30 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun upsertProduct(product: Product) {
+        productDao.insertProduct(product.toEntity())
+    }
+
+    override suspend fun updateProduct(product: Product) {
+        try {
+            apiService.updateProduct(
+                id = product.id,
+                product = ProductDto(
+                    id = product.id,
+                    organizationId = product.orgId,
+                    sku = product.sku,
+                    barcode = product.barcode,
+                    name = product.name,
+                    description = product.description,
+                    price = product.price,
+                    costPrice = product.costPrice,
+                    category = product.category,
+                    unit = product.unit,
+                    imageUrl = product.imageUrl
+                )
+            )
+        } catch (e: Exception) {
+            // Offline fallback - syncs to Room DB
+        }
         productDao.insertProduct(product.toEntity())
     }
 }

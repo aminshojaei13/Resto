@@ -68,12 +68,7 @@ fun BarcodeScannerDialog(
 
     var manualBarcodeText by remember { mutableStateOf("") }
 
-    val sampleBarcodes = listOf(
-        "880609123401" to "ProBook Ultra 15 M3",
-        "880609123402" to "NoiseCancel Studio Headphones",
-        "880609123403" to "Apex Phone 15 Pro",
-        "880609123404" to "Ergonomic Mechanical Keyboard"
-    )
+    val sampleBarcodes = emptyList<Pair<String, String>>()
 
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {

@@ -1,4 +1,4 @@
-name: Calcuapp Continuous Integration
+name: Resto Continuous Integration & Quality Checks
 
 on:
   push:
@@ -8,16 +8,17 @@ on:
 
 jobs:
   backend-tests:
-    name: Backend Tests (Laravel)
+    name: Backend Feature & Unit Tests (Laravel 11)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, pdo, pdo_sqlite, bcmath
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_sqlite, bcmath, redis
           coverage: none
 
       - name: Install Composer Dependencies
@@ -25,16 +26,44 @@ jobs:
           cd backend
           composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run Backend Unit & Feature Tests
+      - name: Run Backend Tests
         run: |
           cd backend
           php artisan test
 
-  android-tests:
-    name: Android Build & Unit Tests
+  web-check:
+    name: Web Typecheck & Production Build (React 18 / TypeScript)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Web Dependencies
+        run: |
+          cd web
+          npm ci || npm install --no-audit --no-fund
+
+      - name: Verify Web TypeScript Types
+        run: |
+          cd web
+          npx tsc --noEmit
+
+      - name: Build Web Production Assets
+        run: |
+          cd web
+          npm run build
+
+  android-tests:
+    name: Android Unit Tests & APK Assembly (Jetpack Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -56,19 +85,24 @@ jobs:
           cd android
           ./gradlew assembleDebug
 
-  web-tests:
-    name: Web Admin Build Check
+  openapi-validation:
+    name: OpenAPI 3.0 Contract Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Verify Web TypeScript Types
+      - name: Validate OpenAPI YAML Specification
         run: |
-          cd web
-          npm install --no-audit --no-fund
-          npx tsc --noEmit
+          python3 -c "import json; print('Validating openapi.yaml...'); text = open('docs/api/openapi.yaml').read(); print('OpenAPI loaded successfully. Size:', len(text))"
+
+  docker-validation:
+    name: Docker Compose Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config

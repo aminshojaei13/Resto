@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface PageHeaderProps {
   title: string;
@@ -8,6 +8,7 @@ interface PageHeaderProps {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions }) => {
+  const { theme } = useTheme();
   return (
     <div
       style={{

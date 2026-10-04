@@ -1,37 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient, setTenantContext } from '../api/apiClient';
-import { Organization } from '../types';
-import { theme } from '../theme/tokens';
+import React, { useState } from 'react';
+import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../auth/AuthContext';
+import { setActiveOrganization, setActiveStore, setActiveWarehouse } from '../auth/session';
+import { roleLabel } from '../i18n/authStrings';
 
-interface TenantModalProps {
+interface BusinessModalProps {
   language: 'fa' | 'en';
   onClose: () => void;
-  onSelectTenant: (orgName: string, storeName: string) => void;
+  onSelected: () => void;
 }
 
-export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onSelectTenant }) => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+/**
+ * Choose which of *your own* businesses, stores and warehouses to work in.
+ *
+ * The list comes from the authenticated profile, so it can never contain a
+ * business the person does not belong to, and it can never be empty-because-
+ * the-request-failed: there is a real error state instead.
+ */
+export const TenantModal: React.FC<BusinessModalProps> = ({ language, onClose, onSelected }) => {
+  const { user } = useAuth();
+  const { theme } = useTheme();
   const isFa = language === 'fa';
 
-  useEffect(() => {
-    apiClient.getOrganizations().then(setOrganizations);
-  }, []);
+  const [selection, setSelection] = useState<{
+    organizationId: string;
+    organizationName: string;
+    role: string;
+    storeId: string;
+    storeName: string;
+    warehouseId: string;
+    warehouseName: string;
+  } | null>(null);
 
-  const handleSelect = (org: Organization, storeId: string, storeName: string) => {
-    setTenantContext(org.id, storeId);
-    onSelectTenant(org.name, storeName);
-    onClose();
+  const memberships = user?.memberships ?? [];
+
+  const choose = () => {
+    if (!selection) return;
+
+    setActiveOrganization(selection.organizationId, selection.organizationName, selection.role);
+    setActiveStore(selection.storeId, selection.storeName);
+    setActiveWarehouse(selection.warehouseId, selection.warehouseName);
+
+    onSelected();
   };
+
+  const isSelected = (
+    organizationId: string,
+    storeId: string,
+    warehouseId: string
+  ) =>
+    selection?.organizationId === organizationId &&
+    selection?.storeId === storeId &&
+    (selection?.warehouseId === warehouseId || warehouseId === '');
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        inset: 0,
+        backgroundColor: theme.colors.overlay,
         backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
@@ -43,95 +72,178 @@ export const TenantModal: React.FC<TenantModalProps> = ({ language, onClose, onS
     >
       <div
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.surfaceElevated,
           borderRadius: theme.borderRadius.xl,
           padding: theme.spacing['2xl'],
-          width: '460px',
+          width: '480px',
           maxWidth: '92%',
           boxShadow: theme.shadows.lg,
           border: `1px solid ${theme.colors.border}`,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: theme.spacing.xl,
+          }}
+        >
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
-            {isFa ? 'تغییر شعبه و سازمان فعال' : 'Switch Organization & Store Context'}
+            {isFa ? 'انتخاب کسب‌وکار' : 'Choose a business'}
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '18px',
-              color: theme.colors.textMuted,
-              cursor: 'pointer',
-            }}
+            aria-label={isFa ? 'بستن' : 'Close'}
+            style={{ background: 'none', border: 'none', fontSize: '18px', color: theme.colors.textMuted, cursor: 'pointer' }}
           >
             ✕
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg, maxHeight: '360px', overflowY: 'auto' }}>
-          {organizations.map((org) => (
-            <div
-              key={org.id}
-              style={{
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: theme.borderRadius.lg,
-                padding: theme.spacing.lg,
-                backgroundColor: theme.colors.background,
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: theme.spacing.md, color: theme.colors.primaryDark }}>
-                🏢 {org.name}
-              </div>
-              {org.stores?.map((store) => (
-                <button
-                  key={store.id}
-                  onClick={() => handleSelect(org, store.id, store.name)}
+        {memberships.length === 0 ? (
+          <p style={{ fontSize: '14px', color: theme.colors.textSecondary }}>
+            {isFa ? 'شما هنوز عضو هیچ کسب‌وکاری نیستید.' : 'You do not belong to a business yet.'}
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg, maxHeight: '360px', overflowY: 'auto' }}>
+            {memberships.map((membership) => (
+              <div
+                key={membership.id}
+                style={{
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.lg,
+                  padding: theme.spacing.lg,
+                  backgroundColor: theme.colors.background,
+                }}
+              >
+                <div
                   style={{
-                    width: '100%',
-                    textAlign: isFa ? 'right' : 'left',
-                    backgroundColor: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.borderRadius.md,
-                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-                    margin: `${theme.spacing.xs} 0`,
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    color: theme.colors.textPrimary,
                     display: 'flex',
-                    alignItems: 'center',
                     justifyContent: 'space-between',
-                    transition: 'border-color 0.15s ease',
+                    alignItems: 'baseline',
+                    marginBottom: theme.spacing.md,
                   }}
                 >
-                  <span>🏪 {store.name}</span>
-                  <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'انتخاب' : 'Select'}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+                  <span style={{ fontWeight: 700, fontSize: '15px', color: theme.colors.primary }}>🏢 {membership.name}</span>
+                  <span style={{ fontSize: '12px', color: theme.colors.textMuted }}>
+                    {roleLabel(language, membership.role)}
+                  </span>
+                </div>
 
-        <button
-          onClick={onClose}
-          style={{
-            marginTop: theme.spacing.xl,
-            width: '100%',
-            padding: theme.spacing.md,
-            borderRadius: theme.borderRadius.md,
-            border: `1px solid ${theme.colors.border}`,
-            backgroundColor: theme.colors.background,
-            color: theme.colors.textPrimary,
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '14px',
-          }}
-        >
-          {isFa ? 'انصراف' : 'Cancel'}
-        </button>
+                {membership.stores.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: theme.colors.textSecondary, margin: 0 }}>
+                    {isFa ? 'هنوز فروشگاهی برای این کسب‌وکار ثبت نشده است.' : 'No store has been set up for this business yet.'}
+                  </p>
+                ) : (
+                  membership.stores.map((store) => (
+                    <div key={store.id} style={{ marginBottom: theme.spacing.sm }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelection({
+                            organizationId: membership.id,
+                            organizationName: membership.name,
+                            role: membership.role,
+                            storeId: store.id,
+                            storeName: store.name,
+                            warehouseId: '',
+                            warehouseName: '',
+                          })
+                        }
+                        style={rowStyle(theme, isSelected(membership.id, store.id, ''))}
+                      >
+                        <span>🏪 {store.name}</span>
+                      </button>
+
+                      {store.warehouses.map((warehouse) => (
+                        <button
+                          key={warehouse.id}
+                          type="button"
+                          onClick={() =>
+                            setSelection({
+                              organizationId: membership.id,
+                              organizationName: membership.name,
+                              role: membership.role,
+                              storeId: store.id,
+                              storeName: store.name,
+                              warehouseId: warehouse.id,
+                              warehouseName: warehouse.name,
+                            })
+                          }
+                          style={{
+                            ...rowStyle(theme, isSelected(membership.id, store.id, warehouse.id)),
+                            marginInlineStart: theme.spacing.lg,
+                            fontSize: '12px',
+                          }}
+                        >
+                          <span>📦 {warehouse.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: theme.spacing.xl }}>
+          <button
+            type="button"
+            onClick={choose}
+            disabled={!selection}
+            style={{
+              flex: 1,
+              padding: theme.spacing.md,
+              borderRadius: theme.borderRadius.md,
+              border: 'none',
+              backgroundColor: theme.colors.primary,
+              color: theme.colors.primaryTextOnBrand,
+              cursor: selection ? 'pointer' : 'default',
+              opacity: selection ? 1 : 0.6,
+              fontWeight: 700,
+              fontSize: '14px',
+            }}
+          >
+            {isFa ? 'تأیید انتخاب' : 'Confirm selection'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: theme.spacing.md,
+              borderRadius: theme.borderRadius.md,
+              border: `1px solid ${theme.colors.border}`,
+              backgroundColor: theme.colors.surfaceHover,
+              color: theme.colors.textPrimary,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '14px',
+            }}
+          >
+            {isFa ? 'انصراف' : 'Cancel'}
+          </button>
+        </div>
       </div>
     </div>
   );
 };
+
+const rowStyle = (theme: any, active: boolean) => ({
+  width: '100%',
+  textAlign: 'start' as const,
+  backgroundColor: active ? theme.colors.primaryLight : theme.colors.surfaceHover,
+  border: `1px solid ${active ? theme.colors.primary : theme.colors.border}`,
+  borderRadius: theme.borderRadius.md,
+  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+  margin: `${theme.spacing.xs} 0`,
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: '13px',
+  color: active ? theme.colors.primaryDark : theme.colors.textPrimary,
+});
+
+export default TenantModal;

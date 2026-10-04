@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.braveboy.calcuapp.data.model.CartItem
 import com.braveboy.calcuapp.data.model.Customer
+import com.braveboy.calcuapp.data.model.Expense
 import com.braveboy.calcuapp.data.model.FulfillmentStatus
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
@@ -14,8 +15,11 @@ import com.braveboy.calcuapp.data.model.PaymentMethod
 import com.braveboy.calcuapp.data.model.PaymentStatus
 import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.model.ProductVariant
+import com.braveboy.calcuapp.data.model.Purchase
+import com.braveboy.calcuapp.data.model.PurchaseItem
 import com.braveboy.calcuapp.data.model.SalesOrder
 import com.braveboy.calcuapp.data.model.Store
+import com.braveboy.calcuapp.data.model.Supplier
 import com.braveboy.calcuapp.data.model.Warehouse
 
 @Entity(tableName = "organizations")
@@ -190,6 +194,123 @@ fun Customer.toEntity() = CustomerEntity(
     address = address,
     totalPurchases = totalPurchases,
     loyaltyPoints = loyaltyPoints,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "suppliers")
+data class SupplierEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val createdAt: Long
+) {
+    fun toDomain() = Supplier(
+        id = id,
+        orgId = orgId,
+        name = name,
+        email = email,
+        phone = phone,
+        address = address,
+        createdAt = createdAt
+    )
+}
+
+fun Supplier.toEntity() = SupplierEntity(
+    id = id,
+    orgId = orgId,
+    name = name,
+    email = email,
+    phone = phone,
+    address = address,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "purchases")
+data class PurchaseEntity(
+    @PrimaryKey val id: String,
+    val purchaseNumber: String,
+    val orgId: String,
+    val storeId: String,
+    val warehouseId: String,
+    val supplierId: String,
+    val supplierName: String,
+    val items: List<PurchaseItem>,
+    val totalAmount: Double,
+    val status: String,
+    val paymentStatus: String,
+    val createdAt: Long
+) {
+    fun toDomain() = Purchase(
+        id = id,
+        purchaseNumber = purchaseNumber,
+        orgId = orgId,
+        storeId = storeId,
+        warehouseId = warehouseId,
+        supplierId = supplierId,
+        supplierName = supplierName,
+        items = items,
+        totalAmount = totalAmount,
+        status = status,
+        paymentStatus = paymentStatus,
+        createdAt = createdAt
+    )
+}
+
+fun Purchase.toEntity() = PurchaseEntity(
+    id = id,
+    purchaseNumber = purchaseNumber,
+    orgId = orgId,
+    storeId = storeId,
+    warehouseId = warehouseId,
+    supplierId = supplierId,
+    supplierName = supplierName,
+    items = items,
+    totalAmount = totalAmount,
+    status = status,
+    paymentStatus = paymentStatus,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "expenses")
+data class ExpenseEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val storeId: String,
+    val category: String,
+    val amount: Double,
+    val paymentMethod: String,
+    val date: String,
+    val notes: String,
+    val userId: String?,
+    val createdAt: Long
+) {
+    fun toDomain() = Expense(
+        id = id,
+        orgId = orgId,
+        storeId = storeId,
+        category = category,
+        amount = amount,
+        paymentMethod = paymentMethod,
+        date = date,
+        notes = notes,
+        userId = userId,
+        createdAt = createdAt
+    )
+}
+
+fun Expense.toEntity() = ExpenseEntity(
+    id = id,
+    orgId = orgId,
+    storeId = storeId,
+    category = category,
+    amount = amount,
+    paymentMethod = paymentMethod,
+    date = date,
+    notes = notes,
+    userId = userId,
     createdAt = createdAt
 )
 

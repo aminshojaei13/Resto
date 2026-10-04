@@ -51,6 +51,9 @@ class CustomerViewModel(
     private val _selectedCustomerForDetail = MutableStateFlow<Customer?>(null)
     val selectedCustomerForDetail: StateFlow<Customer?> = _selectedCustomerForDetail.asStateFlow()
 
+    private val _selectedCustomerForEdit = MutableStateFlow<Customer?>(null)
+    val selectedCustomerForEdit: StateFlow<Customer?> = _selectedCustomerForEdit.asStateFlow()
+
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
@@ -64,6 +67,14 @@ class CustomerViewModel(
 
     fun closeAddCustomerDialog() {
         _isAddCustomerDialogOpen.value = false
+    }
+
+    fun openEditCustomer(customer: Customer) {
+        _selectedCustomerForEdit.value = customer
+    }
+
+    fun closeEditCustomer() {
+        _selectedCustomerForEdit.value = null
     }
 
     fun addCustomer(name: String, email: String, phone: String, address: String) {
@@ -82,6 +93,19 @@ class CustomerViewModel(
                 _isAddCustomerDialogOpen.value = false
             } catch (e: Exception) {
                 _snackbarMessage.value = "Failed to add customer: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun updateCustomer(customer: Customer) {
+        viewModelScope.launch {
+            try {
+                customerRepository.updateCustomer(customer)
+                _snackbarMessage.value = "Updated profile for '${customer.name}'"
+                _selectedCustomerForEdit.value = null
+                _selectedCustomerForDetail.value = null
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Failed to update customer: ${e.localizedMessage}"
             }
         }
     }

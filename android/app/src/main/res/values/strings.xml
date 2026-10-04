@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Calcuapp</string>
+    <string name="app_name">Resto</string>
     <string name="pos_title">Mobile POS</string>
     <string name="inventory_title">Inventory &amp; Products</string>
 

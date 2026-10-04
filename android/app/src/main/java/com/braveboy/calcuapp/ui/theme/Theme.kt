@@ -1,14 +1,18 @@
 package com.braveboy.calcuapp.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+
+// ============================================================================
+// Resto Compose Theme — Warm Dark design language (P8.3)
+// ============================================================================
+// Dynamic (Material You) color is intentionally disabled by default so Resto's
+// warm-dark + teal identity stays consistent across devices, matching Web.
+// ============================================================================
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -32,11 +36,15 @@ private val LightColorScheme = lightColorScheme(
     surface = SurfaceLight,
     onSurface = OnSurfaceLight,
     surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = Color(0xFFD1D5DB),
+    outlineVariant = Color(0xFFE5E7EB)
 )
 
+/** Warm Dark — mirrors web tokens (warm neutral surfaces, teal primary). */
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
+    // Brand
+    primary = RestoTeal,
     onPrimary = OnPrimaryDark,
     primaryContainer = PrimaryContainerDark,
     onPrimaryContainer = OnPrimaryContainerDark,
@@ -52,24 +60,44 @@ private val DarkColorScheme = darkColorScheme(
     onError = OnErrorDark,
     errorContainer = ErrorContainerDark,
     onErrorContainer = OnErrorContainerDark,
-    background = BackgroundDark,
-    onBackground = OnBackgroundDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceVariantDark
+
+    // Canvas & surfaces (warm, layered, NOT pure black)
+    background = WarmDarkBackground,
+    onBackground = WarmDarkTextPrimary,
+    surface = WarmDarkSurface,
+    onSurface = WarmDarkTextPrimary,
+    surfaceVariant = WarmDarkSurfaceElevated,
+    onSurfaceVariant = WarmDarkTextSecondary,
+    surfaceDim = WarmDarkBackgroundSecondary,
+    surfaceBright = WarmDarkSurfaceHover,
+    surfaceContainerLowest = WarmDarkBackground,
+    surfaceContainerLow = WarmDarkBackgroundSecondary,
+    surfaceContainer = WarmDarkSurface,
+    surfaceContainerHigh = WarmDarkSurfaceElevated,
+    surfaceContainerHighest = WarmDarkSurfaceHover,
+
+    // Borders & dividers
+    outline = WarmDarkBorderStrong,
+    outlineVariant = WarmDarkBorder,
+
+    // Extras
+    inverseSurface = Color(0xFFF5F1EA),
+    inverseOnSurface = Color(0xFF1D1A17),
+    inversePrimary = PrimaryLight,
+    scrim = Color(0xFF0A0806)
 )
 
 @Composable
 fun CalcuappTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        dynamicColor && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S -> {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            if (darkTheme) androidx.compose.material3.dynamicDarkColorScheme(context)
+            else androidx.compose.material3.dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme

@@ -7,12 +7,20 @@ import com.braveboy.calcuapp.data.repository.CartRepository
 import com.braveboy.calcuapp.data.repository.CartRepositoryImpl
 import com.braveboy.calcuapp.data.repository.CustomerRepository
 import com.braveboy.calcuapp.data.repository.CustomerRepositoryImpl
+import com.braveboy.calcuapp.data.repository.ExpenseRepository
+import com.braveboy.calcuapp.data.repository.ExpenseRepositoryImpl
 import com.braveboy.calcuapp.data.repository.LedgerRepository
 import com.braveboy.calcuapp.data.repository.LedgerRepositoryImpl
+import com.braveboy.calcuapp.data.repository.MessageRepository
+import com.braveboy.calcuapp.data.repository.MessageRepositoryImpl
 import com.braveboy.calcuapp.data.repository.ProductRepository
 import com.braveboy.calcuapp.data.repository.ProductRepositoryImpl
+import com.braveboy.calcuapp.data.repository.PurchaseRepository
+import com.braveboy.calcuapp.data.repository.PurchaseRepositoryImpl
 import com.braveboy.calcuapp.data.repository.SalesOrderRepository
 import com.braveboy.calcuapp.data.repository.SalesOrderRepositoryImpl
+import com.braveboy.calcuapp.data.repository.SupplierRepository
+import com.braveboy.calcuapp.data.repository.SupplierRepositoryImpl
 import com.braveboy.calcuapp.data.repository.TenantRepository
 import com.braveboy.calcuapp.data.repository.TenantRepositoryImpl
 
@@ -31,6 +39,8 @@ class AppContainer(private val context: Context) {
             tenantDao = database.tenantDao(),
             productDao = database.productDao(),
             customerDao = database.customerDao(),
+            supplierDao = database.supplierDao(),
+            expenseDao = database.expenseDao(),
             salesOrderDao = database.salesOrderDao(),
             ledgerDao = database.ledgerDao(),
             tenantPreferences = tenantPreferences
@@ -64,6 +74,28 @@ class AppContainer(private val context: Context) {
         CustomerRepositoryImpl(
             customerDao = database.customerDao()
         )
+    }
+
+    val supplierRepository: SupplierRepository by lazy {
+        SupplierRepositoryImpl(
+            supplierDao = database.supplierDao()
+        )
+    }
+
+    val purchaseRepository: PurchaseRepository by lazy {
+        PurchaseRepositoryImpl(
+            purchaseDao = database.purchaseDao()
+        )
+    }
+
+    val expenseRepository: ExpenseRepository by lazy {
+        ExpenseRepositoryImpl(
+            expenseDao = database.expenseDao()
+        )
+    }
+
+    val messageRepository: MessageRepository by lazy {
+        MessageRepositoryImpl()
     }
 
     val ledgerRepository: LedgerRepository by lazy {

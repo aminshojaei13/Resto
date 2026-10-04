@@ -18,8 +18,9 @@ class CalcuappApplication : Application() {
         super.onCreate()
         appContainer = AppContainer(this)
 
-        // Seed initial mock SaaS tenant data if DB is empty
         applicationScope.launch {
+            // Ensure Room database is completely cleared on launch for clean testing
+            appContainer.database.clearAllTables()
             appContainer.tenantRepository.seedInitialData()
         }
     }

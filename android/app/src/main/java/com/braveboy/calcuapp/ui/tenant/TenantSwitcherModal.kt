@@ -165,8 +165,8 @@ fun TenantSwitcherModal(
                                 CoroutineScope(Dispatchers.IO).launch {
                                     tenantRepository.setActiveTenant(
                                         orgId = org.id,
-                                        storeId = firstStore?.id ?: "store_apex_1",
-                                        warehouseId = firstWh?.id ?: "wh_apex_1a"
+                                        storeId = firstStore?.id ?: "",
+                                        warehouseId = firstWh?.id ?: ""
                                     )
                                 }
                             },
@@ -217,7 +217,7 @@ fun TenantSwitcherModal(
                                 CoroutineScope(Dispatchers.IO).launch {
                                     tenantRepository.setActiveStore(
                                         storeId = store.id,
-                                        warehouseId = firstWh?.id ?: "wh_apex_1a"
+                                                                        warehouseId = firstWh?.id ?: ""
                                     )
                                 }
                             },

@@ -6,7 +6,9 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class LoginRequestDto(
     @Json(name = "email") val email: String,
-    @Json(name = "password") val password: String
+    @Json(name = "password") val password: String,
+    @Json(name = "locale") val locale: String,
+    @Json(name = "device_name") val deviceName: String = "android"
 )
 
 @JsonClass(generateAdapter = true)
@@ -16,12 +18,80 @@ data class AuthResponseDto(
     @Json(name = "user") val user: UserDto
 )
 
+/**
+ * The authenticated person, exactly as the server describes them.
+ *
+ * `name` is the server-composed full name; the app never rebuilds it from the
+ * email or from any other field.
+ */
 @JsonClass(generateAdapter = true)
 data class UserDto(
     @Json(name = "id") val id: String,
+    @Json(name = "first_name") val firstName: String? = null,
+    @Json(name = "last_name") val lastName: String? = null,
     @Json(name = "name") val name: String,
+    @Json(name = "display_name") val displayName: String? = null,
     @Json(name = "email") val email: String,
-    @Json(name = "role") val role: String
+    @Json(name = "phone") val phone: String? = null,
+    @Json(name = "status") val status: String? = null,
+    @Json(name = "role") val role: String? = null,
+    @Json(name = "is_platform_admin") val isPlatformAdmin: Boolean = false,
+    @Json(name = "permissions") val permissions: List<String>? = null,
+    @Json(name = "memberships") val memberships: List<MembershipDto>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MembershipDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "role") val role: String,
+    @Json(name = "status") val status: String? = null,
+    @Json(name = "stores") val stores: List<MembershipStoreDto>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MembershipStoreDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "warehouses") val warehouses: List<MembershipWarehouseDto>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class MembershipWarehouseDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "name") val name: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ForgotPasswordRequestDto(
+    @Json(name = "email") val email: String,
+    @Json(name = "locale") val locale: String
+)
+
+@JsonClass(generateAdapter = true)
+data class MessageDto(
+    @Json(name = "message") val message: String? = null,
+    @Json(name = "errors") val errors: Map<String, List<String>>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ChangePasswordRequestDto(
+    @Json(name = "current_password") val currentPassword: String,
+    @Json(name = "new_password") val newPassword: String,
+    @Json(name = "new_password_confirmation") val newPasswordConfirmation: String
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateProfileRequestDto(
+    @Json(name = "first_name") val firstName: String? = null,
+    @Json(name = "last_name") val lastName: String? = null,
+    @Json(name = "phone") val phone: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateProfileResponseDto(
+    @Json(name = "message") val message: String? = null,
+    @Json(name = "user") val user: UserDto
 )
 
 @JsonClass(generateAdapter = true)
@@ -70,6 +140,41 @@ data class ProductDto(
     @Json(name = "category") val category: String,
     @Json(name = "unit") val unit: String,
     @Json(name = "image_url") val imageUrl: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class SupplierDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "email") val email: String?,
+    @Json(name = "phone") val phone: String?,
+    @Json(name = "address") val address: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class PurchaseDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "purchase_number") val purchaseNumber: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "store_id") val storeId: String,
+    @Json(name = "warehouse_id") val warehouseId: String,
+    @Json(name = "supplier_id") val supplierId: String,
+    @Json(name = "total_amount") val totalAmount: Double,
+    @Json(name = "status") val status: String,
+    @Json(name = "payment_status") val paymentStatus: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ExpenseDto(
+    @Json(name = "id") val id: String,
+    @Json(name = "organization_id") val organizationId: String,
+    @Json(name = "store_id") val storeId: String,
+    @Json(name = "category") val category: String,
+    @Json(name = "amount") val amount: Double,
+    @Json(name = "payment_method") val paymentMethod: String,
+    @Json(name = "date") val date: String,
+    @Json(name = "notes") val notes: String?
 )
 
 @JsonClass(generateAdapter = true)

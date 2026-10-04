@@ -124,11 +124,11 @@ data class CartItem(
     val taxRate: Double = 0.08, // 8% default
     val imageUrl: String = ""
 ) {
-    val subtotal: Double get() = price * quantity
-    val discountAmount: Double get() = subtotal * (discountPercent / 100.0)
-    val taxableAmount: Double get() = subtotal - discountAmount
-    val taxAmount: Double get() = taxableAmount * taxRate
-    val total: Double get() = taxableAmount + taxAmount
+    val subtotal: Double get() = Math.round(price * quantity * 100.0) / 100.0
+    val discountAmount: Double get() = Math.round(subtotal * (discountPercent / 100.0) * 100.0) / 100.0
+    val taxableAmount: Double get() = Math.round((subtotal - discountAmount) * 100.0) / 100.0
+    val taxAmount: Double get() = Math.round(taxableAmount * taxRate * 100.0) / 100.0
+    val total: Double get() = Math.round((taxableAmount + taxAmount) * 100.0) / 100.0
 }
 
 data class Customer(
@@ -140,6 +140,54 @@ data class Customer(
     val address: String = "",
     val totalPurchases: Double = 0.0,
     val loyaltyPoints: Int = 0,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class Supplier(
+    val id: String = UUID.randomUUID().toString(),
+    val orgId: String,
+    val name: String,
+    val email: String = "",
+    val phone: String = "",
+    val address: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class PurchaseItem(
+    val id: String = UUID.randomUUID().toString(),
+    val purchaseId: String = "",
+    val productId: String,
+    val productName: String = "",
+    val quantity: Int,
+    val unitCost: Double,
+    val totalCost: Double = Math.round(quantity * unitCost * 100.0) / 100.0
+)
+
+data class Purchase(
+    val id: String = UUID.randomUUID().toString(),
+    val purchaseNumber: String,
+    val orgId: String,
+    val storeId: String,
+    val warehouseId: String,
+    val supplierId: String,
+    val supplierName: String = "Supplier",
+    val items: List<PurchaseItem>,
+    val totalAmount: Double,
+    val status: String = "ORDERED",
+    val paymentStatus: String = "UNPAID",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class Expense(
+    val id: String = UUID.randomUUID().toString(),
+    val orgId: String,
+    val storeId: String,
+    val category: String,
+    val amount: Double,
+    val paymentMethod: String = "CASH",
+    val date: String = "",
+    val notes: String = "",
+    val userId: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 

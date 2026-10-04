@@ -6,11 +6,14 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.braveboy.calcuapp.data.local.db.entity.CartItemEntity
 import com.braveboy.calcuapp.data.local.db.entity.CustomerEntity
+import com.braveboy.calcuapp.data.local.db.entity.ExpenseEntity
 import com.braveboy.calcuapp.data.local.db.entity.LedgerEntryEntity
 import com.braveboy.calcuapp.data.local.db.entity.OrganizationEntity
 import com.braveboy.calcuapp.data.local.db.entity.ProductEntity
+import com.braveboy.calcuapp.data.local.db.entity.PurchaseEntity
 import com.braveboy.calcuapp.data.local.db.entity.SalesOrderEntity
 import com.braveboy.calcuapp.data.local.db.entity.StoreEntity
+import com.braveboy.calcuapp.data.local.db.entity.SupplierEntity
 import com.braveboy.calcuapp.data.local.db.entity.WarehouseEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -81,6 +84,63 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE id = :id")
     fun getCustomerById(id: String): Flow<CustomerEntity?>
+}
+
+@Dao
+interface SupplierDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSuppliers(suppliers: List<SupplierEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSupplier(supplier: SupplierEntity)
+
+    @Query("SELECT * FROM suppliers WHERE orgId = :orgId ORDER BY name ASC")
+    fun getSuppliersByOrg(orgId: String): Flow<List<SupplierEntity>>
+
+    @Query("SELECT * FROM suppliers WHERE orgId = :orgId AND (name LIKE '%' || :query || '%' OR phone LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%')")
+    fun searchSuppliers(orgId: String, query: String): Flow<List<SupplierEntity>>
+
+    @Query("SELECT * FROM suppliers WHERE id = :id")
+    fun getSupplierById(id: String): Flow<SupplierEntity?>
+
+    @Query("DELETE FROM suppliers WHERE id = :id")
+    suspend fun deleteSupplier(id: String)
+}
+
+@Dao
+interface PurchaseDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPurchases(purchases: List<PurchaseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPurchase(purchase: PurchaseEntity)
+
+    @Query("SELECT * FROM purchases WHERE orgId = :orgId ORDER BY createdAt DESC")
+    fun getPurchasesByOrg(orgId: String): Flow<List<PurchaseEntity>>
+
+    @Query("SELECT * FROM purchases WHERE id = :id")
+    fun getPurchaseById(id: String): Flow<PurchaseEntity?>
+
+    @Query("SELECT * FROM purchases WHERE id = :id")
+    suspend fun getPurchaseByIdDirect(id: String): PurchaseEntity?
+}
+
+@Dao
+interface ExpenseDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<ExpenseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpense(expense: ExpenseEntity)
+
+    @Query("SELECT * FROM expenses WHERE orgId = :orgId ORDER BY date DESC, createdAt DESC")
+    fun getExpensesByOrg(orgId: String): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM expenses WHERE id = :id")
+    fun getExpenseById(id: String): Flow<ExpenseEntity?>
+
+    @Query("DELETE FROM expenses WHERE id = :id")
+    suspend fun deleteExpense(id: String)
 }
 
 @Dao

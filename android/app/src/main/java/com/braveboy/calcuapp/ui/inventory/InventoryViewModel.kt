@@ -75,6 +75,9 @@ class InventoryViewModel(
     private val _selectedProductForAdjustment = MutableStateFlow<Product?>(null)
     val selectedProductForAdjustment: StateFlow<Product?> = _selectedProductForAdjustment.asStateFlow()
 
+    private val _selectedProductForEdit = MutableStateFlow<Product?>(null)
+    val selectedProductForEdit: StateFlow<Product?> = _selectedProductForEdit.asStateFlow()
+
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
@@ -92,6 +95,26 @@ class InventoryViewModel(
 
     fun closeStockAdjustment() {
         _selectedProductForAdjustment.value = null
+    }
+
+    fun openEditProduct(product: Product) {
+        _selectedProductForEdit.value = product
+    }
+
+    fun closeEditProduct() {
+        _selectedProductForEdit.value = null
+    }
+
+    fun updateProduct(product: Product) {
+        viewModelScope.launch {
+            try {
+                productRepository.updateProduct(product)
+                _snackbarMessage.value = "Product '${product.name}' updated successfully"
+                _selectedProductForEdit.value = null
+            } catch (e: Exception) {
+                _snackbarMessage.value = "Failed to update product: ${e.localizedMessage}"
+            }
+        }
     }
 
     fun submitStockAdjustment(

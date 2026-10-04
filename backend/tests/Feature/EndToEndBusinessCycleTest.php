@@ -6,13 +6,17 @@ use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\OrganizationMembership;
 use App\Models\Product;
 use App\Models\Store;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\AccountingService;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EndToEndBusinessCycleTest extends TestCase
@@ -21,6 +25,18 @@ class EndToEndBusinessCycleTest extends TestCase
 
     public function test_full_business_cycle_inventory_checkout_double_entry(): void
     {
+        // 0. A real authenticated owner of the business under test.
+        $owner = User::create([
+            'id' => 'usr_nexus_owner',
+            'name' => 'Nexus Owner',
+            'first_name' => 'Nexus',
+            'last_name' => 'Owner',
+            'email' => 'owner@nexus.example',
+            'password' => Hash::make('Str0ng-Passphrase!'),
+            'role' => 'Owner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
         // 1. Create Organization, Store & Warehouse
         $org = Organization::create([
             'id' => 'org_nexus',
@@ -57,6 +73,17 @@ class EndToEndBusinessCycleTest extends TestCase
             'cost_price' => 1200.00,
             'category' => 'Laptops',
         ]);
+
+        OrganizationMembership::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => 'org_nexus',
+            'user_id' => $owner->id,
+            'role' => 'OWNER',
+            'status' => 'ACTIVE',
+            'joined_at' => now(),
+        ]);
+
+        $this->actingAs($owner);
 
         // 3. Receive Stock (Initial Purchase / Restock of 15 units)
         $inventoryService = new InventoryService();
@@ -101,9 +128,10 @@ class EndToEndBusinessCycleTest extends TestCase
             ]
         ];
 
-        $response = $this->postJson('/api/v1/orders/checkout', $checkoutPayload);
+        $response = $this->postJson('/api/v1/orders/checkout', $checkoutPayload, [
+            'X-Tenant-ID' => 'org_nexus',
+        ]);
         $response->assertStatus(201);
-
         // 6. Verify Warehouse Stock Decreased by 2 (15 -> 13)
         $updatedStock = WarehouseStock::where('warehouse_id', 'wh_nexus_1a')
             ->where('product_id', 'prod_nexus_laptop')

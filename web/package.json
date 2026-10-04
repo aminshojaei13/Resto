@@ -1,16 +1,20 @@
 {
-  "name": "calcuapp-web",
+  "name": "resto-web",
   "version": "1.0.0",
-  "description": "Calcuapp SaaS React Native Web POS & Admin Dashboard",
+  "description": "Resto SaaS React Admin & POS Dashboard",
   "private": true,
   "dependencies": {
+    "lucide-react": "^0.439.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-native": "^0.74.5",
-    "react-native-web": "^0.19.12",
-    "lucide-react": "^0.439.0"
+    "react-native-web": "^0.19.12"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "ajv": "^8.17.1",
@@ -19,8 +23,13 @@
     "typescript": "^5.5.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build"
+    "start": "PORT=3000 REACT_APP_APP_TYPE=business react-scripts start",
+    "start:business": "PORT=3000 REACT_APP_APP_TYPE=business react-scripts start",
+    "start:admin": "PORT=3001 REACT_APP_APP_TYPE=platform-admin react-scripts start",
+    "build:business": "REACT_APP_APP_TYPE=business BUILD_PATH=build/business react-scripts build",
+    "build:admin": "REACT_APP_APP_TYPE=platform-admin BUILD_PATH=build/admin react-scripts build",
+    "build": "npm run build:business && npm run build:admin",
+    "test": "react-scripts test --watchAll=false"
   },
   "browserslist": {
     "production": [

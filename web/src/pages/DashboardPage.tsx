@@ -1,239 +1,490 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
-import { AccountingSummary, LedgerEntry } from '../types';
+import { AccountingSummary, LedgerEntry, Product } from '../types';
 import { StatCard } from '../components/StatCard';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface DashboardPageProps {
   language?: 'fa' | 'en';
+  navigate?: (path: string) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', navigate }) => {
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const isFa = language === 'fa';
+  const { theme, effectiveMode } = useTheme();
+  const isDark = effectiveMode === 'warmDark';
 
   useEffect(() => {
-    apiClient.getAccountingSummary().then(setSummary);
-    apiClient.getJournalEntries().then(setEntries);
+    const fetchData = async () => {
+      try {
+        const s = await apiClient.getAccountingSummary();
+        if (s) setSummary(s);
+      } catch {}
+      try {
+        const e = await apiClient.getJournalEntries();
+        if (e) setEntries(e);
+      } catch {}
+      try {
+        const p = await apiClient.getProducts();
+        if (p) setProducts(p);
+      } catch {}
+    };
+    fetchData();
   }, []);
 
+  const totalRevenue = summary?.totalRevenue || 0;
+  const todayRevenue = summary?.todayRevenue || 0;
+  const totalExpenses = summary?.totalExpenses || 0;
+  const netProfit = summary?.netProfit ?? (totalRevenue - totalExpenses);
+  const totalSalesCount = summary?.totalSalesCount || 0;
+  const todaySalesCount = summary?.todaySalesCount || 0;
+
+  // Inventory Metrics derived from products
+  const totalProductsCount = products.length;
+  const lowStockProducts = products.filter((p) => {
+    const totalQty = (p.stockByWarehouse || []).reduce((acc, w) => acc + w.quantity, 0);
+    return totalQty <= 5;
+  });
+
+  const handleNav = (path: string) => {
+    if (navigate) {
+      navigate(path);
+    } else {
+      window.location.pathname = path;
+    }
+  };
+
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing['2xl'] }}>
       {/* Top Header Controls */}
       <PageHeader
-        title={isFa ? 'داشبورد مدیریتی و هوش کسب‌وکار' : 'Executive Business Dashboard'}
-        description={isFa ? 'نمای کلی از وضعیت فروش، خرید، سود عملیاتی، بدهکاران و بستانکاران' : 'Comprehensive performance, revenue, margins, and operational metrics'}
-        actions={
+        title={isFa ? 'مرکز مدیریت و عملیات کسب‌وکار' : 'Business Control Center'}
+        description={isFa ? 'مدیریت متمرکز موجودی انبار، سفارش‌های آنلاین و جریان عملیاتی روزانه' : 'Centralized management of inventory, online orders, and daily business operations'}
+      />
+
+      {/* 5 Prioritized Quick Actions Banner */}
+      <div
+        style={{
+          backgroundColor: theme.colors.surface,
+          border: `1px solid ${theme.colors.border}`,
+          borderRadius: theme.borderRadius.xl,
+          padding: theme.spacing.xl,
+          boxShadow: theme.shadows.card,
+        }}
+      >
+        <div style={{ fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary, marginBottom: theme.spacing.lg, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <span>⚡</span>
+          <span>{isFa ? 'اقدامات سریع و عملیاتی روزانه' : 'Daily Quick Operations'}</span>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: theme.spacing.md,
+          }}
+        >
+          <button
+            onClick={() => handleNav('/app/pos')}
+            style={{
+              backgroundColor: theme.colors.primary,
+              color: '#FFF',
+              border: 'none',
+              borderRadius: theme.borderRadius.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: theme.spacing.md,
+              boxShadow: theme.shadows.sm,
+            }}
+          >
+            <span>🛒</span>
+            <span>{isFa ? 'ثبت سفارش جدید' : 'Register New Order'}</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('/app/messages')}
+            style={{
+              backgroundColor: theme.colors.surfaceSelected,
+              color: theme.colors.primary,
+              border: `1px solid ${theme.colors.borderStrong}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: theme.spacing.md,
+              boxShadow: theme.shadows.sm,
+            }}
+          >
+            <span>📩</span>
+            <span>{isFa ? 'ثبت سفارش از پیام' : 'Social Message Import'}</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('/app/inventory')}
+            style={{
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.textPrimary,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: theme.spacing.md,
+            }}
+          >
+            <span>📦</span>
+            <span>{isFa ? 'افزودن کالا' : 'Add Product'}</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('/app/purchases')}
+            style={{
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.textPrimary,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: theme.spacing.md,
+            }}
+          >
+            <span>🛍️</span>
+            <span>{isFa ? 'ثبت خرید و ورود انبار' : 'Purchasing & Receiving'}</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('/app/inventory')}
+            style={{
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.textPrimary,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.lg,
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: theme.spacing.md,
+            }}
+          >
+            <span>🏭</span>
+            <span>{isFa ? 'مدیریت موجودی انبار' : 'Manage Inventory'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* THREE CORE NEED CARDS */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: theme.spacing['2xl'],
+        }}
+      >
+        {/* CORE NEED 1: INVENTORY & RESOURCE MANAGEMENT */}
+        <div
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.borderRadius.xl,
+            padding: theme.spacing['2xl'],
+            border: `2px solid ${theme.colors.primaryLight}`,
+            boxShadow: theme.shadows.card,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.primaryLight, color: theme.colors.primaryDark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  📦
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: theme.colors.textPrimary }}>
+                    {isFa ? '۱. کنترل موجودی و کالاها' : '1. Inventory & Resource Control'}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
+                    {isFa ? 'مدیریت متمرکز کالاها، انبارها و تامین' : 'Products, warehouses & stock levels'}
+                  </span>
+                </div>
+              </div>
+              <StatusBadge label={isFa ? 'رکن اصلی' : 'Core Need'} variant="info" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+              <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'تعداد کل کالاها' : 'Total Products'}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: theme.colors.textPrimary }}>{totalProductsCount}</div>
+              </div>
+              <div style={{ backgroundColor: lowStockProducts.length > 0 ? (isDark ? theme.colors.errorLight : '#FEF2F2') : theme.colors.backgroundSecondary, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: lowStockProducts.length > 0 ? (isDark ? theme.colors.error : '#991B1B') : theme.colors.textMuted }}>{isFa ? 'هشدار کمبود موجودی' : 'Low Stock Alert'}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: lowStockProducts.length > 0 ? (isDark ? theme.colors.error : '#DC2626') : theme.colors.textPrimary }}>
+                  {lowStockProducts.length}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '13px', color: theme.colors.textSecondary, lineHeight: 1.6, margin: `0 0 ${theme.spacing.lg} 0` }}>
+              {isFa
+                ? 'ورودی و خروجی انبار، کسری موجودی و تامین کالاها به‌صورت آنی مدیریت و به‌روزرسانی می‌شوند.'
+                : 'Real-time stock movements, low stock alerts, and receiving from suppliers.'}
+            </p>
+          </div>
+
           <div style={{ display: 'flex', gap: theme.spacing.md }}>
-            <select
-              style={{
-                backgroundColor: theme.colors.surface,
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: theme.borderRadius.md,
-                padding: '8px 16px',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: theme.colors.textPrimary,
-                cursor: 'pointer',
-              }}
-            >
-              <option>{isFa ? '📅 ۳۰ روز گذشته' : '📅 Last 30 Days'}</option>
-              <option>{isFa ? '📅 ۷ روز گذشته' : '📅 Last 7 Days'}</option>
-              <option>{isFa ? '📅 ماه جاری' : '📅 This Month'}</option>
-            </select>
             <button
+              onClick={() => handleNav('/app/inventory')}
               style={{
+                flex: 1,
                 backgroundColor: theme.colors.primary,
                 color: '#FFF',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
-                padding: '8px 16px',
+                padding: theme.spacing.md,
+                fontWeight: 700,
                 fontSize: '13px',
-                fontWeight: 600,
                 cursor: 'pointer',
               }}
             >
-              {isFa ? '⬇️ خروجی گزارش' : '⬇️ Export Report'}
+              {isFa ? 'مدیریت موجودی' : 'Manage Inventory'}
+            </button>
+            <button
+              onClick={() => handleNav('/app/purchases')}
+              style={{
+                backgroundColor: theme.colors.background,
+                color: theme.colors.textPrimary,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              {isFa ? 'ثبت خرید' : 'PO Receiving'}
             </button>
           </div>
-        }
-      />
+        </div>
 
-      {/* 8 Core KPI Cards Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: theme.spacing.xl,
-          marginBottom: theme.spacing['3xl'],
-        }}
-      >
-        <StatCard
-          title={isFa ? 'کل فروش' : 'Sales Revenue'}
-          value={isFa ? `${(summary?.totalRevenue || 2940.82).toLocaleString('fa-IR')} تومان` : `$${(summary?.totalRevenue || 2940.82).toFixed(2)}`}
-          subtitle={isFa ? 'نسبت به ماه قبل' : 'vs last month'}
-          trend="12.8%"
-          isPositive={true}
-          icon="💳"
-          badgeText={isFa ? 'فروش کل' : 'Total'}
-          badgeColor="info"
-        />
-
-        <StatCard
-          title={isFa ? 'خریدهای تامین' : 'Purchases & POs'}
-          value={isFa ? '۱,۸۵۰,۰۰۰ تومان' : '$1,850.00'}
-          subtitle={isFa ? 'تامین کالا' : '4 purchase orders'}
-          trend="5.2%"
-          isPositive={false}
-          icon="🛍️"
-          badgeText={isFa ? 'خرید' : 'Purchases'}
-          badgeColor="warning"
-        />
-
-        <StatCard
-          title={isFa ? 'سود ناخالص' : 'Gross Profit'}
-          value={isFa ? '۱,۰۹۰,۸۲۰ تومان' : '$1,090.82'}
-          subtitle={isFa ? 'حاشیه سود ۳۷٪' : '37% Margin'}
-          trend="8.4%"
-          isPositive={true}
-          icon="📈"
-          badgeText={isFa ? 'ناخالص' : 'Gross'}
-          badgeColor="success"
-        />
-
-        <StatCard
-          title={isFa ? 'سود خالص عملیاتی' : 'Net Profit'}
-          value={isFa ? '۹۲۰,۵۰۰ تومان' : '$920.50'}
-          subtitle={isFa ? 'منهای هزینه‌ها' : 'After Expenses'}
-          trend="14.2%"
-          isPositive={true}
-          icon="⚖️"
-          badgeText={isFa ? 'خالص' : 'Net'}
-          badgeColor="success"
-        />
-
-        <StatCard
-          title={isFa ? 'تعداد سفارشات' : 'Total Orders'}
-          value={isFa ? `${(summary?.totalSalesCount || 14).toLocaleString('fa-IR')} سفارش` : `${summary?.totalSalesCount || 14} orders`}
-          subtitle={isFa ? 'میانگین فاکتور: ۲۱۰,۰۰۰ تومان' : 'Avg Order: $210'}
-          trend="3.1%"
-          isPositive={true}
-          icon="🧾"
-          badgeText={isFa ? 'سفارشات' : 'Orders'}
-          badgeColor="info"
-        />
-
-        <StatCard
-          title={isFa ? 'ارزش موجودی انبار' : 'Inventory Value'}
-          value={isFa ? '۴,۵۰۰,۰۰۰ تومان' : '$4,500.00'}
-          subtitle={isFa ? '۱۲۸ قلم کالا در ۳ انبار' : '128 items in 3 WHs'}
-          icon="📦"
-          badgeText={isFa ? 'انبار' : 'Stock'}
-          badgeColor="info"
-        />
-
-        <StatCard
-          title={isFa ? 'مطالبات مشتریان (AR)' : 'Receivables (AR)'}
-          value={isFa ? '۳۵۰,۰۰۰ تومان' : '$350.00'}
-          subtitle={isFa ? '۳ مشتری بدهکار' : '3 overdue accounts'}
-          trend="2.0%"
-          isPositive={false}
-          icon="👥"
-          badgeText={isFa ? 'بدهکاران' : 'AR'}
-          badgeColor="warning"
-        />
-
-        <StatCard
-          title={isFa ? 'بدهی به تامین‌کنندگان (AP)' : 'Payables (AP)'}
-          value={isFa ? '۶۲۰,۰۰۰ تومان' : '$620.00'}
-          subtitle={isFa ? '۲ فاکتور خرید سررسید' : '2 pending bills'}
-          icon="🏢"
-          badgeText={isFa ? 'بستانکاران' : 'AP'}
-          badgeColor="error"
-        />
-      </div>
-
-      {/* Main Analytics Cards Layout */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: theme.spacing['2xl'],
-          marginBottom: theme.spacing['3xl'],
-        }}
-      >
-        {/* Sales Overview Card */}
+        {/* CORE NEED 2: ONLINE / SOCIAL ORDERS */}
         <div
           style={{
             backgroundColor: theme.colors.surface,
             borderRadius: theme.borderRadius.xl,
             padding: theme.spacing['2xl'],
-            border: `1px solid ${theme.colors.border}`,
+            border: isDark ? '2px solid #2C2545' : '2px solid #DDD6FE',
             boxShadow: theme.shadows.card,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0 }}>
-              {isFa ? 'روند فروش و کانال‌های درآمدی' : 'Sales Channel Performance'}
-            </h3>
-            <StatusBadge label={isFa ? 'آنلاین / حضوری' : 'Omnichannel'} variant="info" />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            {[
-              { channel: isFa ? 'فروشگاه حضوری (POS)' : 'Physical POS Store', share: '65%', amount: isFa ? '۱,۹۱۰,۵۰۰ تومان' : '$1,910.50', color: theme.colors.primary },
-              { channel: isFa ? 'وب‌سایت آنلاین' : 'Online Website', share: '25%', amount: isFa ? '۷۳۵,۲۰۰ تومان' : '$735.20', color: theme.colors.info },
-              { channel: isFa ? 'سفارش دستی / اینستاگرام' : 'Manual / Instagram', share: '10%', amount: isFa ? '۲۹۵,۱۲۰ تومان' : '$295.12', color: theme.colors.success },
-            ].map((c, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ fontWeight: 600, color: theme.colors.textPrimary }}>{c.channel}</span>
-                  <span style={{ fontWeight: 700, color: theme.colors.textPrimary }}>{c.amount} ({c.share})</span>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: isDark ? '#2A2340' : '#EDE9FE', color: isDark ? '#B49CF8' : '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  💬
                 </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.full, overflow: 'hidden' }}>
-                  <div style={{ width: c.share, height: '100%', backgroundColor: c.color, borderRadius: theme.borderRadius.full }} />
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: theme.colors.textPrimary }}>
+                    {isFa ? '۲. ثبت سریع سفارش‌های آنلاین' : '2. Fast Online & Social Orders'}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
+                    {isFa ? 'ورود پیام سفارشات اینستاگرام، تلگرام و واتساپ' : 'Instagram, Telegram & WhatsApp order import'}
+                  </span>
                 </div>
               </div>
-            ))}
+              <StatusBadge label={isFa ? 'سرعت بالا' : 'Fast Import'} variant="success" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+              <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'سفارش‌های امروز' : "Today's Orders"}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: theme.colors.textPrimary }}>{todaySalesCount}</div>
+              </div>
+              <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'درآمد امروز' : "Today's Revenue"}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: theme.colors.success }}>
+                  {isFa ? `${todayRevenue.toLocaleString('fa-IR')} تومان` : `$${todayRevenue}`}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '13px', color: theme.colors.textSecondary, lineHeight: 1.6, margin: `0 0 ${theme.spacing.lg} 0` }}>
+              {isFa
+                ? 'متن سفارش‌های مشتریان را از شبکه‌های اجتماعی کپی و جای‌گذاری کنید تا اقلام، قیمت‌ها و مشتری بلافاصله استخراج و ثبت شوند.'
+                : 'Copy and paste customer order messages from social apps to extract items, quantities, and customer details instantly.'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <button
+              onClick={() => handleNav('/app/messages')}
+              style={{
+                flex: 1,
+                backgroundColor: isDark ? '#5B21B6' : '#7C3AED',
+                color: '#FFF',
+                border: 'none',
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              {isFa ? 'ثبت سفارش از پیام' : 'Import Order Message'}
+            </button>
+            <button
+              onClick={() => handleNav('/app/pos')}
+              style={{
+                backgroundColor: theme.colors.background,
+                color: theme.colors.textPrimary,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              {isFa ? 'ثبت دستی' : 'Manual POS'}
+            </button>
           </div>
         </div>
 
-        {/* Expenses & Cost Structure Card */}
+        {/* CORE NEED 3: CENTRALIZED WORKSPACE (REDUCE EXCEL DEPENDENCY) */}
         <div
           style={{
             backgroundColor: theme.colors.surface,
             borderRadius: theme.borderRadius.xl,
             padding: theme.spacing['2xl'],
-            border: `1px solid ${theme.colors.border}`,
+            border: `2px solid ${theme.colors.border}`,
             boxShadow: theme.shadows.card,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0 }}>
-              {isFa ? 'ساختار هزینه‌های جاری' : 'Operating Expenses'}
-            </h3>
-            <StatusBadge label={isFa ? 'هزینه‌ها' : 'Expenses'} variant="warning" />
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: theme.borderRadius.lg, backgroundColor: isDark ? theme.colors.successLight : '#D1FAE5', color: isDark ? theme.colors.success : '#065F46', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  📊
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: theme.colors.textPrimary }}>
+                    {isFa ? '۳. مرکز متمرکز داده‌های کسب‌وکار' : '3. Centralized Business Workspace'}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
+                    {isFa ? 'جایگزینی متمرکز اکسل و فایل‌های پراکنده' : 'Unified product, customer & financial data'}
+                  </span>
+                </div>
+              </div>
+              <StatusBadge label={isFa ? 'یکپارچه' : 'Unified'} variant="success" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+              <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'کل فروش ثبت‌شده' : 'Total Revenue'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: theme.colors.textPrimary }}>
+                  {isFa ? `${totalRevenue.toLocaleString('fa-IR')} تومان` : `$${totalRevenue}`}
+                </div>
+              </div>
+              <div style={{ backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg }}>
+                <div style={{ fontSize: '12px', color: theme.colors.textMuted }}>{isFa ? 'سود خالص عملیاتی' : 'Net Operating Profit'}</div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: netProfit >= 0 ? theme.colors.success : theme.colors.error }}>
+                  {isFa ? `${netProfit.toLocaleString('fa-IR')} تومان` : `$${netProfit}`}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '13px', color: theme.colors.textSecondary, lineHeight: 1.6, margin: `0 0 ${theme.spacing.lg} 0` }}>
+              {isFa
+                ? 'همه داده‌های کالاها، انبار، سفارشات، مشتریان، هزینه‌ها و دفتر کل به‌صورت خودکار و یکپارچه در یک محیط متمرکز نگهداری می‌شوند.'
+                : 'Products, inventory, purchases, customers, orders, expenses, and ledger entries centralized in one operational workspace.'}
+            </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-            {[
-              { name: isFa ? 'تبلیغات و بازاریابی' : 'Marketing & Ads', cost: isFa ? '۷۵,۰۰۰ تومان' : '$75.00', pct: '44%' },
-              { name: isFa ? 'بسته‌بندی و ارسال' : 'Packaging & Shipping', cost: isFa ? '۵۵,۰۰۰ تومان' : '$55.00', pct: '32%' },
-              { name: isFa ? 'کارمزد درگاه و خدمات' : 'Gateway & Platform Fees', cost: isFa ? '۴۰,۳۲۰ تومان' : '$40.32', pct: '24%' },
-            ].map((exp, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: theme.spacing.md, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>{exp.name}</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.error }}>{exp.cost}</span>
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: theme.spacing.md }}>
+            <button
+              onClick={() => handleNav('/app/customers')}
+              style={{
+                flex: 1,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.textPrimary,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              👥 {isFa ? 'مشتریان' : 'Customers'}
+            </button>
+            <button
+              onClick={() => handleNav('/app/expenses')}
+              style={{
+                flex: 1,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.textPrimary,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              💸 {isFa ? 'هزینه‌ها' : 'Expenses'}
+            </button>
+            <button
+              onClick={() => handleNav('/app/accounting')}
+              style={{
+                flex: 1,
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.textPrimary,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: theme.borderRadius.md,
+                padding: theme.spacing.md,
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              ⚖️ {isFa ? 'دفتر کل' : 'Ledger'}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* General Ledger Recent Activity Log Card */}
+      {/* General Ledger Recent Activity Stream */}
       <div
         style={{
           backgroundColor: theme.colors.surface,
@@ -246,48 +497,68 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa' })
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl }}>
           <div>
             <h3 style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0 }}>
-              {isFa ? 'آخرین اسناد دفتر کل و حسابداری' : 'General Ledger Activity Stream'}
+              {isFa ? 'تراکنش‌ها و فعالیت‌های اخیر سیستم' : 'Recent Operations Stream'}
             </h3>
             <p style={{ fontSize: '13px', color: theme.colors.textSecondary, margin: `${theme.spacing.xs} 0 0 0` }}>
-              {isFa ? 'اسناد دوطرفه ثبت‌شده توسط سیستم و کاربران' : 'Real-time double-entry posting transactions'}
+              {isFa ? 'اسناد دوطرفه حسابداری و ثبت‌های اتوماتیک فروش و انبار' : 'Real-time double-entry posting and inventory movements'}
             </p>
           </div>
-          <StatusBadge label={isFa ? 'تراکنش‌های تاییدشده' : 'Posted Ledger'} variant="success" />
+          <button
+            onClick={() => handleNav('/app/accounting')}
+            style={{
+              backgroundColor: 'transparent',
+              color: theme.colors.primary,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: theme.borderRadius.md,
+              padding: '6px 14px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {isFa ? 'مشاهده دفتر کل ←' : 'View Full Ledger →'}
+          </button>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: `2px solid ${theme.colors.border}`, color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شماره سند' : 'Entry #'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شرح حساب' : 'Description'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'نوع حساب' : 'Type'}</th>
-                <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'مبلغ' : 'Amount'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primaryDark }}>
-                    {e.entryNumber}
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
-                    <StatusBadge label={e.category} variant="neutral" />
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, color: theme.colors.textPrimary, fontWeight: 500 }}>
-                    {e.description}
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
-                    <StatusBadge label={e.type === 'CREDIT' ? (isFa ? 'بستانکار' : 'CREDIT') : (isFa ? 'بدهکار' : 'DEBIT')} variant={e.type === 'CREDIT' ? 'success' : 'error'} />
-                  </td>
-                  <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontWeight: 700, color: theme.colors.textPrimary }}>
-                    {isFa ? `${e.amount.toLocaleString('fa-IR')} تومان` : `$${e.amount.toFixed(2)}`}
-                  </td>
+          {entries.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: theme.spacing['2xl'], color: theme.colors.textSecondary, fontSize: '14px' }}>
+              {isFa ? 'هنوز هیچ تراکنشی ثبت نشده است. اولین سفارش یا خرید خود را ثبت کنید.' : 'No transaction entries found. Register an order or purchase to start.'}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${theme.colors.border}`, color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شماره سند' : 'Entry #'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'دسته‌بندی' : 'Category'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شرح حساب' : 'Description'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'نوع حساب' : 'Type'}</th>
+                  <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'مبلغ' : 'Amount'}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.slice(0, 5).map((e) => (
+                  <tr key={e.id} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontFamily: 'monospace', fontWeight: 700, color: theme.colors.primary }}>
+                      {e.entryNumber}
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
+                      <StatusBadge label={e.category} variant="neutral" />
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, color: theme.colors.textPrimary, fontWeight: 500 }}>
+                      {e.description}
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>
+                      <StatusBadge label={e.type === 'CREDIT' ? (isFa ? 'بستانکار' : 'CREDIT') : (isFa ? 'بدهکار' : 'DEBIT')} variant={e.type === 'CREDIT' ? 'success' : 'error'} />
+                    </td>
+                    <td style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}`, fontWeight: 700, color: theme.colors.textPrimary }}>
+                      {isFa ? `${e.amount.toLocaleString('fa-IR')} تومان` : `$${e.amount.toFixed(2)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

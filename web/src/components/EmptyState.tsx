@@ -1,5 +1,5 @@
 import React from 'react';
-import { theme } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 
 interface EmptyStateProps {
   title: string;
@@ -16,6 +16,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onAction,
   icon = '📂',
 }) => {
+  const { theme } = useTheme();
   return (
     <div
       style={{

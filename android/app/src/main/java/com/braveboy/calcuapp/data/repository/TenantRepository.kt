@@ -2,9 +2,11 @@ package com.braveboy.calcuapp.data.repository
 
 import com.braveboy.calcuapp.data.local.datastore.TenantPreferences
 import com.braveboy.calcuapp.data.local.db.dao.CustomerDao
+import com.braveboy.calcuapp.data.local.db.dao.ExpenseDao
 import com.braveboy.calcuapp.data.local.db.dao.LedgerDao
 import com.braveboy.calcuapp.data.local.db.dao.ProductDao
 import com.braveboy.calcuapp.data.local.db.dao.SalesOrderDao
+import com.braveboy.calcuapp.data.local.db.dao.SupplierDao
 import com.braveboy.calcuapp.data.local.db.dao.TenantDao
 import com.braveboy.calcuapp.data.local.db.entity.toEntity
 import com.braveboy.calcuapp.data.mock.MockSaaSDataSource
@@ -32,6 +34,8 @@ class TenantRepositoryImpl(
     private val tenantDao: TenantDao,
     private val productDao: ProductDao,
     private val customerDao: CustomerDao,
+    private val supplierDao: SupplierDao,
+    private val expenseDao: ExpenseDao,
     private val salesOrderDao: SalesOrderDao,
     private val ledgerDao: LedgerDao,
     private val tenantPreferences: TenantPreferences
@@ -90,6 +94,8 @@ class TenantRepositoryImpl(
 
             productDao.insertProducts(MockSaaSDataSource.products.map { it.toEntity() })
             customerDao.insertCustomers(MockSaaSDataSource.customers.map { it.toEntity() })
+            supplierDao.insertSuppliers(MockSaaSDataSource.suppliers.map { it.toEntity() })
+            expenseDao.insertExpenses(MockSaaSDataSource.expenses.map { it.toEntity() })
             salesOrderDao.insertSalesOrders(MockSaaSDataSource.salesOrders.map { it.toEntity() })
             ledgerDao.insertLedgerEntries(MockSaaSDataSource.ledgerEntries.map { it.toEntity() })
         }

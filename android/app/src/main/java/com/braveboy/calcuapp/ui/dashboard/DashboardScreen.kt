@@ -14,20 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AccountBalance
-import androidx.compose.material.icons.rounded.AttachMoney
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.ReceiptLong
-import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
@@ -38,9 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -84,6 +76,7 @@ fun DashboardScreen(
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
+    val isPersian = tenantState.language == "fa"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -101,12 +94,12 @@ fun DashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Sales & Accounting Overview",
+                            text = if (isPersian) "مرکز مدیریت کسب‌وکار" else "Business Control Center",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
+                            text = if (isPersian) "سازمان: ${tenantState.activeOrgId} | شعبه: ${tenantState.activeStoreId}" else "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -134,72 +127,49 @@ fun DashboardScreen(
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Metrics Section
+            // THREE CORE JOBS HIGHLIGHT SECTION
             item {
                 Text(
-                    text = "Key Performance Metrics",
+                    text = if (isPersian) "وظایف اصلی کسب‌وکار شما" else "Core Business Operations",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        MetricCard(
-                            title = "Total Revenue",
-                            value = "$${String.format("%.2f", metrics.totalRevenue)}",
-                            subtext = "${metrics.totalSalesCount} total sales orders",
-                            icon = Icons.Rounded.TrendingUp,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MetricCard(
-                            title = "Today's Revenue",
-                            value = "$${String.format("%.2f", metrics.todayRevenue)}",
-                            subtext = "${metrics.todaySalesCount} sales today",
-                            icon = Icons.Rounded.ShoppingBag,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        MetricCard(
-                            title = "Net Operating Profit",
-                            value = "$${String.format("%.2f", metrics.netProfit)}",
-                            subtext = "Revenue - Expenses",
-                            icon = Icons.Rounded.AttachMoney,
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        MetricCard(
-                            title = "Total Expenses",
-                            value = "$${String.format("%.2f", metrics.totalExpenses)}",
-                            subtext = "Operating costs & payouts",
-                            icon = Icons.Rounded.AccountBalance,
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    MetricCard(
-                        title = "Inventory Asset Value",
-                        value = "$${String.format("%.2f", metrics.totalInventoryValue)}",
-                        subtext = "${metrics.totalInventoryItems} units in stock (${metrics.lowStockCount} low stock alerts)",
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Core Need 1: Inventory & Resources
+                    CoreJobCard(
+                        title = if (isPersian) "۱. موجودی و کالاها" else "1. Inventory & Stock Control",
+                        subtitle = if (isPersian) "کنترل انبارها، کالاها و ورود خروج" else "Warehouse stock levels & catalog",
+                        metricValue = "$${String.format("%.2f", metrics.totalInventoryValue)}",
+                        metricLabel = if (isPersian) "ارزش کل موجودی (${metrics.lowStockCount} کمبود)" else "Stock Value (${metrics.lowStockCount} low stock)",
                         icon = Icons.Rounded.Inventory2,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth()
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+
+                    // Core Need 2: Online & Social Orders
+                    CoreJobCard(
+                        title = if (isPersian) "۲. ثبت سفارش‌های آنلاین" else "2. Online & Social Orders",
+                        subtitle = if (isPersian) "ثبت مستقیم یا از طریق پیام شبکه‌های اجتماعی" else "Fast checkout & social message import",
+                        metricValue = "$${String.format("%.2f", metrics.todayRevenue)}",
+                        metricLabel = if (isPersian) "فروش امروز (${metrics.todaySalesCount} سفارش)" else "Today's Sales (${metrics.todaySalesCount} orders)",
+                        icon = Icons.AutoMirrored.Rounded.Message,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+
+                    // Core Need 3: Centralized Business Workspace
+                    CoreJobCard(
+                        title = if (isPersian) "۳. مرکز متمرکز داده‌ها" else "3. Centralized Business Workspace",
+                        subtitle = if (isPersian) "اطلاعات متمرکز کالاها، مشتریان و مالی بدون نیاز به اکسل" else "Centralized sales, customers, expenses & ledger",
+                        metricValue = "$${String.format("%.2f", metrics.netProfit)}",
+                        metricLabel = if (isPersian) "سود خالص عملیاتی" else "Net Operating Profit",
+                        icon = Icons.Rounded.TrendingUp,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
                     )
                 }
             }
 
-            // Ledger Entries Table / List
+            // Ledger Entries Activity Log
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -207,14 +177,18 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "General Ledger Activity Log",
+                        text = if (isPersian) "تراکنش‌های اخیر دفتر کل" else "General Ledger Activity Log",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     OutlinedButton(onClick = { viewModel.openRecordEntryDialog() }) {
-                        Icon(imageVector = Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("New Entry")
+                        Text(if (isPersian) "سند جدید" else "New Entry")
                     }
                 }
             }
@@ -231,13 +205,13 @@ fun DashboardScreen(
                                 .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No general ledger entries recorded yet.")
+                            Text(if (isPersian) "هیچ تراکنشی ثبت نشده است." else "No general ledger entries recorded yet.")
                         }
                     }
                 }
             } else {
                 items(ledgerEntries, key = { it.id }) { entry ->
-                    LedgerEntryCard(entry = entry)
+                    LedgerEntryCard(entry = entry, isPersian = isPersian)
                 }
             }
         }
@@ -249,59 +223,80 @@ fun DashboardScreen(
             onSubmit = { type, category, amount, description ->
                 viewModel.recordLedgerEntry(type, category, amount, description)
             },
-            onDismiss = { viewModel.closeRecordEntryDialog() }
+            onDismiss = { viewModel.closeRecordEntryDialog() },
+            isPersian = isPersian
         )
     }
 }
 
 @Composable
-fun MetricCard(
+fun CoreJobCard(
     title: String,
-    value: String,
-    subtext: String,
+    subtitle: String,
+    metricValue: String,
+    metricLabel: String,
     icon: ImageVector,
-    containerColor: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
+    containerColor: androidx.compose.ui.graphics.Color
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = MaterialTheme.shapes.large,
-        modifier = modifier
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Text(
-                text = subtext,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = metricValue,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "•  $metricLabel",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun LedgerEntryCard(entry: LedgerEntry) {
+fun LedgerEntryCard(entry: LedgerEntry, isPersian: Boolean = false) {
     val isCredit = entry.type == LedgerType.CREDIT
     val dateFormat = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault())
     val dateStr = dateFormat.format(Date(entry.createdAt))
@@ -387,7 +382,8 @@ fun LedgerEntryCard(entry: LedgerEntry) {
 @Composable
 fun RecordLedgerEntryDialog(
     onSubmit: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isPersian: Boolean = false
 ) {
     var selectedType by remember { mutableStateOf(LedgerType.DEBIT) }
     val categories = LedgerCategory.values().toList()
@@ -412,7 +408,7 @@ fun RecordLedgerEntryDialog(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Record Financial Ledger Entry",
+                    text = if (isPersian) "ثبت سند دوطرفه حسابداری" else "Record Financial Ledger Entry",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -434,7 +430,7 @@ fun RecordLedgerEntryDialog(
                             containerColor = MaterialTheme.colorScheme.primary
                         ) else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                     ) {
-                        Text("+ Income / Credit")
+                        Text(if (isPersian) "+ بستانکار / درآمد" else "+ Credit / Income")
                     }
 
                     Button(
@@ -447,7 +443,7 @@ fun RecordLedgerEntryDialog(
                             containerColor = MaterialTheme.colorScheme.error
                         ) else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
                     ) {
-                        Text("- Expense / Debit")
+                        Text(if (isPersian) "- بدهکار / هزینه" else "- Debit / Expense")
                     }
                 }
 
@@ -463,7 +459,7 @@ fun RecordLedgerEntryDialog(
                         value = selectedCategory.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Category") },
+                        label = { Text(if (isPersian) "دسته‌بندی" else "Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier
@@ -491,7 +487,7 @@ fun RecordLedgerEntryDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount ($)") },
+                    label = { Text(if (isPersian) "مبلغ (تومان / $)" else "Amount ($)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -501,7 +497,7 @@ fun RecordLedgerEntryDialog(
                 OutlinedTextField(
                     value = descriptionText,
                     onValueChange = { descriptionText = it },
-                    label = { Text("Description / Reason") },
+                    label = { Text(if (isPersian) "شرح سند / بابت" else "Description / Reason") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
@@ -513,20 +509,26 @@ fun RecordLedgerEntryDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
+                        Text(if (isPersian) "انصراف" else "Cancel")
                     }
 
                     Button(
                         onClick = {
                             val amt = amountText.toDoubleOrNull() ?: 0.0
                             if (amt > 0 && descriptionText.isNotBlank()) {
-                                onSubmit(selectedType, selectedCategory, amt, descriptionText.trim())
+                                onSubmit(
+                                    selectedType,
+                                    selectedCategory,
+                                    amt,
+                                    descriptionText.trim()
+                                )
                             }
                         },
-                        enabled = (amountText.toDoubleOrNull() ?: 0.0) > 0 && descriptionText.isNotBlank(),
+                        enabled = (amountText.toDoubleOrNull()
+                            ?: 0.0) > 0 && descriptionText.isNotBlank(),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Record Entry")
+                        Text(if (isPersian) "ثبت سند" else "Record Entry")
                     }
                 }
             }
