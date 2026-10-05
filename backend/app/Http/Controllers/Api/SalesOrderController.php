@@ -300,6 +300,10 @@ class SalesOrderController extends Controller
         $priced = $this->pricing->price($lines, $taxRate);
 
         return DB::transaction(function () use ($request, $organizationId, $storeId, $warehouse, $priced, $taxRate, $validated) {
+            $source = $validated['source'] ?? 'POS';
+            $defaultPaymentStatus = ($source === 'POS') ? 'PAID' : 'PENDING';
+            $defaultFulfillmentStatus = ($source === 'POS') ? 'COMPLETED' : 'PENDING';
+
             $order = Order::create([
                 'id' => (string) Str::uuid(),
                 'order_number' => $this->nextOrderNumber($organizationId),
@@ -314,10 +318,10 @@ class SalesOrderController extends Controller
                 'tax_rate' => 0,
                 'total_amount' => 0,
                 'payment_method' => $validated['payment_method'],
-                'payment_status' => $validated['payment_status'] ?? 'PAID',
-                'fulfillment_status' => $validated['fulfillment_status'] ?? 'COMPLETED',
+                'payment_status' => $validated['payment_status'] ?? $defaultPaymentStatus,
+                'fulfillment_status' => $validated['fulfillment_status'] ?? $defaultFulfillmentStatus,
                 'notes' => $validated['notes'] ?? '',
-                'source' => $validated['source'] ?? 'POS',
+                'source' => $source,
                 'created_by_user_id' => $request->user()?->id,
             ]);
 

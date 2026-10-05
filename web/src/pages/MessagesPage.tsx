@@ -55,6 +55,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState('PENDING');
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<{ id: string; name: string; sku: string; price: number; unit?: string }[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
@@ -221,14 +222,15 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
         customerId: draft.customer.id,
         customerName: customerName.trim() || undefined,
         paymentMethod,
+        paymentStatus: orderPaymentStatus,
         source: 'MESSAGE',
         items: validItems,
       });
 
       setNotice(
         isFa
-          ? `سفارش ${order.orderNumber} ثبت شد و موجودی انبار کسر گردید.`
-          : `Order ${order.orderNumber} registered and stock deducted.`
+          ? `سفارش ${order.orderNumber} با موفقیت ثبت شد (${order.paymentStatus === 'PAID' ? 'پرداخت‌شده' : 'در انتظار پرداخت'}).`
+          : `Order ${order.orderNumber} registered (${order.paymentStatus === 'PAID' ? 'Paid' : 'Pending payment'}).`
       );
 
       setDraft(null);
@@ -374,6 +376,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
                 <option value="CASH">{isFa ? 'نقدی' : 'Cash'}</option>
                 <option value="CARD">{isFa ? 'کارت' : 'Card'}</option>
                 <option value="BANK_TRANSFER">{isFa ? 'حواله' : 'Bank transfer'}</option>
+              </select>
+              <select value={orderPaymentStatus} onChange={(e) => setOrderPaymentStatus(e.target.value)} style={inputStyle(theme)}>
+                <option value="PENDING">{isFa ? 'در انتظار پرداخت' : 'Pending payment'}</option>
+                <option value="PAID">{isFa ? 'پرداخت شده' : 'Paid'}</option>
               </select>
               <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} style={inputStyle(theme)}>
                 <option value="">{s.selectWarehouse}</option>
