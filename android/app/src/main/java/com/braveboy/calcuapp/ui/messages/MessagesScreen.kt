@@ -245,10 +245,12 @@ fun MessagesScreen(
                                 val custId = customerMap?.get("id") as? String
                                 val cartItems = (itemsList ?: emptyList<Any>()).mapNotNull { raw ->
                                     val m = raw as? Map<*, *> ?: return@mapNotNull null
+                                    val prodId = (m["product_id"] as? String) ?: ""
+                                    if (prodId.isBlank()) return@mapNotNull null
                                     CartItem(
                                         orgId = tenantState.activeOrgId,
                                         storeId = tenantState.activeStoreId,
-                                        productId = (m["product_id"] as? String) ?: "",
+                                        productId = prodId,
                                         productName = (m["product_name"] as? String) ?: "",
                                         sku = (m["sku"] as? String) ?: "",
                                         barcode = "",
@@ -257,13 +259,16 @@ fun MessagesScreen(
                                     )
                                 }
 
-                                viewModel.checkoutParsedOrder(
-                                    customerName = custName,
-                                    customerId = custId,
-                                    paymentMethod = PaymentMethod.CASH,
-                                    items = cartItems
-                                )
+                                if (cartItems.isNotEmpty()) {
+                                    viewModel.checkoutParsedOrder(
+                                        customerName = custName,
+                                        customerId = custId,
+                                        paymentMethod = PaymentMethod.CASH,
+                                        items = cartItems
+                                    )
+                                }
                             },
+                            enabled = !(itemsList.isNullOrEmpty()),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(imageVector = Icons.Rounded.ShoppingCart, contentDescription = null)

@@ -450,14 +450,24 @@ class PurchaseController extends Controller
     {
         $year = date('Y');
 
-        $last = Purchase::where('organization_id', $organizationId)
-            ->where('purchase_number', 'like', "PO-{$year}-%")
+        $last = Purchase::where('purchase_number', 'like', "PO-{$year}-%")
             ->orderByDesc('purchase_number')
             ->value('purchase_number');
 
-        $sequence = $last ? ((int) substr($last, -6)) + 1 : 1;
+        $sequence = 1;
+        if ($last && preg_match('/PO-\d{4}-(\d+)/', $last, $m)) {
+            $sequence = ((int) $m[1]) + 1;
+        }
 
-        return sprintf('PO-%s-%06d', $year, $sequence);
+        do {
+            $candidate = sprintf('PO-%s-%06d', $year, $sequence);
+            $exists = Purchase::where('purchase_number', $candidate)->exists();
+            if ($exists) {
+                $sequence++;
+            }
+        } while ($exists);
+
+        return $candidate;
     }
 
     private function warehouseOf(string $organizationId, string $warehouseId): ?Warehouse

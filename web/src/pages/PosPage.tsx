@@ -134,6 +134,12 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
     setErrorMessage('');
     setNotice('');
 
+    const validCart = cart.filter((line) => Boolean(line.productId && line.productId.trim()));
+    if (validCart.length === 0) {
+      setErrorMessage(isFa ? 'سبد خرید فاقد کالای معتبر است.' : 'Cart contains no valid items.');
+      return;
+    }
+
     try {
       const order = await apiClient.checkout({
         warehouseId,
@@ -142,7 +148,7 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
         paymentMethod,
         source: 'POS',
         taxRate: taxRate === null ? undefined : Number(taxRate),
-        items: cart.map((line) => ({
+        items: validCart.map((line) => ({
           productId: line.productId,
           quantity: line.quantity,
           discountPercent: line.discountPercent,

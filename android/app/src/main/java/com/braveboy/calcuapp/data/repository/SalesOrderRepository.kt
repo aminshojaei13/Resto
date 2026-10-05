@@ -79,7 +79,8 @@ class SalesOrderRepositoryImpl(
         paymentMethod: PaymentMethod,
         notes: String
     ): SalesOrder {
-        require(cartItems.isNotEmpty()) { "Cart cannot be empty for checkout" }
+        val validCartItems = cartItems.filter { it.productId.isNotBlank() }
+        require(validCartItems.isNotEmpty()) { "Cart contains no valid products for checkout" }
 
         // Try syncing remote API
         try {
@@ -92,7 +93,7 @@ class SalesOrderRepositoryImpl(
                     customerName = customer?.name ?: "Walk-in Customer",
                     paymentMethod = paymentMethod.name,
                     notes = notes,
-                    items = cartItems.map {
+                    items = validCartItems.map {
                         CheckoutItemDto(
                             productId = it.productId,
                             variantId = it.variantId,
