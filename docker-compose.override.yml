@@ -1,0 +1,16 @@
+# Override for developers who prefer running the two React apps on the host
+# (their own Node process) while still using the Dockerized backend / DB / Redis.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+#
+# This keeps nginx able to serve the built assets from backend/public/build,
+# while business-web (3000) and platform-admin (3001) run locally on the host.
+# The only effect of this override is to keep those two services out of the
+# default up so the common backend-only start stays minimal.
+services:
+  business-web:
+    profiles: []
+
+  platform-admin:
+    profiles: []
