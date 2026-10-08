@@ -33,7 +33,10 @@ import {
   setActiveWarehouse,
 } from '../auth/session';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+const RAW_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+// Normalize trailing slash so callers do not have to think about it.
+const BASE_URL = RAW_BASE_URL.replace(/\/+$/, '') + '/';
 
 /**
  * The language the person is looking at right now.
@@ -141,7 +144,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     if (context.storeId) headers['X-Store-ID'] = context.storeId;
   }
 
-  let url = `${BASE_URL}${path}`;
+  let url = BASE_URL + path.replace(/^\/+/, '');
 
   if (query) {
     const params = new URLSearchParams();

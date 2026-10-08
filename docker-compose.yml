@@ -1,78 +1,54 @@
-version: '3.8'
+# Resto Docker Development Environment
+#
+# Start:
+#   docker compose up -d --build
+#
+# Stop (keeps DB/Redis data):
+#   docker compose down
+#
+# Stop + remove persisted volumes (DESTRUCTIVE):
+#   docker compose down -v
+#
+# The project uses inter-service DNS, not localhost, for DB/Redis from inside
+# containers. That means:
+#   DB_HOST=postgres
+#   REDIS_HOST=redis
+# DO NOT re-point these to localhost inside the containers.
+
+x-defaults: {}
+# Note: this file intentionally omits the top-level "version" key. Modern
+# Docker Compose (v2) does not require it and older "version" strings are
+# legacy.
 
 services:
-  app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: calcuapp_app
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    environment:
-      APP_ENV: ${APP_ENV:-local}
-      APP_DEBUG: ${APP_DEBUG:-true}
-      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: ${DB_DATABASE:-calcuapp}
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
-      CACHE_STORE: ${CACHE_STORE:-redis}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    volumes:
-      - ./backend:/var/www/html
-      - ./infrastructure/docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
-      - /var/www/html/vendor
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - calcuapp-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: calcuapp_nginx
-    restart: unless-stopped
-    ports:
-      - "${HTTP_PORT:-8000}:80"
-    volumes:
-      - ./backend:/var/www/html
-      - ./infrastructure/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - app
-    networks:
-      - calcuapp-network
-
   postgres:
     image: postgres:16-alpine
-    container_name: calcuapp_postgres
+    container_name: resto_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-calcuapp}
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-calcuapp}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-calcuapp}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
-      - calcuapp-network
+      - resto-network
 
   redis:
     image: redis:7-alpine
-    container_name: calcuapp_redis
+    container_name: resto_redis
     restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -80,98 +56,178 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
     networks:
-      - calcuapp-network
+      - resto-network
 
-  # -------------------------------------------------------------------
-  # Optional / Extensible Services (Uncomment when needed)
-  # -------------------------------------------------------------------
-  # queue:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: calcuapp_queue
-  #   restart: unless-stopped
-  #   command: php artisan queue:work --verbose --tries=3 --timeout=90
-  #   env_file:
-  #     - ./backend/.env
-  #   environment:
-  #     DB_HOST: postgres
-  #     REDIS_HOST: redis
-  #   volumes:
-  #     - ./backend:/var/www/html
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - calcuapp-network
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: resto_app
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-calcuapp}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    volumes:
+      - ./backend:/var/www/html
+      - ./infrastructure/docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - /var/www/html/vendor
+      - app_storage_data:/var/www/html/storage
+      - app_bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - resto-network
 
-  # scheduler:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: calcuapp_scheduler
-  #   restart: unless-stopped
-  #   command: php artisan schedule:work
-  #   env_file:
-  #     - ./backend/.env
-  #   environment:
-  #     DB_HOST: postgres
-  #     REDIS_HOST: redis
-  #   volumes:
-  #     - ./backend:/var/www/html
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - calcuapp-network
+  nginx:
+    image: nginx:alpine
+    container_name: resto_nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8000}:80"
+    volumes:
+      - ./backend:/var/www/html:ro
+      - ./infrastructure/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend/public/build:/var/www/html/public/build:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - resto-network
 
-  # reverb:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: calcuapp_reverb
-  #   restart: unless-stopped
-  #   command: php artisan reverb:start
-  #   ports:
-  #     - "127.0.0.1:8080:8080"
-  #   env_file:
-  #     - ./backend/.env
-  #   volumes:
-  #     - ./backend:/var/www/html
-  #   depends_on:
-  #     - app
-  #   networks:
-  #     - calcuapp-network
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: resto_queue
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+      - app_storage_data:/var/www/html/storage
+      - app_bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["php", "artisan", "queue:work", "--verbose", "--daemon", "--sleep=3", "--tries=3", "--timeout=90"]
+    networks:
+      - resto-network
 
-  # minio:
-  #   image: minio/minio:latest
-  #   container_name: calcuapp_minio
-  #   restart: unless-stopped
-  #   ports:
-  #     - "127.0.0.1:9000:9000"
-  #     - "127.0.0.1:9001:9001"
-  #   environment:
-  #     MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
-  #     MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
-  #   command: server /data --console-address ":9001"
-  #   volumes:
-  #     - minio_data:/data
-  #   networks:
-  #     - calcuapp-network
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: resto_scheduler
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+      - app_storage_data:/var/www/html/storage
+      - app_bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["php", "artisan", "schedule:work"]
+    networks:
+      - resto-network
+
+  business-web:
+    image: node:20-alpine
+    container_name: resto_business_web
+    working_dir: /app
+    command: ["npm", "run", "start:business"]
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      REACT_APP_APP_TYPE: "business"
+      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:8000/api/v1}
+      HOST: "0.0.0.0"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - ./web/build:/app/build
+    profiles:
+      - web
+    depends_on:
+      app:
+        condition: service_started
+
+  platform-admin:
+    image: node:20-alpine
+    container_name: resto_platform_admin
+    working_dir: /app
+    command: ["npm", "run", "start:admin"]
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      REACT_APP_APP_TYPE: "platform-admin"
+      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:8000/api/v1}
+      HOST: "0.0.0.0"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - ./web/build:/app/build
+    profiles:
+      - web
+    depends_on:
+      app:
+        condition: service_started
 
 networks:
-  calcuapp-network:
+  resto-network:
     driver: bridge
 
 volumes:
   postgres_data:
+    name: resto_postgres_data
     driver: local
   redis_data:
+    name: resto_redis_data
     driver: local
-  # minio_data:
-  #   driver: local
+  app_storage_data:
+    name: resto_app_storage_data
+    driver: local
+  app_bootstrap_cache:
+    name: resto_app_bootstrap_cache
+    driver: local
