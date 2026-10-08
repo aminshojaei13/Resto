@@ -25,21 +25,33 @@ class TenantPreferences(private val context: Context) {
         val ACTIVE_ORG_ID = stringPreferencesKey("active_org_id")
         val ACTIVE_STORE_ID = stringPreferencesKey("active_store_id")
         val ACTIVE_WAREHOUSE_ID = stringPreferencesKey("active_warehouse_id")
+        val USER_ID = stringPreferencesKey("user_id")
+        val USER_NAME = stringPreferencesKey("user_name")
+        val USER_ROLE = stringPreferencesKey("user_role")
         val LANGUAGE = stringPreferencesKey("language")
     }
 
     val tenantState: Flow<TenantState> = context.tenantDataStore.data.map { prefs ->
+        val orgId = prefs[PreferenceKeys.ACTIVE_ORG_ID] ?: ""
+        val userId = prefs[PreferenceKeys.USER_ID] ?: ""
         TenantState(
-            activeOrgId = prefs[PreferenceKeys.ACTIVE_ORG_ID] ?: "",
+            activeOrgId = orgId,
             activeStoreId = prefs[PreferenceKeys.ACTIVE_STORE_ID] ?: "",
             activeWarehouseId = prefs[PreferenceKeys.ACTIVE_WAREHOUSE_ID] ?: "",
-            // Empty by default: the UI must not invent a person.
-            userId = "",
-            userName = "",
-            userRole = "",
+            userId = userId,
+            userName = prefs[PreferenceKeys.USER_NAME] ?: "",
+            userRole = prefs[PreferenceKeys.USER_ROLE] ?: "",
             language = prefs[PreferenceKeys.LANGUAGE] ?: "fa",
-            isLoggedIn = false
+            isLoggedIn = userId.isNotBlank() || orgId.isNotBlank()
         )
+    }
+
+    suspend fun setUserInfo(userId: String, userName: String, userRole: String) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.USER_ID] = userId
+            prefs[PreferenceKeys.USER_NAME] = userName
+            prefs[PreferenceKeys.USER_ROLE] = userRole
+        }
     }
 
     suspend fun setActiveTenant(orgId: String, storeId: String, warehouseId: String) {
@@ -75,6 +87,9 @@ class TenantPreferences(private val context: Context) {
             prefs.remove(PreferenceKeys.ACTIVE_ORG_ID)
             prefs.remove(PreferenceKeys.ACTIVE_STORE_ID)
             prefs.remove(PreferenceKeys.ACTIVE_WAREHOUSE_ID)
+            prefs.remove(PreferenceKeys.USER_ID)
+            prefs.remove(PreferenceKeys.USER_NAME)
+            prefs.remove(PreferenceKeys.USER_ROLE)
         }
     }
 }

@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import com.braveboy.calcuapp.data.model.TenantState
+import com.braveboy.calcuapp.data.repository.AuthRepository
 import com.braveboy.calcuapp.data.repository.TenantRepository
 import com.braveboy.calcuapp.ui.components.RestoCard
 import com.braveboy.calcuapp.ui.components.RestoListItem
@@ -48,6 +50,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     tenantRepository: TenantRepository,
+    authRepository: AuthRepository,
     onOpenTenantSwitcher: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -182,6 +185,28 @@ fun SettingsScreen(
                             title = "Resto Business OS",
                             subtitle = if (isPersian) "نسخه ۱.۰ (طراحی استاندارد سال ۲۰۲۶)" else "Version 1.0 (2026 Standards)",
                             leadingIcon = Icons.Rounded.Info
+                        )
+                    }
+                }
+            }
+
+            // Account & Sign Out Section
+            item {
+                RestoSection(
+                    title = if (isPersian) "حساب کاربری و امنیت" else "Account & Security"
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+                RestoCard {
+                    Column {
+                        RestoListItem(
+                            title = if (isPersian) "خروج از حساب کاربری" else "Sign Out",
+                            subtitle = if (isPersian) "اتمام نشست فعلی و خروج امن از سیستم" else "Terminate active session",
+                            leadingIcon = Icons.AutoMirrored.Rounded.Logout,
+                            onClick = {
+                                scope.launch {
+                                    authRepository.logout()
+                                }
+                            }
                         )
                     }
                 }

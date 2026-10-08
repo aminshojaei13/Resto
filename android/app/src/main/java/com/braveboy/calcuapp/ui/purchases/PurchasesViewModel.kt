@@ -34,6 +34,18 @@ class PurchasesViewModel(
         initialValue = TenantState()
     )
 
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    purchaseRepository.refreshPurchases(state.activeOrgId)
+                    supplierRepository.refreshSuppliers(state.activeOrgId)
+                    productRepository.refreshProducts(state.activeOrgId)
+                }
+            }
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val purchases: StateFlow<List<Purchase>> = tenantState.flatMapLatest { state ->
         purchaseRepository.getPurchases(state.activeOrgId)

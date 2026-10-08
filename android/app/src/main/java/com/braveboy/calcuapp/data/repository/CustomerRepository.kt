@@ -15,12 +15,38 @@ interface CustomerRepository {
     fun getCustomerById(id: String): Flow<Customer?>
     suspend fun addCustomer(customer: Customer)
     suspend fun updateCustomer(customer: Customer)
+    suspend fun refreshCustomers(orgId: String)
 }
 
 class CustomerRepositoryImpl(
     private val customerDao: CustomerDao,
     private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : CustomerRepository {
+
+    override suspend fun refreshCustomers(orgId: String) {
+        if (orgId.isBlank()) return
+        try {
+            val response = apiService.getCustomers(orgId = orgId)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val customers = dtos.map { dto ->
+                    Customer(
+                        id = dto.id,
+                        orgId = dto.organizationId,
+                        name = dto.name,
+                        email = dto.email ?: "",
+                        phone = dto.phone ?: "",
+                        address = dto.address ?: "",
+                        totalPurchases = dto.totalPurchases,
+                        loyaltyPoints = dto.loyaltyPoints
+                    )
+                }
+                customerDao.insertCustomers(customers.map { it.toEntity() })
+            }
+        } catch (_: Exception) {
+            // Keep local cache if offline
+        }
+    }
 
     override fun getCustomers(orgId: String): Flow<List<Customer>> {
         return customerDao.getCustomersByOrg(orgId).map { entities ->

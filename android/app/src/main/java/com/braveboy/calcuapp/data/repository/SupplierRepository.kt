@@ -16,12 +16,36 @@ interface SupplierRepository {
     suspend fun addSupplier(supplier: Supplier)
     suspend fun updateSupplier(supplier: Supplier)
     suspend fun deleteSupplier(id: String)
+    suspend fun refreshSuppliers(orgId: String)
 }
 
 class SupplierRepositoryImpl(
     private val supplierDao: SupplierDao,
     private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : SupplierRepository {
+
+    override suspend fun refreshSuppliers(orgId: String) {
+        if (orgId.isBlank()) return
+        try {
+            val response = apiService.getSuppliers(orgId = orgId)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val suppliers = dtos.map { dto ->
+                    Supplier(
+                        id = dto.id,
+                        orgId = dto.organizationId,
+                        name = dto.name,
+                        email = dto.email ?: "",
+                        phone = dto.phone ?: "",
+                        address = dto.address ?: ""
+                    )
+                }
+                supplierDao.insertSuppliers(suppliers.map { it.toEntity() })
+            }
+        } catch (_: Exception) {
+            // Keep local cache if offline
+        }
+    }
 
     override fun getSuppliers(orgId: String): Flow<List<Supplier>> {
         return supplierDao.getSuppliersByOrg(orgId).map { entities ->

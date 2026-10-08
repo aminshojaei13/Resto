@@ -23,12 +23,41 @@ interface PurchaseRepository {
     )
     suspend fun receivePurchase(purchase: Purchase)
     suspend fun payPurchase(purchaseId: String, amount: Double, method: String)
+    suspend fun refreshPurchases(orgId: String)
 }
 
 class PurchaseRepositoryImpl(
     private val purchaseDao: PurchaseDao,
     private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : PurchaseRepository {
+
+    override suspend fun refreshPurchases(orgId: String) {
+        if (orgId.isBlank()) return
+        try {
+            val response = apiService.getPurchases(orgId = orgId)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val purchases = dtos.map { dto ->
+                    Purchase(
+                        id = dto.id,
+                        purchaseNumber = dto.purchaseNumber,
+                        orgId = dto.organizationId,
+                        storeId = dto.storeId,
+                        warehouseId = dto.warehouseId,
+                        supplierId = dto.supplierId,
+                        supplierName = "",
+                        items = emptyList(),
+                        totalAmount = dto.totalAmount,
+                        status = dto.status,
+                        paymentStatus = dto.paymentStatus
+                    )
+                }
+                purchaseDao.insertPurchases(purchases.map { it.toEntity() })
+            }
+        } catch (_: Exception) {
+            // Keep local cache if offline
+        }
+    }
 
     override fun getPurchases(orgId: String): Flow<List<Purchase>> {
         return purchaseDao.getPurchasesByOrg(orgId).map { entities ->

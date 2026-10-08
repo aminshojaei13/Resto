@@ -20,6 +20,7 @@ import com.braveboy.calcuapp.data.remote.CalcuappApiService
 import com.braveboy.calcuapp.data.remote.NetworkModule
 import com.braveboy.calcuapp.data.remote.dto.CheckoutItemDto
 import com.braveboy.calcuapp.data.remote.dto.CheckoutRequestDto
+import com.braveboy.calcuapp.data.remote.dto.OrderDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -43,6 +44,7 @@ interface SalesOrderRepository {
         paymentStatus: PaymentStatus,
         fulfillmentStatus: FulfillmentStatus
     )
+    suspend fun refreshOrders(orgId: String)
 }
 
 class SalesOrderRepositoryImpl(
@@ -53,6 +55,40 @@ class SalesOrderRepositoryImpl(
     private val customerDao: CustomerDao,
     private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : SalesOrderRepository {
+
+    override suspend fun refreshOrders(orgId: String) {
+        if (orgId.isBlank()) return
+        try {
+            val response = apiService.getOrders(orgId = orgId)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val orders = dtos.map { dto ->
+                    SalesOrder(
+                        id = dto.id,
+                        orderNumber = dto.orderNumber,
+                        orgId = dto.organizationId,
+                        storeId = dto.storeId,
+                        warehouseId = dto.warehouseId,
+                        customerId = dto.customerId,
+                        customerName = dto.customerName,
+                        items = emptyList(),
+                        subtotal = dto.subtotal,
+                        discountAmount = dto.discountAmount,
+                        taxAmount = dto.taxAmount,
+                        totalAmount = dto.totalAmount,
+                        paymentMethod = try { PaymentMethod.valueOf(dto.paymentMethod) } catch (_: Exception) { PaymentMethod.CASH },
+                        paymentStatus = try { PaymentStatus.valueOf(dto.paymentStatus) } catch (_: Exception) { PaymentStatus.PAID },
+                        fulfillmentStatus = try { FulfillmentStatus.valueOf(dto.fulfillmentStatus) } catch (_: Exception) { FulfillmentStatus.COMPLETED },
+                        notes = dto.notes ?: "",
+                        createdAt = System.currentTimeMillis()
+                    )
+                }
+                salesOrderDao.insertSalesOrders(orders.map { it.toEntity() })
+            }
+        } catch (_: Exception) {
+            // Keep local cache if offline
+        }
+    }
 
     override fun getOrdersByStore(orgId: String, storeId: String): Flow<List<SalesOrder>> {
         return salesOrderDao.getOrdersByStore(orgId, storeId).map { entities ->
@@ -82,15 +118,15 @@ class SalesOrderRepositoryImpl(
         val validCartItems = cartItems.filter { it.productId.isNotBlank() }
         require(validCartItems.isNotEmpty()) { "Cart contains no valid products for checkout" }
 
-        // Try syncing remote API
-        try {
-            apiService.checkout(
+        // Sync with remote API (Backend Source of Truth)
+        val remoteOrder: OrderDto? = try {
+            val response = apiService.checkout(
                 CheckoutRequestDto(
                     orgId = orgId,
                     storeId = storeId,
                     warehouseId = warehouseId,
                     customerId = customer?.id,
-                    customerName = customer?.name ?: "Walk-in Customer",
+                    customerName = customer?.name ?: "مشتری حضوری",
                     paymentMethod = paymentMethod.name,
                     notes = notes,
                     items = validCartItems.map {
@@ -107,12 +143,19 @@ class SalesOrderRepositoryImpl(
                     }
                 )
             )
+            if (response.isSuccessful && response.body() != null) {
+                response.body()
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "خطای ناشناخته در سرور"
+                throw IllegalStateException("خطا در ثبت سفارش در سرور (${response.code()}): $errorMsg")
+            }
         } catch (e: Exception) {
-            // Remote sync optional / offline fallback
+            // Never silently swallow backend errors
+            throw e
         }
 
         val orderCount = salesOrderDao.getOrderCountForOrg(orgId) + 1001
-        val orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(4)}-$orderCount"
+        val orderNumber = remoteOrder?.orderNumber ?: "ORD-${System.currentTimeMillis().toString().takeLast(4)}-$orderCount"
 
         val orderItems = cartItems.map { cartItem ->
             OrderItem(
@@ -128,19 +171,19 @@ class SalesOrderRepositoryImpl(
             )
         }
 
-        val subtotal = cartItems.sumOf { it.subtotal }
-        val discountAmount = cartItems.sumOf { it.discountAmount }
-        val taxAmount = cartItems.sumOf { it.taxAmount }
-        val totalAmount = cartItems.sumOf { it.total }
+        val subtotal = remoteOrder?.subtotal ?: cartItems.sumOf { it.subtotal }
+        val discountAmount = remoteOrder?.discountAmount ?: cartItems.sumOf { it.discountAmount }
+        val taxAmount = remoteOrder?.taxAmount ?: cartItems.sumOf { it.taxAmount }
+        val totalAmount = remoteOrder?.totalAmount ?: cartItems.sumOf { it.total }
 
         val order = SalesOrder(
-            id = UUID.randomUUID().toString(),
+            id = remoteOrder?.id ?: UUID.randomUUID().toString(),
             orderNumber = orderNumber,
             orgId = orgId,
             storeId = storeId,
             warehouseId = warehouseId,
             customerId = customer?.id,
-            customerName = customer?.name ?: "Walk-in Customer",
+            customerName = customer?.name ?: (remoteOrder?.customerName ?: "مشتری حضوری"),
             items = orderItems,
             subtotal = subtotal,
             discountAmount = discountAmount,

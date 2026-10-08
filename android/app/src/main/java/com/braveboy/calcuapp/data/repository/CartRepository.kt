@@ -16,7 +16,8 @@ interface CartRepository {
         storeId: String,
         product: Product,
         variant: ProductVariant? = null,
-        quantity: Int = 1
+        quantity: Int = 1,
+        taxRate: Double = 0.0
     )
     suspend fun updateQuantity(cartItemId: String, quantity: Int)
     suspend fun applyItemDiscount(cartItemId: String, discountPercent: Double)
@@ -39,14 +40,16 @@ class CartRepositoryImpl(
         storeId: String,
         product: Product,
         variant: ProductVariant?,
-        quantity: Int
+        quantity: Int,
+        taxRate: Double
     ) {
         val cartItemId = "${product.id}_${variant?.id ?: "base"}"
         val existingItemEntity = cartDao.getCartItemById(cartItemId)
 
         if (existingItemEntity != null) {
             val updated = existingItemEntity.toDomain().copy(
-                quantity = existingItemEntity.quantity + quantity
+                quantity = existingItemEntity.quantity + quantity,
+                taxRate = taxRate
             )
             cartDao.insertOrUpdateCartItem(updated.toEntity())
         } else {
@@ -67,7 +70,7 @@ class CartRepositoryImpl(
                 price = price,
                 quantity = quantity,
                 discountPercent = 0.0,
-                taxRate = 0.08,
+                taxRate = taxRate,
                 imageUrl = product.imageUrl
             )
             cartDao.insertOrUpdateCartItem(newItem.toEntity())

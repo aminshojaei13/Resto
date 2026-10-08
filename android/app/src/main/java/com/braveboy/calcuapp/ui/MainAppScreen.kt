@@ -285,6 +285,7 @@ fun MainAppScreen(
                     MainDestination.SETTINGS -> {
                         SettingsScreen(
                             tenantRepository = appContainer.tenantRepository,
+                            authRepository = appContainer.authRepository,
                             onOpenTenantSwitcher = { isTenantSwitcherOpen = true }
                         )
                     }

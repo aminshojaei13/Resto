@@ -8,7 +8,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.calcuapp.ui.MainAppScreen
+import com.braveboy.calcuapp.ui.auth.LoginScreen
+import com.braveboy.calcuapp.ui.auth.LoginViewModel
 import com.braveboy.calcuapp.ui.theme.CalcuappTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,11 +31,29 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CalcuappTheme {
+                val isSignedIn by appContainer.sessionStore.isSignedIn.collectAsState(initial = false)
+
+                LaunchedEffect(Unit) {
+                    appContainer.authRepository.restoreSession()
+                }
+
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainAppScreen(
-                        appContainer = appContainer,
-                        initialSharedText = sharedText
-                    )
+                    if (isSignedIn) {
+                        MainAppScreen(
+                            appContainer = appContainer,
+                            initialSharedText = sharedText
+                        )
+                    } else {
+                        val loginViewModel: LoginViewModel = viewModel(
+                            factory = LoginViewModel.Factory(appContainer.authRepository)
+                        )
+                        LoginScreen(
+                            viewModel = loginViewModel,
+                            onLoginSuccess = {
+                                // Session state observer reacts automatically
+                            }
+                        )
+                    }
                 }
             }
         }

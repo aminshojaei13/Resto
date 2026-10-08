@@ -14,6 +14,7 @@ import com.braveboy.calcuapp.data.remote.dto.PurchaseDto
 import com.braveboy.calcuapp.data.remote.dto.StockAdjustRequestDto
 import com.braveboy.calcuapp.data.remote.dto.StoreDto
 import com.braveboy.calcuapp.data.remote.dto.SupplierDto
+import com.braveboy.calcuapp.data.remote.dto.UserDto
 import com.braveboy.calcuapp.data.remote.dto.WarehouseDto
 import retrofit2.Response
 import retrofit2.http.Body
@@ -28,6 +29,15 @@ interface CalcuappApiService {
 
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequestDto): Response<AuthResponseDto>
+
+    @GET("auth/profile")
+    suspend fun getProfile(): Response<UserDto>
+
+    @POST("auth/logout")
+    suspend fun logout(): Response<Map<String, Any>>
+
+    @GET("business/settings")
+    suspend fun getBusinessSettings(): Response<Map<String, Any>>
 
     @GET("organizations")
     suspend fun getOrganizations(): Response<List<OrganizationDto>>

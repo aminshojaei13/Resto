@@ -28,6 +28,16 @@ class SupplierViewModel(
         initialValue = TenantState()
     )
 
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    supplierRepository.refreshSuppliers(state.activeOrgId)
+                }
+            }
+        }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 

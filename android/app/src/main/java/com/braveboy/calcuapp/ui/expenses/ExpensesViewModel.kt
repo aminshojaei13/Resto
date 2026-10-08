@@ -29,6 +29,16 @@ class ExpensesViewModel(
         initialValue = TenantState()
     )
 
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    expenseRepository.refreshExpenses(state.activeOrgId)
+                }
+            }
+        }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 

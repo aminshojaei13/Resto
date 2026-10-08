@@ -41,11 +41,11 @@ data class TenantState(
     val activeOrgId: String = "",
     val activeStoreId: String = "",
     val activeWarehouseId: String = "",
-    val userId: String = "usr_admin_1",
-    val userName: String = "Admin User",
-    val userRole: String = "Manager / Owner",
+    val userId: String = "",
+    val userName: String = "",
+    val userRole: String = "",
     val language: String = "fa",
-    val isLoggedIn: Boolean = true
+    val isLoggedIn: Boolean = false
 )
 
 data class Organization(
@@ -121,7 +121,7 @@ data class CartItem(
     val price: Double,
     val quantity: Int = 1,
     val discountPercent: Double = 0.0,
-    val taxRate: Double = 0.08, // 8% default
+    val taxRate: Double = 0.0, // Dynamic from business settings
     val imageUrl: String = ""
 ) {
     val subtotal: Double get() = Math.round(price * quantity * 100.0) / 100.0

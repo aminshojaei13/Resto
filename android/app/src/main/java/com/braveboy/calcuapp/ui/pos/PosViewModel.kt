@@ -41,6 +41,27 @@ class PosViewModel(
         initialValue = TenantState()
     )
 
+    private val _defaultTaxRate = MutableStateFlow(0.0)
+
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    productRepository.refreshProducts(state.activeOrgId)
+                    customerRepository.refreshCustomers(state.activeOrgId)
+                    try {
+                        val response = com.braveboy.calcuapp.data.remote.NetworkModule.apiService.getBusinessSettings()
+                        if (response.isSuccessful && response.body() != null) {
+                            val map = response.body()!!
+                            val rateNum = (map["default_tax_rate"] as? Number)?.toDouble() ?: 0.0
+                            _defaultTaxRate.value = rateNum / 100.0
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -139,7 +160,14 @@ class PosViewModel(
     fun addToCart(product: Product, variant: ProductVariant? = null, qty: Int = 1) {
         viewModelScope.launch {
             val state = tenantState.value
-            cartRepository.addToCart(state.activeOrgId, state.activeStoreId, product, variant, qty)
+            cartRepository.addToCart(
+                orgId = state.activeOrgId,
+                storeId = state.activeStoreId,
+                product = product,
+                variant = variant,
+                quantity = qty,
+                taxRate = _defaultTaxRate.value
+            )
             _snackbarMessage.value = "Added '${product.name}' to cart"
         }
     }

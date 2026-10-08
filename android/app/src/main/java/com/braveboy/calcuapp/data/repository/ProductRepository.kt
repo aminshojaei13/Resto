@@ -29,6 +29,7 @@ interface ProductRepository {
     )
     suspend fun upsertProduct(product: Product)
     suspend fun updateProduct(product: Product)
+    suspend fun refreshProducts(orgId: String)
 }
 
 class ProductRepositoryImpl(
@@ -36,6 +37,34 @@ class ProductRepositoryImpl(
     private val ledgerDao: LedgerDao,
     private val apiService: CalcuappApiService = NetworkModule.apiService
 ) : ProductRepository {
+
+    override suspend fun refreshProducts(orgId: String) {
+        if (orgId.isBlank()) return
+        try {
+            val response = apiService.getProducts(orgId = orgId)
+            if (response.isSuccessful && response.body() != null) {
+                val dtos = response.body()!!
+                val products = dtos.map { dto ->
+                    Product(
+                        id = dto.id,
+                        orgId = dto.organizationId,
+                        sku = dto.sku,
+                        barcode = dto.barcode,
+                        name = dto.name,
+                        description = dto.description ?: "",
+                        price = dto.price,
+                        costPrice = dto.costPrice,
+                        category = dto.category,
+                        unit = dto.unit,
+                        imageUrl = dto.imageUrl ?: ""
+                    )
+                }
+                productDao.insertProducts(products.map { it.toEntity() })
+            }
+        } catch (_: Exception) {
+            // Keep local cache if offline
+        }
+    }
 
     override fun getProducts(orgId: String): Flow<List<Product>> {
         return productDao.getProductsByOrg(orgId).map { entities ->

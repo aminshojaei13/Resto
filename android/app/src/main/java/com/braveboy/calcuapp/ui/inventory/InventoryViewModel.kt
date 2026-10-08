@@ -31,6 +31,16 @@ class InventoryViewModel(
         initialValue = TenantState()
     )
 
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    productRepository.refreshProducts(state.activeOrgId)
+                }
+            }
+        }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 

@@ -22,7 +22,14 @@ import com.braveboy.calcuapp.data.repository.SalesOrderRepositoryImpl
 import com.braveboy.calcuapp.data.repository.SupplierRepository
 import com.braveboy.calcuapp.data.repository.SupplierRepositoryImpl
 import com.braveboy.calcuapp.data.repository.TenantRepository
+import com.braveboy.calcuapp.data.local.datastore.SessionStore
+import com.braveboy.calcuapp.data.remote.NetworkModule
+import com.braveboy.calcuapp.data.repository.AuthRepository
+import com.braveboy.calcuapp.data.repository.AuthRepositoryImpl
 import com.braveboy.calcuapp.data.repository.TenantRepositoryImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class AppContainer(private val context: Context) {
 
@@ -30,19 +37,34 @@ class AppContainer(private val context: Context) {
         AppDatabase.getInstance(context)
     }
 
+    val sessionStore: SessionStore by lazy {
+        SessionStore(context)
+    }
+
     val tenantPreferences: TenantPreferences by lazy {
         TenantPreferences(context)
+    }
+
+    val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(
+            apiService = NetworkModule.apiService,
+            sessionStore = sessionStore,
+            tenantPreferences = tenantPreferences,
+            database = database
+        )
+    }
+
+    init {
+        NetworkModule.initialize(sessionStore) {
+            CoroutineScope(Dispatchers.IO).launch {
+                authRepository.invalidateSession()
+            }
+        }
     }
 
     val tenantRepository: TenantRepository by lazy {
         TenantRepositoryImpl(
             tenantDao = database.tenantDao(),
-            productDao = database.productDao(),
-            customerDao = database.customerDao(),
-            supplierDao = database.supplierDao(),
-            expenseDao = database.expenseDao(),
-            salesOrderDao = database.salesOrderDao(),
-            ledgerDao = database.ledgerDao(),
             tenantPreferences = tenantPreferences
         )
     }
