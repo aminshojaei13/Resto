@@ -103,9 +103,56 @@ fun CalcuappTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val extendedColors = if (darkTheme) {
+        RestoExtendedColors(
+            success = RestoSemanticColors.successDark,
+            onSuccess = Color(0xFF000000),
+            successContainer = RestoSemanticColors.successContainerDark,
+            onSuccessContainer = Color(0xFFFFFFFF),
+            warning = RestoSemanticColors.warningDark,
+            onWarning = Color(0xFF000000),
+            warningContainer = RestoSemanticColors.warningContainerDark,
+            onWarningContainer = Color(0xFFFFFFFF),
+            info = RestoSemanticColors.infoDark,
+            onInfo = Color(0xFF000000),
+            infoContainer = RestoSemanticColors.infoContainerDark,
+            onInfoContainer = Color(0xFFFFFFFF),
+            textMuted = Color(0xFFA1A1AA),
+            borderSubtle = Color(0xFF27272A)
+        )
+    } else {
+        RestoExtendedColors(
+            success = RestoSemanticColors.successLight,
+            onSuccess = Color(0xFFFFFFFF),
+            successContainer = RestoSemanticColors.successContainerLight,
+            onSuccessContainer = Color(0xFF000000),
+            warning = RestoSemanticColors.warningLight,
+            onWarning = Color(0xFFFFFFFF),
+            warningContainer = RestoSemanticColors.warningContainerLight,
+            onWarningContainer = Color(0xFF000000),
+            info = RestoSemanticColors.infoLight,
+            onInfo = Color(0xFFFFFFFF),
+            infoContainer = RestoSemanticColors.infoContainerLight,
+            onInfoContainer = Color(0xFF000000),
+            textMuted = Color(0xFF71717A),
+            borderSubtle = Color(0xFFE4E4E7)
+        )
+    }
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalRestoColors provides extendedColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
+}
+
+object RestoTheme {
+    val colors: RestoExtendedColors
+        @Composable
+        @androidx.compose.runtime.ReadOnlyComposable
+        get() = LocalRestoColors.current
 }

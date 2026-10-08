@@ -17,34 +17,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Phone
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,10 +40,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.Customer
+import com.braveboy.calcuapp.ui.components.RestoBadge
+import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
+import com.braveboy.calcuapp.ui.components.RestoBottomSheet
+import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
+import com.braveboy.calcuapp.ui.components.RestoCard
+import com.braveboy.calcuapp.ui.components.RestoDialog
+import com.braveboy.calcuapp.ui.components.RestoEmptyState
+import com.braveboy.calcuapp.ui.components.RestoSearchField
+import com.braveboy.calcuapp.ui.components.RestoTextField
+import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.util.PersianFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +73,8 @@ fun CustomerScreen(
     val selectedCustomerForEdit by viewModel.selectedCustomerForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
+    val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -86,32 +88,21 @@ fun CustomerScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Customer CRM & Profiles",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Org: ${tenantState.activeOrgId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+            RestoTopBar(
+                title = if (isPersian) "مدیریت مشتریان و حساب‌ها" else "Customer CRM",
+                subtitle = if (isPersian) "لیست مشتریان، شماره تماس و تاریخچه خرید" else "Profiles, contact info & purchase history"
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openAddCustomerDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(imageVector = Icons.Rounded.PersonAdd, contentDescription = "Add Customer")
+                Icon(
+                    imageVector = Icons.Rounded.PersonAdd,
+                    contentDescription = if (isPersian) "افزودن مشتری جدید" else "Add Customer"
+                )
             }
         }
     ) { innerPadding ->
@@ -119,49 +110,40 @@ fun CustomerScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(horizontal = RestoSpacing.md)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Search customers by name, phone, email...") },
-                leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(imageVector = Icons.Rounded.Clear, contentDescription = "Clear")
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.large
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            RestoSearchField(
+                query = searchQuery,
+                onQueryChange = { viewModel.setSearchQuery(it) },
+                placeholder = if (isPersian) "جستجوی مشتری با نام یا شماره تماس..." else "Search by name, phone, email..."
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
             if (customers.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No customers found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                RestoEmptyState(
+                    title = if (isPersian) "هیچ مشتری ثبت نشده است" else "No customers found",
+                    description = if (isPersian)
+                        "با افزودن اولین مشتری، سوابق سفارشات و اطلاعات تماس او ثبت خواهد شد."
+                    else
+                        "When you add customers or checkout orders, customer profiles will appear here.",
+                    actionText = if (isPersian) "+ افزودن مشتری" else "+ Add Customer",
+                    onActionClick = { viewModel.openAddCustomerDialog() },
+                    modifier = Modifier.weight(1f)
+                )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(customers, key = { it.id }) { customer ->
-                        CustomerCard(
+                        CustomerItemCard(
                             customer = customer,
+                            isPersian = isPersian,
+                            currencyUnit = currencyUnit,
                             onClick = { viewModel.selectCustomerForDetail(customer) },
                             onEditClick = { viewModel.openEditCustomer(customer) }
                         )
@@ -171,9 +153,12 @@ fun CustomerScreen(
         }
     }
 
-    // Add Customer Dialog
+    // Consolidated Customer Form Dialog (For Add and Edit)
     if (isAddCustomerDialogOpen) {
-        AddCustomerDialog(
+        CustomerFormDialog(
+            title = if (isPersian) "افزودن مشتری جدید" else "Add New Customer",
+            initialCustomer = null,
+            isPersian = isPersian,
             onSubmit = { name, email, phone, address ->
                 viewModel.addCustomer(name, email, phone, address)
             },
@@ -181,122 +166,103 @@ fun CustomerScreen(
         )
     }
 
-    // Customer Detail Dialog
-    selectedCustomerForDetail?.let { customer ->
-        CustomerDetailDialog(
-            customer = customer,
-            onEditClick = { viewModel.openEditCustomer(customer) },
-            onDismiss = { viewModel.selectCustomerForDetail(null) }
+    selectedCustomerForEdit?.let { customer ->
+        CustomerFormDialog(
+            title = if (isPersian) "ویرایش اطلاعات مشتری" else "Edit Customer Profile",
+            initialCustomer = customer,
+            isPersian = isPersian,
+            onSubmit = { name, email, phone, address ->
+                viewModel.updateCustomer(
+                    customer.copy(name = name, email = email, phone = phone, address = address)
+                )
+            },
+            onDismiss = { viewModel.closeEditCustomer() }
         )
     }
 
-    // Edit Customer Dialog (Pre-Populated)
-    selectedCustomerForEdit?.let { customer ->
-        EditCustomerDialog(
+    // Customer Detail Sheet
+    selectedCustomerForDetail?.let { customer ->
+        CustomerDetailSheet(
             customer = customer,
-            onSubmit = { updatedCustomer ->
-                viewModel.updateCustomer(updatedCustomer)
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onEditClick = {
+                viewModel.selectCustomerForDetail(null)
+                viewModel.openEditCustomer(customer)
             },
-            onDismiss = { viewModel.closeEditCustomer() }
+            onDismiss = { viewModel.selectCustomerForDetail(null) }
         )
     }
 }
 
 @Composable
-fun CustomerCard(
+fun CustomerItemCard(
     customer: Customer,
+    isPersian: Boolean,
+    currencyUnit: String,
     onClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth()
+    val formattedSpent = if (isPersian) {
+        "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", customer.totalPurchases)}"
+    }
+
+    RestoCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        onClick = onClick
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = CircleShape
-                    ),
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = customer.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(RestoSpacing.md))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = customer.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 if (customer.phone.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.Phone,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = customer.phone,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (customer.email.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.Email,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = customer.email,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isPersian) PersianFormatter.toPersianDigits(customer.phone) else customer.phone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
-                        contentDescription = "Edit Customer Profile",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
                 Text(
-                    text = "$${String.format("%.2f", customer.totalPurchases)}",
+                    text = formattedSpent,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = if (isPersian) "مجموع خرید" else "Total spent",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -304,340 +270,169 @@ fun CustomerCard(
 }
 
 @Composable
-fun AddCustomerDialog(
+fun CustomerFormDialog(
+    title: String,
+    initialCustomer: Customer?,
+    isPersian: Boolean,
     onSubmit: (name: String, email: String, phone: String, address: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialCustomer?.name ?: "") }
+    var phone by remember { mutableStateOf(initialCustomer?.phone ?: "") }
+    var email by remember { mutableStateOf(initialCustomer?.email ?: "") }
+    var address by remember { mutableStateOf(initialCustomer?.address ?: "") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Add New Customer Profile",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Full Name *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Phone Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Physical Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            if (name.isNotBlank()) {
-                                onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
-                            }
-                        },
-                        enabled = name.isNotBlank(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Save Profile")
-                    }
-                }
+    RestoDialog(
+        title = title,
+        confirmText = if (isPersian) "ذخیره اطلاعات" else "Save Profile",
+        onConfirm = {
+            if (name.isNotBlank()) {
+                onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
             }
+        },
+        confirmEnabled = name.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            RestoTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = if (isPersian) "نام و نام خانوادگی *" else "Full Name *"
+            )
+
+            RestoTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = if (isPersian) "شماره تماس" else "Phone Number"
+            )
+
+            RestoTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = if (isPersian) "آدرس ایمیل" else "Email Address"
+            )
+
+            RestoTextField(
+                value = address,
+                onValueChange = { address = it },
+                label = if (isPersian) "آدرس پستی" else "Address",
+                singleLine = false,
+                maxLines = 2
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditCustomerDialog(
+fun CustomerDetailSheet(
     customer: Customer,
-    onSubmit: (updatedCustomer: Customer) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var name by remember { mutableStateOf(customer.name) }
-    var email by remember { mutableStateOf(customer.email) }
-    var phone by remember { mutableStateOf(customer.phone) }
-    var address by remember { mutableStateOf(customer.address) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Edit Customer Profile",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Full Name *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Phone Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Physical Address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            if (name.isNotBlank()) {
-                                onSubmit(
-                                    customer.copy(
-                                        name = name.trim(),
-                                        email = email.trim(),
-                                        phone = phone.trim(),
-                                        address = address.trim()
-                                    )
-                                )
-                            }
-                        },
-                        enabled = name.isNotBlank(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CustomerDetailDialog(
-    customer: Customer,
+    isPersian: Boolean,
+    currencyUnit: String,
     onEditClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+    val formattedSpent = if (isPersian) {
+        "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", customer.totalPurchases)}"
+    }
+
+    RestoBottomSheet(
+        onDismissRequest = onDismiss,
+        title = customer.name,
+        subtitle = if (isPersian) "پروفایل مشتری" else "Customer Profile"
+    ) {
+        Column(
             modifier = Modifier
-                .padding(12.dp)
                 .fillMaxWidth()
+                .padding(bottom = RestoSpacing.xl),
+            verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth()
+            RestoCard(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    Column {
                         Text(
-                            text = customer.name,
+                            text = if (isPersian) "مجموع خرید مشتری" else "Total Purchases",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = formattedSpent,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = if (isPersian) "امتیاز وفاداری" else "Loyalty Points",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = if (isPersian) "${PersianFormatter.toPersianDigits(customer.loyaltyPoints)} امتیاز" else "${customer.loyaltyPoints} pts",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Loyalty Points Balance",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "${customer.loyaltyPoints} Points",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "Lifetime Sales",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "$${String.format("%.2f", customer.totalPurchases)}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
+            if (customer.phone.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Rounded.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                    Text(
+                        text = if (isPersian) PersianFormatter.toPersianDigits(customer.phone) else customer.phone,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (customer.phone.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Rounded.Phone, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = customer.phone, style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+            if (customer.email.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Rounded.Email, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                    Text(text = customer.email, style = MaterialTheme.typography.bodyLarge)
                 }
+            }
 
-                if (customer.email.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Rounded.Email, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = customer.email, style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+            if (customer.address.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                    Text(text = customer.address, style = MaterialTheme.typography.bodyLarge)
                 }
+            }
 
-                if (customer.address.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = customer.address, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-                Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+            ) {
+                RestoButton(
+                    text = if (isPersian) "ویرایش اطلاعات" else "Edit Profile",
+                    onClick = onEditClick,
+                    variant = RestoButtonVariant.Outlined,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Edit Profile")
-                    }
-
-                    Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Close")
-                    }
-                }
+                RestoButton(
+                    text = if (isPersian) "بستن" else "Close",
+                    onClick = onDismiss,
+                    variant = RestoButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }

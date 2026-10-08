@@ -17,16 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Message
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Paid
+import androidx.compose.material.icons.rounded.Receipt
+import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.TrendingUp
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -34,15 +35,11 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,14 +49,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
 import com.braveboy.calcuapp.data.model.LedgerType
+import com.braveboy.calcuapp.ui.components.RestoBadge
+import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
+import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
+import com.braveboy.calcuapp.ui.components.RestoCard
+import com.braveboy.calcuapp.ui.components.RestoDialog
+import com.braveboy.calcuapp.ui.components.RestoEmptyState
+import com.braveboy.calcuapp.ui.components.RestoSection
+import com.braveboy.calcuapp.ui.components.RestoStatCard
+import com.braveboy.calcuapp.ui.components.RestoTextField
+import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.ui.theme.RestoTheme
+import com.braveboy.calcuapp.util.PersianFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -77,6 +89,7 @@ fun DashboardScreen(
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
     val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -90,32 +103,21 @@ fun DashboardScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (isPersian) "مرکز مدیریت کسب‌وکار" else "Business Control Center",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (isPersian) "سازمان: ${tenantState.activeOrgId} | شعبه: ${tenantState.activeStoreId}" else "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+            RestoTopBar(
+                title = if (isPersian) "داشبورد مدیریت کسب‌وکار" else "Business Dashboard",
+                subtitle = if (isPersian) "خوش آمدید، ${tenantState.userName}" else "Welcome, ${tenantState.userName}"
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openRecordEntryDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(imageVector = Icons.Rounded.Add, contentDescription = "Record Entry")
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = if (isPersian) "ثبت سند مالی" else "Record Entry"
+                )
             }
         }
     ) { innerPadding ->
@@ -123,214 +125,225 @@ fun DashboardScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(12.dp),
-            contentPadding = PaddingValues(bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = RestoSpacing.md),
+            contentPadding = PaddingValues(top = RestoSpacing.md, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            // THREE CORE JOBS HIGHLIGHT SECTION
+            // Priority Action Banner (What to do right now?)
             item {
-                Text(
-                    text = if (isPersian) "وظایف اصلی کسب‌وکار شما" else "Core Business Operations",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                if (metrics.lowStockCount > 0) {
+                    RestoCard(
+                        containerColor = RestoTheme.colors.warningContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Warning,
+                                contentDescription = null,
+                                tint = RestoTheme.colors.warning,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isPersian) "هشدار موجودی کالا" else "Low Stock Alert",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RestoTheme.colors.warning
+                                )
+                                Text(
+                                    text = if (isPersian)
+                                        "${PersianFormatter.toPersianDigits(metrics.lowStockCount)} کالا رو به اتمام است؛ نیاز به شارژ موجودی دارید."
+                                    else
+                                        "${metrics.lowStockCount} products are running low on stock.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Core Need 1: Inventory & Resources
-                    CoreJobCard(
-                        title = if (isPersian) "۱. موجودی و کالاها" else "1. Inventory & Stock Control",
-                        subtitle = if (isPersian) "کنترل انبارها، کالاها و ورود خروج" else "Warehouse stock levels & catalog",
-                        metricValue = "$${String.format("%.2f", metrics.totalInventoryValue)}",
-                        metricLabel = if (isPersian) "ارزش کل موجودی (${metrics.lowStockCount} کمبود)" else "Stock Value (${metrics.lowStockCount} low stock)",
-                        icon = Icons.Rounded.Inventory2,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+            // PRIMARY FINANCIAL KPIs (Row of 2 key stats)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+                ) {
+                    val formattedTodayRevenue = if (isPersian) {
+                        "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
+                    } else {
+                        "$${String.format("%.2f", metrics.todayRevenue)}"
+                    }
+
+                    RestoStatCard(
+                        title = if (isPersian) "فروش امروز" else "Today's Sales",
+                        value = formattedTodayRevenue,
+                        subtitle = if (isPersian) "${PersianFormatter.toPersianDigits(metrics.todaySalesCount)} سفارش ثبت شده" else "${metrics.todaySalesCount} orders",
+                        icon = Icons.Rounded.Paid,
+                        badgeText = if (isPersian) "امروز" else "Today",
+                        badgeVariant = RestoBadgeVariant.Success,
+                        modifier = Modifier.weight(1f)
                     )
 
-                    // Core Need 2: Online & Social Orders
-                    CoreJobCard(
-                        title = if (isPersian) "۲. ثبت سفارش‌های آنلاین" else "2. Online & Social Orders",
-                        subtitle = if (isPersian) "ثبت مستقیم یا از طریق پیام شبکه‌های اجتماعی" else "Fast checkout & social message import",
-                        metricValue = "$${String.format("%.2f", metrics.todayRevenue)}",
-                        metricLabel = if (isPersian) "فروش امروز (${metrics.todaySalesCount} سفارش)" else "Today's Sales (${metrics.todaySalesCount} orders)",
-                        icon = Icons.AutoMirrored.Rounded.Message,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    val formattedNetProfit = if (isPersian) {
+                        "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
+                    } else {
+                        "$${String.format("%.2f", metrics.netProfit)}"
+                    }
 
-                    // Core Need 3: Centralized Business Workspace
-                    CoreJobCard(
-                        title = if (isPersian) "۳. مرکز متمرکز داده‌ها" else "3. Centralized Business Workspace",
-                        subtitle = if (isPersian) "اطلاعات متمرکز کالاها، مشتریان و مالی بدون نیاز به اکسل" else "Centralized sales, customers, expenses & ledger",
-                        metricValue = "$${String.format("%.2f", metrics.netProfit)}",
-                        metricLabel = if (isPersian) "سود خالص عملیاتی" else "Net Operating Profit",
+                    RestoStatCard(
+                        title = if (isPersian) "سود خالص" else "Net Profit",
+                        value = formattedNetProfit,
+                        subtitle = if (isPersian) "عملیاتی" else "Operating",
                         icon = Icons.Rounded.TrendingUp,
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // Ledger Entries Activity Log
+            // SECONDARY BUSINESS STATS
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
                 ) {
-                    Text(
-                        text = if (isPersian) "تراکنش‌های اخیر دفتر کل" else "General Ledger Activity Log",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    OutlinedButton(onClick = { viewModel.openRecordEntryDialog() }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isPersian) "سند جدید" else "New Entry")
+                    val formattedInventoryValue = if (isPersian) {
+                        "${PersianFormatter.formatTomans(metrics.totalInventoryValue)} $currencyUnit"
+                    } else {
+                        "$${String.format("%.2f", metrics.totalInventoryValue)}"
                     }
+
+                    RestoStatCard(
+                        title = if (isPersian) "ارزش انبار" else "Stock Value",
+                        value = formattedInventoryValue,
+                        subtitle = if (isPersian) "کل کالاهای موجود" else "Inventory assets",
+                        icon = Icons.Rounded.Inventory2,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    val formattedExpenses = if (isPersian) {
+                        "${PersianFormatter.formatTomans(metrics.totalExpenses)} $currencyUnit"
+                    } else {
+                        "$${String.format("%.2f", metrics.totalExpenses)}"
+                    }
+
+                    RestoStatCard(
+                        title = if (isPersian) "هزینه‌های جاری" else "Total Expenses",
+                        value = formattedExpenses,
+                        subtitle = if (isPersian) "مخارج ثبت شده" else "Operating costs",
+                        icon = Icons.Rounded.Receipt,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        iconBackground = MaterialTheme.colorScheme.errorContainer,
+                        badgeVariant = RestoBadgeVariant.Error,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
+            }
+
+            // RECENT ACTIVITY / LEDGER SECTION
+            item {
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+                RestoSection(
+                    title = if (isPersian) "گردش مالی و تراکنش‌های اخیر" else "Recent Financial Activity",
+                    subtitle = if (isPersian) "ثبت درآمدهای فروش و هزینه‌های عملیاتی" else "Sales income & operational expenses",
+                    actionText = if (isPersian) "+ ثبت سند" else "+ New Entry",
+                    onActionClick = { viewModel.openRecordEntryDialog() }
+                )
             }
 
             if (ledgerEntries.isEmpty()) {
                 item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(if (isPersian) "هیچ تراکنشی ثبت نشده است." else "No general ledger entries recorded yet.")
-                        }
-                    }
+                    RestoEmptyState(
+                        title = if (isPersian) "هنوز تراکنشی ثبت نشده است" else "No transactions recorded yet",
+                        description = if (isPersian)
+                            "پس از انجام اولین فروش یا ثبت هزینه، تاریخچه تراکنش‌ها در اینجا نمایش داده می‌شود."
+                        else
+                            "When you make your first sale or record an expense, activity will appear here.",
+                        actionText = if (isPersian) "ثبت اولین سند" else "Record Entry",
+                        onActionClick = { viewModel.openRecordEntryDialog() }
+                    )
                 }
             } else {
                 items(ledgerEntries, key = { it.id }) { entry ->
-                    LedgerEntryCard(entry = entry, isPersian = isPersian)
+                    ModernLedgerItem(entry = entry, isPersian = isPersian, currencyUnit = currencyUnit)
                 }
             }
         }
     }
 
-    // Manual Entry Dialog
+    // Modern M3 Record Entry Dialog
     if (isRecordEntryDialogOpen) {
-        RecordLedgerEntryDialog(
+        ModernRecordEntryDialog(
             onSubmit = { type, category, amount, description ->
                 viewModel.recordLedgerEntry(type, category, amount, description)
             },
             onDismiss = { viewModel.closeRecordEntryDialog() },
-            isPersian = isPersian
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
         )
     }
 }
 
 @Composable
-fun CoreJobCard(
-    title: String,
-    subtitle: String,
-    metricValue: String,
-    metricLabel: String,
-    icon: ImageVector,
-    containerColor: androidx.compose.ui.graphics.Color
+private fun ModernLedgerItem(
+    entry: LedgerEntry,
+    isPersian: Boolean,
+    currencyUnit: String
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = metricValue,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "•  $metricLabel",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun LedgerEntryCard(entry: LedgerEntry, isPersian: Boolean = false) {
     val isCredit = entry.type == LedgerType.CREDIT
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault())
-    val dateStr = dateFormat.format(Date(entry.createdAt))
+    val dateFormat = SimpleDateFormat("yyyy/MM/dd • HH:mm", Locale.getDefault())
+    val dateStr = if (isPersian) {
+        PersianFormatter.toPersianDigits(dateFormat.format(Date(entry.createdAt)))
+    } else {
+        dateFormat.format(Date(entry.createdAt))
+    }
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth()
+    val formattedAmount = if (isPersian) {
+        "${if (isCredit) "+" else "-"}${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
+    } else {
+        "${if (isCredit) "+" else "-"}$${String.format("%.2f", entry.amount)}"
+    }
+
+    val categoryTitle = when (entry.category) {
+        LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
+        LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
+        LedgerCategory.EXPENSE -> if (isPersian) "هزینه جاری" else "Operating Expense"
+        LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
+        LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
+        LedgerCategory.REFUND -> if (isPersian) "مرجوعی به مشتری" else "Refund"
+    }
+
+    RestoCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
+                    .clip(CircleShape)
                     .background(
-                        color = if (isCredit) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
-                        shape = CircleShape
+                        if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
                     contentDescription = null,
-                    tint = if (isCredit) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                    tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(RestoSpacing.md))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -338,29 +351,24 @@ fun LedgerEntryCard(entry: LedgerEntry, isPersian: Boolean = false) {
                         text = entry.entryNumber,
                         style = MaterialTheme.typography.titleSmall,
                         fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                shape = CircleShape
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = entry.category.displayName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(RestoSpacing.xs))
+                    RestoBadge(
+                        text = categoryTitle,
+                        variant = if (isCredit) RestoBadgeVariant.Success else RestoBadgeVariant.Error
+                    )
                 }
+
                 Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
                     text = entry.description,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+
                 Text(
                     text = dateStr,
                     style = MaterialTheme.typography.bodySmall,
@@ -368,11 +376,13 @@ fun LedgerEntryCard(entry: LedgerEntry, isPersian: Boolean = false) {
                 )
             }
 
+            Spacer(modifier = Modifier.width(RestoSpacing.sm))
+
             Text(
-                text = "${if (isCredit) "+" else "-"}$${String.format("%.2f", entry.amount)}",
+                text = formattedAmount,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (isCredit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error
             )
         }
     }
@@ -380,158 +390,127 @@ fun LedgerEntryCard(entry: LedgerEntry, isPersian: Boolean = false) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordLedgerEntryDialog(
+private fun ModernRecordEntryDialog(
     onSubmit: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = false
+    isPersian: Boolean,
+    currencyUnit: String
 ) {
     var selectedType by remember { mutableStateOf(LedgerType.DEBIT) }
-    val categories = LedgerCategory.values().toList()
     var selectedCategory by remember { mutableStateOf(LedgerCategory.EXPENSE) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
+    val categories = LedgerCategory.entries
+
+    RestoDialog(
+        title = if (isPersian) "ثبت سند مالی جدید" else "Record New Transaction",
+        confirmText = if (isPersian) "ثبت نهایی" else "Record",
+        onConfirm = {
+            val amt = amountText.toDoubleOrNull() ?: 0.0
+            if (amt > 0 && descriptionText.isNotBlank()) {
+                onSubmit(selectedType, selectedCategory, amt, descriptionText.trim())
+            }
+        },
+        confirmEnabled = (amountText.toDoubleOrNull() ?: 0.0) > 0 && descriptionText.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)) {
+            // Type Segment
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
-                Text(
-                    text = if (isPersian) "ثبت سند دوطرفه حسابداری" else "Record Financial Ledger Entry",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                RestoButton(
+                    text = if (isPersian) "+ درآمد / دریافتی" else "+ Income / Inflow",
+                    onClick = {
+                        selectedType = LedgerType.CREDIT
+                        selectedCategory = LedgerCategory.CASH_IN
+                    },
+                    variant = if (selectedType == LedgerType.CREDIT) RestoButtonVariant.Primary else RestoButtonVariant.Outlined,
+                    modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                RestoButton(
+                    text = if (isPersian) "- هزینه / پرداختی" else "- Expense / Outflow",
+                    onClick = {
+                        selectedType = LedgerType.DEBIT
+                        selectedCategory = LedgerCategory.EXPENSE
+                    },
+                    variant = if (selectedType == LedgerType.DEBIT) RestoButtonVariant.Destructive else RestoButtonVariant.Outlined,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-                // Type Segmented
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            selectedType = LedgerType.CREDIT
-                            selectedCategory = LedgerCategory.CASH_IN
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = if (selectedType == LedgerType.CREDIT) androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ) else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                    ) {
-                        Text(if (isPersian) "+ بستانکار / درآمد" else "+ Credit / Income")
-                    }
-
-                    Button(
-                        onClick = {
-                            selectedType = LedgerType.DEBIT
-                            selectedCategory = LedgerCategory.EXPENSE
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = if (selectedType == LedgerType.DEBIT) androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ) else androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
-                    ) {
-                        Text(if (isPersian) "- بدهکار / هزینه" else "- Debit / Expense")
-                    }
+            // Category Picker
+            ExposedDropdownMenuBox(
+                expanded = categoryDropdownExpanded,
+                onExpandedChange = { categoryDropdownExpanded = it }
+            ) {
+                val categoryName = when (selectedCategory) {
+                    LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
+                    LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
+                    LedgerCategory.EXPENSE -> if (isPersian) "هزینه‌های جاری" else "Operating Expense"
+                    LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
+                    LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
+                    LedgerCategory.REFUND -> if (isPersian) "مرجوعی مشتری" else "Customer Refund"
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = categoryName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(if (isPersian) "دسته‌بندی سند" else "Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
+                    shape = RestoShapes.medium,
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
 
-                // Category Dropdown
-                ExposedDropdownMenuBox(
+                ExposedDropdownMenu(
                     expanded = categoryDropdownExpanded,
-                    onExpandedChange = { categoryDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
+                    onDismissRequest = { categoryDropdownExpanded = false }
                 ) {
-                    OutlinedTextField(
-                        value = selectedCategory.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(if (isPersian) "دسته‌بندی" else "Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = categoryDropdownExpanded,
-                        onDismissRequest = { categoryDropdownExpanded = false }
-                    ) {
-                        categories.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { Text(cat.displayName) },
-                                onClick = {
-                                    selectedCategory = cat
-                                    categoryDropdownExpanded = false
-                                }
-                            )
+                    categories.forEach { cat ->
+                        val catLabel = when (cat) {
+                            LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
+                            LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
+                            LedgerCategory.EXPENSE -> if (isPersian) "هزینه‌های جاری" else "Operating Expense"
+                            LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
+                            LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
+                            LedgerCategory.REFUND -> if (isPersian) "مرجوعی مشتری" else "Customer Refund"
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text(if (isPersian) "مبلغ (تومان / $)" else "Amount ($)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = descriptionText,
-                    onValueChange = { descriptionText = it },
-                    label = { Text(if (isPersian) "شرح سند / بابت" else "Description / Reason") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text(if (isPersian) "انصراف" else "Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            val amt = amountText.toDoubleOrNull() ?: 0.0
-                            if (amt > 0 && descriptionText.isNotBlank()) {
-                                onSubmit(
-                                    selectedType,
-                                    selectedCategory,
-                                    amt,
-                                    descriptionText.trim()
-                                )
+                        DropdownMenuItem(
+                            text = { Text(catLabel) },
+                            onClick = {
+                                selectedCategory = cat
+                                categoryDropdownExpanded = false
                             }
-                        },
-                        enabled = (amountText.toDoubleOrNull()
-                            ?: 0.0) > 0 && descriptionText.isNotBlank(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (isPersian) "ثبت سند" else "Record Entry")
+                        )
                     }
                 }
             }
+
+            // Amount Input
+            RestoTextField(
+                value = amountText,
+                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                label = if (isPersian) "مبلغ ($currencyUnit)" else "Amount ($currencyUnit)",
+                placeholder = "0"
+            )
+
+            // Description Input
+            RestoTextField(
+                value = descriptionText,
+                onValueChange = { descriptionText = it },
+                label = if (isPersian) "شرح سند / بابت" else "Description / Notes",
+                placeholder = if (isPersian) "مثال: پرداخت قبض اینترنت دفتر" else "e.g. Office internet bill",
+                singleLine = false,
+                maxLines = 3
+            )
         }
     }
 }

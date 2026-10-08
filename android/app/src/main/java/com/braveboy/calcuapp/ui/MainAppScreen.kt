@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.Card
@@ -70,24 +71,28 @@ import com.braveboy.calcuapp.ui.pos.PosScreen
 import com.braveboy.calcuapp.ui.pos.PosViewModel
 import com.braveboy.calcuapp.ui.purchases.PurchasesScreen
 import com.braveboy.calcuapp.ui.purchases.PurchasesViewModel
+import com.braveboy.calcuapp.ui.settings.SettingsScreen
 import com.braveboy.calcuapp.ui.supplier.SupplierScreen
 import com.braveboy.calcuapp.ui.supplier.SupplierViewModel
 import com.braveboy.calcuapp.ui.tenant.TenantSwitcherModal
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
 
 enum class MainDestination(
     val title: String,
     val titleFa: String,
     val icon: ImageVector
 ) {
-    POS("New Order", "ثبت سفارش", Icons.Rounded.PointOfSale),
-    INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
-    MESSAGES("Import Message", "ثبت از پیام", Icons.Rounded.Message),
     ACCOUNTING("Dashboard", "داشبورد", Icons.Rounded.Assessment),
-    ORDERS("Order History", "سابقه سفارشات", Icons.Rounded.ReceiptLong),
-    PURCHASES("Purchases", "خرید و تامین", Icons.Rounded.ShoppingBag),
+    ORDERS("Orders", "سفارش‌ها", Icons.Rounded.ReceiptLong),
+    INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
+    POS("New Sale", "ثبت سفارش", Icons.Rounded.PointOfSale),
+    MESSAGES("Social Orders", "سفارش پیامکی", Icons.Rounded.Message),
+    PURCHASES("Purchases", "خرید و تأمین", Icons.Rounded.ShoppingBag),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
-    SUPPLIERS("Suppliers", "تامین‌کنندگان", Icons.Rounded.Domain),
-    EXPENSES("Expenses", "هزینه‌ها", Icons.Rounded.Payments)
+    SUPPLIERS("Suppliers", "تأمین‌کنندگان", Icons.Rounded.Domain),
+    EXPENSES("Expenses", "هزینه‌های جاری", Icons.Rounded.Payments),
+    SETTINGS("Settings", "تنظیمات", Icons.Rounded.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +102,8 @@ fun MainAppScreen(
     modifier: Modifier = Modifier,
     initialSharedText: String? = null
 ) {
-    var currentDestination by remember { mutableStateOf(MainDestination.POS) }
+    // Default to Dashboard as requested by master prompt and product spec
+    var currentDestination by remember { mutableStateOf(MainDestination.ACCOUNTING) }
     var isTenantSwitcherOpen by remember { mutableStateOf(false) }
     var isMoreMenuOpen by remember { mutableStateOf(false) }
 
@@ -181,31 +187,58 @@ fun MainAppScreen(
         )
     )
 
+    // Primary 4 tabs in bottom navigation
     val primaryDestinations = listOf(
-        MainDestination.POS,
+        MainDestination.ACCOUNTING,
+        MainDestination.ORDERS,
         MainDestination.INVENTORY,
-        MainDestination.MESSAGES,
-        MainDestination.ACCOUNTING
+        MainDestination.POS
     )
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 3.dp
+                ) {
                     primaryDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = currentDestination == destination,
                             onClick = { currentDestination = destination },
-                            icon = { Icon(imageVector = destination.icon, contentDescription = if (isPersian) destination.titleFa else destination.title) },
-                            label = { Text(if (isPersian) destination.titleFa else destination.title) }
+                            icon = {
+                                Icon(
+                                    imageVector = destination.icon,
+                                    contentDescription = if (isPersian) destination.titleFa else destination.title
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = if (isPersian) destination.titleFa else destination.title,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         )
                     }
+
+                    // 5th Item: More / Operations Drawer
+                    val isMoreSelected = !primaryDestinations.contains(currentDestination)
                     NavigationBarItem(
-                        selected = !primaryDestinations.contains(currentDestination),
+                        selected = isMoreSelected,
                         onClick = { isMoreMenuOpen = true },
-                        icon = { Icon(imageVector = Icons.Rounded.MoreHoriz, contentDescription = if (isPersian) "سایر" else "More") },
-                        label = { Text(if (isPersian) "سایر" else "More") }
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreHoriz,
+                                contentDescription = if (isPersian) "بیشتر" else "More"
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = if (isPersian) "بیشتر" else "More",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
                     )
                 }
             }
@@ -216,26 +249,26 @@ fun MainAppScreen(
                     .fillMaxSize()
             ) {
                 when (currentDestination) {
+                    MainDestination.ACCOUNTING -> {
+                        DashboardScreen(viewModel = dashboardViewModel)
+                    }
+                    MainDestination.ORDERS -> {
+                        SalesOrdersScreen(viewModel = salesOrdersViewModel)
+                    }
+                    MainDestination.INVENTORY -> {
+                        InventoryScreen(viewModel = inventoryViewModel)
+                    }
                     MainDestination.POS -> {
                         PosScreen(
                             viewModel = posViewModel,
                             onNavigateToTenantSwitch = { isTenantSwitcherOpen = true }
                         )
                     }
-                    MainDestination.INVENTORY -> {
-                        InventoryScreen(viewModel = inventoryViewModel)
-                    }
                     MainDestination.MESSAGES -> {
                         MessagesScreen(
                             viewModel = messagesViewModel,
                             initialSharedText = initialSharedText
                         )
-                    }
-                    MainDestination.ACCOUNTING -> {
-                        DashboardScreen(viewModel = dashboardViewModel)
-                    }
-                    MainDestination.ORDERS -> {
-                        SalesOrdersScreen(viewModel = salesOrdersViewModel)
                     }
                     MainDestination.PURCHASES -> {
                         PurchasesScreen(viewModel = purchasesViewModel)
@@ -249,18 +282,26 @@ fun MainAppScreen(
                     MainDestination.EXPENSES -> {
                         ExpensesScreen(viewModel = expensesViewModel)
                     }
+                    MainDestination.SETTINGS -> {
+                        SettingsScreen(
+                            tenantRepository = appContainer.tenantRepository,
+                            onOpenTenantSwitcher = { isTenantSwitcherOpen = true }
+                        )
+                    }
                 }
             }
         }
 
-        // Clean Material 3 Modal Sheet for Remaining Modules
+        // Secondary Modules Bottom Sheet
         if (isMoreMenuOpen) {
             ModalBottomSheet(
-                onDismissRequest = { isMoreMenuOpen = false }
+                onDismissRequest = { isMoreMenuOpen = false },
+                shape = RestoShapes.extraLarge,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(20.dp)
+                        .padding(RestoSpacing.lg)
                         .fillMaxWidth()
                 ) {
                     Text(
@@ -269,24 +310,25 @@ fun MainAppScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "جهت دسترسی سریع به ابزارهای جانبی، بخش مورد نظر را انتخاب کنید" else "Select an operational module to navigate",
+                        text = if (isPersian) "جهت دسترسی سریع به ابزارهای جانبی، بخش مورد نظر را انتخاب کنید" else "Select a module to navigate",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(RestoSpacing.md))
 
                     val secondaryDestinations = listOf(
-                        MainDestination.ORDERS,
                         MainDestination.PURCHASES,
                         MainDestination.CUSTOMERS,
                         MainDestination.SUPPLIERS,
-                        MainDestination.EXPENSES
+                        MainDestination.EXPENSES,
+                        MainDestination.MESSAGES,
+                        MainDestination.SETTINGS
                     )
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(secondaryDestinations) { dest ->
@@ -297,13 +339,13 @@ fun MainAppScreen(
                                     isMoreMenuOpen = false
                                 },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
                                 ),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RestoShapes.medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(14.dp),
+                                    modifier = Modifier.padding(RestoSpacing.md),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -311,7 +353,7 @@ fun MainAppScreen(
                                         contentDescription = null,
                                         tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
                                     Text(
                                         text = if (isPersian) dest.titleFa else dest.title,
                                         style = MaterialTheme.typography.titleSmall,
@@ -330,11 +372,11 @@ fun MainAppScreen(
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                                 ),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RestoShapes.medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(14.dp),
+                                    modifier = Modifier.padding(RestoSpacing.md),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -342,7 +384,7 @@ fun MainAppScreen(
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
                                     Text(
                                         text = if (isPersian) "تغییر شعبه / سازمان" else "Switch Tenant",
                                         style = MaterialTheme.typography.titleSmall,
@@ -353,7 +395,7 @@ fun MainAppScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(RestoSpacing.xl))
                 }
             }
         }

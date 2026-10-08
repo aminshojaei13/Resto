@@ -21,10 +21,18 @@ object PersianFormatter {
         return sb.toString()
     }
 
+    fun toPersianDigits(number: Number): String {
+        return toPersianDigits(number.toString())
+    }
+
     fun formatNumber(amount: Double, isPersian: Boolean = true): String {
         val formatter = DecimalFormat("#,##0.##", DecimalFormatSymbols(Locale.US))
         val formatted = formatter.format(amount)
         return if (isPersian) toPersianDigits(formatted) else formatted
+    }
+
+    fun formatTomans(amount: Double): String {
+        return formatNumber(amount, isPersian = true)
     }
 
     fun formatCurrency(amount: Double, currencySymbol: String = "تومان", isPersian: Boolean = true): String {

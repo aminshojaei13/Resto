@@ -18,27 +18,20 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Inventory
+import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,11 +41,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.model.Warehouse
+import com.braveboy.calcuapp.ui.components.RestoBadge
+import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
+import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
+import com.braveboy.calcuapp.ui.components.RestoCard
+import com.braveboy.calcuapp.ui.components.RestoChip
+import com.braveboy.calcuapp.ui.components.RestoDialog
+import com.braveboy.calcuapp.ui.components.RestoEmptyState
+import com.braveboy.calcuapp.ui.components.RestoSearchField
+import com.braveboy.calcuapp.ui.components.RestoStatCard
+import com.braveboy.calcuapp.ui.components.RestoTextField
+import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.ui.theme.RestoTheme
+import com.braveboy.calcuapp.util.PersianFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +78,8 @@ fun InventoryScreen(
     val selectedProductForEdit by viewModel.selectedProductForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
+    val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -80,7 +91,8 @@ fun InventoryScreen(
 
     val totalSkus = products.size
     val totalStockUnits = products.sumOf { it.getTotalStock() }
-    val lowStockCount = products.count { it.getTotalStock() < 10 }
+    val lowStockCount = products.count { it.getTotalStock() in 1..9 }
+    val outOfStockCount = products.count { it.getTotalStock() == 0 }
 
     val categories = remember(products) {
         products.map { it.category }.distinct().sorted()
@@ -90,24 +102,9 @@ fun InventoryScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Inventory Catalog & Stock",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+            RestoTopBar(
+                title = if (isPersian) "مدیریت کالا و موجودی انبار" else "Inventory & Products",
+                subtitle = if (isPersian) "کنترل انبارها و ورود و خروج موجودی" else "Stock levels & catalog"
             )
         }
     ) { innerPadding ->
@@ -115,119 +112,106 @@ fun InventoryScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(horizontal = RestoSpacing.md)
         ) {
-            // Metrics Banner
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            // STATS ROW
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Total SKUs", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            text = "$totalSkus",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                RestoStatCard(
+                    title = if (isPersian) "تعداد اقلام" else "Total SKUs",
+                    value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
+                    subtitle = if (isPersian) "کالای فعال" else "Active items",
+                    icon = Icons.Rounded.Inventory,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Units in Stock", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            text = "$totalStockUnits",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                RestoStatCard(
+                    title = if (isPersian) "موجودی کل" else "Total Units",
+                    value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
+                    subtitle = if (isPersian) "عدد در انبارها" else "Units in stock",
+                    icon = Icons.Rounded.Inventory2,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (lowStockCount > 0) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+                if (lowStockCount > 0 || outOfStockCount > 0) {
+                    val alertTotal = lowStockCount + outOfStockCount
+                    RestoStatCard(
+                        title = if (isPersian) "هشدار کسری" else "Low Stock",
+                        value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
+                        subtitle = if (isPersian) "$outOfStockCount ناموجود" else "$outOfStockCount empty",
+                        icon = Icons.Rounded.Warning,
+                        iconTint = MaterialTheme.colorScheme.error,
+                        iconBackground = MaterialTheme.colorScheme.errorContainer,
+                        badgeVariant = RestoBadgeVariant.Error,
+                        modifier = Modifier.weight(1f)
                     )
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Low Stock Alerts", style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            text = "$lowStockCount",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = if (lowStockCount > 0) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            // Search input
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Search catalog by name, SKU, barcode, category...") },
-                leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(imageVector = Icons.Rounded.Clear, contentDescription = "Clear")
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.large
+            // SEARCH
+            RestoSearchField(
+                query = searchQuery,
+                onQueryChange = { viewModel.setSearchQuery(it) },
+                placeholder = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search by name, SKU, barcode..."
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.xs))
 
-            // Category Chips
+            // CATEGORY CHIPS
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 item {
-                    FilterChip(
+                    RestoChip(
+                        text = if (isPersian) "همه دسته‌ها" else "All",
                         selected = selectedCategory == null,
-                        onClick = { viewModel.selectCategory(null) },
-                        label = { Text("All Categories") }
+                        onClick = { viewModel.selectCategory(null) }
                     )
                 }
                 items(categories) { category ->
-                    FilterChip(
+                    RestoChip(
+                        text = category,
                         selected = selectedCategory == category,
-                        onClick = { viewModel.selectCategory(category) },
-                        label = { Text(category) }
+                        onClick = { viewModel.selectCategory(category) }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            // Product Inventory List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 80.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(products, key = { it.id }) { product ->
-                    InventoryItemCard(
-                        product = product,
-                        warehouses = warehouses,
-                        onEditProductClick = { viewModel.openEditProduct(product) },
-                        onAdjustStockClick = { viewModel.openStockAdjustment(product) }
-                    )
+            // PRODUCT LIST
+            if (products.isEmpty()) {
+                RestoEmptyState(
+                    title = if (isPersian) "کالایی یافت نشد" else "No products found",
+                    description = if (isPersian)
+                        "با عبارت جستجوی فعلی یا این دسته‌بندی، هیچ کالایی در انبار ثبت نشده است."
+                    else
+                        "No products match your current search query or selected category.",
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                    contentPadding = PaddingValues(bottom = 88.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(products, key = { it.id }) { product ->
+                        InventoryItemCard(
+                            product = product,
+                            warehouses = warehouses,
+                            isPersian = isPersian,
+                            currencyUnit = currencyUnit,
+                            onEditProductClick = { viewModel.openEditProduct(product) },
+                            onAdjustStockClick = { viewModel.openStockAdjustment(product) }
+                        )
+                    }
                 }
             }
         }
@@ -242,18 +226,21 @@ fun InventoryScreen(
             onSubmitAdjustment = { productId, warehouseId, delta, reason ->
                 viewModel.submitStockAdjustment(productId, warehouseId, delta, reason)
             },
-            onDismiss = { viewModel.closeStockAdjustment() }
+            onDismiss = { viewModel.closeStockAdjustment() },
+            isPersian = isPersian
         )
     }
 
-    // Edit Product Dialog (Pre-Populated)
+    // Edit Product Dialog
     selectedProductForEdit?.let { product ->
         EditProductDialog(
             product = product,
             onSubmit = { updatedProduct ->
                 viewModel.updateProduct(updatedProduct)
             },
-            onDismiss = { viewModel.closeEditProduct() }
+            onDismiss = { viewModel.closeEditProduct() },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
         )
     }
 }
@@ -262,155 +249,117 @@ fun InventoryScreen(
 fun InventoryItemCard(
     product: Product,
     warehouses: List<Warehouse>,
+    isPersian: Boolean,
+    currencyUnit: String,
     onEditProductClick: () -> Unit,
     onAdjustStockClick: () -> Unit
 ) {
     val totalStock = product.getTotalStock()
-    val isLowStock = totalStock in 1..9
     val isOutOfStock = totalStock == 0
+    val isLowStock = totalStock in 1..9
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.large,
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.fillMaxWidth()
+    val stockBadgeVariant = when {
+        isOutOfStock -> RestoBadgeVariant.Error
+        isLowStock -> RestoBadgeVariant.Warning
+        else -> RestoBadgeVariant.Success
+    }
+
+    val stockBadgeText = when {
+        isOutOfStock -> if (isPersian) "اتمام موجودی" else "Out of stock"
+        isLowStock -> if (isPersian) "کمبود موجودی (${PersianFormatter.toPersianDigits(totalStock)})" else "Low ($totalStock)"
+        else -> if (isPersian) "${PersianFormatter.toPersianDigits(totalStock)} ${product.unit}" else "$totalStock ${product.unit}"
+    }
+
+    val formattedPrice = if (isPersian) {
+        "${PersianFormatter.formatTomans(product.price)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", product.price)}"
+    }
+
+    RestoCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RestoShapes.small)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Inventory2,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(RestoSpacing.md))
+
+                    Column {
                         Text(
                             text = product.name,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                    shape = CircleShape
-                                )
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = product.category,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                text = "${if (isPersian) "کد:" else "SKU:"} ${product.sku}  •  ${product.category}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-
-                    Text(
-                        text = "SKU: ${product.sku} | Barcode: ${product.barcode}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
 
-                // Total stock pill
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = when {
-                                isOutOfStock -> MaterialTheme.colorScheme.errorContainer
-                                isLowStock -> MaterialTheme.colorScheme.tertiaryContainer
-                                else -> MaterialTheme.colorScheme.primaryContainer
-                            },
-                            shape = CircleShape
-                        )
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "$totalStock ${product.unit}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            isOutOfStock -> MaterialTheme.colorScheme.onErrorContainer
-                            isLowStock -> MaterialTheme.colorScheme.onTertiaryContainer
-                            else -> MaterialTheme.colorScheme.onPrimaryContainer
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
                 Text(
-                    text = "Selling Price: $${String.format("%.2f", product.price)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = formattedPrice,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Text(
-                    text = "Cost Price: $${String.format("%.2f", product.costPrice)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            // Warehouse Stock breakdown
-            Text(
-                text = "Warehouse Stock Breakdown:",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(warehouses) { wh ->
-                    val qty = product.getStockForWarehouse(wh.id)
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Text(
-                            text = "${wh.name}: $qty",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            // Stock badge & Action buttons row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onEditProductClick) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
-                        contentDescription = "Edit Product Details",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                RestoBadge(text = stockBadgeText, variant = stockBadgeVariant)
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedButton(
-                    onClick = onAdjustStockClick,
-                    shape = MaterialTheme.shapes.medium
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Adjust Stock")
+                    IconButton(onClick = onEditProductClick, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = if (isPersian) "ویرایش کالا" else "Edit",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    RestoButton(
+                        text = if (isPersian) "افزایش / تغییر موجودی" else "Adjust Stock",
+                        onClick = onAdjustStockClick,
+                        variant = RestoButtonVariant.Outlined
+                    )
                 }
             }
         }
@@ -421,7 +370,9 @@ fun InventoryItemCard(
 fun EditProductDialog(
     product: Product,
     onSubmit: (updatedProduct: Product) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true,
+    currencyUnit: String = "تومان"
 ) {
     var name by remember { mutableStateOf(product.name) }
     var sku by remember { mutableStateOf(product.sku) }
@@ -432,139 +383,89 @@ fun EditProductDialog(
     var category by remember { mutableStateOf(product.category) }
     var unit by remember { mutableStateOf(product.unit) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Edit Product Details",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+    RestoDialog(
+        title = if (isPersian) "ویرایش اطلاعات کالا" else "Edit Product Details",
+        confirmText = if (isPersian) "ذخیره تغییرات" else "Save Changes",
+        onConfirm = {
+            val priceVal = priceStr.toDoubleOrNull() ?: product.price
+            val costVal = costPriceStr.toDoubleOrNull() ?: product.costPrice
+            if (name.isNotBlank() && sku.isNotBlank()) {
+                onSubmit(
+                    product.copy(
+                        name = name.trim(),
+                        sku = sku.trim(),
+                        barcode = barcode.trim(),
+                        description = description.trim(),
+                        price = priceVal,
+                        costPrice = costVal,
+                        category = category.trim(),
+                        unit = unit.trim()
+                    )
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Product Name *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = sku,
-                        onValueChange = { sku = it },
-                        label = { Text("SKU *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = barcode,
-                        onValueChange = { barcode = it },
-                        label = { Text("Barcode") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = priceStr,
-                        onValueChange = { priceStr = it },
-                        label = { Text("Selling Price *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = costPriceStr,
-                        onValueChange = { costPriceStr = it },
-                        label = { Text("Cost Price") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            val priceVal = priceStr.toDoubleOrNull() ?: product.price
-                            val costVal = costPriceStr.toDoubleOrNull() ?: product.costPrice
-                            if (name.isNotBlank() && sku.isNotBlank()) {
-                                onSubmit(
-                                    product.copy(
-                                        name = name.trim(),
-                                        sku = sku.trim(),
-                                        barcode = barcode.trim(),
-                                        description = description.trim(),
-                                        price = priceVal,
-                                        costPrice = costVal,
-                                        category = category.trim(),
-                                        unit = unit.trim()
-                                    )
-                                )
-                            }
-                        },
-                        enabled = name.isNotBlank() && sku.isNotBlank(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
             }
+        },
+        confirmEnabled = name.isNotBlank() && sku.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            RestoTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = if (isPersian) "نام کالا *" else "Product Name *"
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = sku,
+                    onValueChange = { sku = it },
+                    label = if (isPersian) "کد شناسایی SKU *" else "SKU *",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = barcode,
+                    onValueChange = { barcode = it },
+                    label = if (isPersian) "بارکد" else "Barcode",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = priceStr,
+                    onValueChange = { priceStr = it },
+                    label = if (isPersian) "قیمت فروش ($currencyUnit) *" else "Selling Price *",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = costPriceStr,
+                    onValueChange = { costPriceStr = it },
+                    label = if (isPersian) "قیمت خرید ($currencyUnit)" else "Cost Price",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = category,
+                    onValueChange = { category = it },
+                    label = if (isPersian) "دسته‌بندی" else "Category",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = unit,
+                    onValueChange = { unit = it },
+                    label = if (isPersian) "واحد (عدد، کیلوگرم...)" else "Unit",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            RestoTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = if (isPersian) "توضیحات اختیاری" else "Description",
+                singleLine = false,
+                maxLines = 2
+            )
         }
     }
 }

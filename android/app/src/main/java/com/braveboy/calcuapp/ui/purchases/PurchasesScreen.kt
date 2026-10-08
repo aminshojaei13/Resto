@@ -18,51 +18,56 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AddShoppingCart
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocalShipping
-import androidx.compose.material.icons.rounded.Payment
-import androidx.compose.material.icons.rounded.ReceiptLong
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.Product
 import com.braveboy.calcuapp.data.model.Purchase
 import com.braveboy.calcuapp.data.model.PurchaseItem
 import com.braveboy.calcuapp.data.model.Supplier
+import com.braveboy.calcuapp.ui.components.RestoBadge
+import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
+import com.braveboy.calcuapp.ui.components.RestoBottomSheet
+import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
+import com.braveboy.calcuapp.ui.components.RestoCard
+import com.braveboy.calcuapp.ui.components.RestoDialog
+import com.braveboy.calcuapp.ui.components.RestoEmptyState
+import com.braveboy.calcuapp.ui.components.RestoTextField
+import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.util.PersianFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +83,8 @@ fun PurchasesScreen(
     val selectedPurchaseDetail by viewModel.selectedPurchaseDetail.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
+    val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -91,32 +98,21 @@ fun PurchasesScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Purchasing & Goods Receiving",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Org: ${tenantState.activeOrgId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+            RestoTopBar(
+                title = if (isPersian) "خرید کالا و تحویل انبار" else "Purchasing & Receiving",
+                subtitle = if (isPersian) "ثبت فاکتورهای تامین، ورود کالا و بدهی به تامین‌کننده" else "Purchase orders, receiving & vendor payables"
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openCreatePurchaseDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(imageVector = Icons.Rounded.AddShoppingCart, contentDescription = "New Purchase Order")
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = if (isPersian) "ثبت خرید جدید" else "New Purchase"
+                )
             }
         }
     ) { innerPadding ->
@@ -124,32 +120,70 @@ fun PurchasesScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(horizontal = RestoSpacing.md)
         ) {
-            if (purchases.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            // Informational Card clarifying Purchase vs Receiving
+            RestoCard(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "No purchase orders found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        imageVector = Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
+                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                    Column {
+                        Text(
+                            text = if (isPersian) "چرخه خرید و تامین کالا:" else "Purchasing & Receiving Cycle:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isPersian)
+                                "خرید = چه کالایی از چه تامین‌کننده‌ای سفارش دادیم؟ | دریافت = ورود فیزیکی کالا به انبار و افزایش خودکار موجودی."
+                            else
+                                "Purchase = Order placed with vendor | Receiving = Stock physically arrives at warehouse.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            if (purchases.isEmpty()) {
+                RestoEmptyState(
+                    title = if (isPersian) "هنوز خریدی ثبت نشده است" else "No purchases recorded",
+                    description = if (isPersian)
+                        "با ثبت فاکتور خرید از تامین‌کننده، کالاهای سفارش‌داده‌شده را دریافت کرده و موجودی انبار را شارژ کنید."
+                    else
+                        "When you purchase products from suppliers, purchase orders and receiving records will appear here.",
+                    actionText = if (isPersian) "+ ثبت خرید جدید" else "+ New Purchase",
+                    onActionClick = { viewModel.openCreatePurchaseDialog() },
+                    modifier = Modifier.weight(1f)
+                )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(purchases, key = { it.id }) { purchase ->
-                        PurchaseCard(
+                        PurchaseItemCard(
                             purchase = purchase,
+                            isPersian = isPersian,
+                            currencyUnit = currencyUnit,
                             onClick = { viewModel.selectPurchaseDetail(purchase) },
-                            onReceiveClick = { viewModel.receiveGoods(purchase) }
+                            onReceive = { viewModel.receiveGoods(purchase) }
                         )
                     }
                 }
@@ -162,21 +196,29 @@ fun PurchasesScreen(
         CreatePurchaseDialog(
             suppliers = suppliers,
             products = products,
-            activeWarehouseId = tenantState.activeWarehouseId,
-            onSubmit = { supplierId, supplierName, warehouseId, items ->
-                viewModel.createPurchase(supplierId, supplierName, warehouseId, items)
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onSubmit = { supplierId, supplierName, items ->
+                viewModel.createPurchase(
+                    supplierId = supplierId,
+                    supplierName = supplierName,
+                    warehouseId = tenantState.activeWarehouseId,
+                    items = items
+                )
             },
             onDismiss = { viewModel.closeCreatePurchaseDialog() }
         )
     }
 
-    // Purchase Detail Dialog
+    // Purchase Detail Sheet
     selectedPurchaseDetail?.let { purchase ->
-        PurchaseDetailDialog(
+        PurchaseDetailSheet(
             purchase = purchase,
-            onReceiveGoods = { viewModel.receiveGoods(purchase) },
-            onPaySupplier = { purchaseId, amount, method ->
-                viewModel.paySupplier(purchaseId, amount, method)
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onReceive = {
+                viewModel.receiveGoods(purchase)
+                viewModel.selectPurchaseDetail(null)
             },
             onDismiss = { viewModel.selectPurchaseDetail(null) }
         )
@@ -184,106 +226,93 @@ fun PurchasesScreen(
 }
 
 @Composable
-fun PurchaseCard(
+fun PurchaseItemCard(
     purchase: Purchase,
+    isPersian: Boolean,
+    currencyUnit: String,
     onClick: () -> Unit,
-    onReceiveClick: () -> Unit
+    onReceive: () -> Unit
 ) {
     val isReceived = purchase.status == "RECEIVED"
-    val isPaid = purchase.paymentStatus == "PAID"
+    val statusText = if (isReceived) {
+        if (isPersian) "دریافت شده در انبار" else "Received"
+    } else {
+        if (isPersian) "در انتظار تحویل" else "Pending Delivery"
+    }
+    val statusVariant = if (isReceived) RestoBadgeVariant.Success else RestoBadgeVariant.Warning
 
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth()
+    val formattedAmount = if (isPersian) {
+        "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", purchase.totalAmount)}"
+    }
+
+    val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+    val dateStr = if (isPersian) {
+        PersianFormatter.toPersianDigits(dateFormat.format(Date(purchase.createdAt)))
+    } else {
+        dateFormat.format(Date(purchase.createdAt))
+    }
+
+    RestoCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        onClick = onClick
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = purchase.purchaseNumber,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Supplier: ${purchase.supplierName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                // Total amount
                 Text(
-                    text = "$${String.format("%.2f", purchase.totalAmount)}",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
+                    text = purchase.purchaseNumber,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = formattedAmount,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.xs))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Receiving Status Pill
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isReceived) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.tertiaryContainer
-                    ) {
-                        Text(
-                            text = if (isReceived) "RECEIVED" else "ORDERED",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isReceived) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
+                Text(
+                    text = "${if (isPersian) "تأمین‌کننده:" else "Supplier:"} ${purchase.supplierName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = dateStr,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                    // Payment Status Pill
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isPaid) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer
-                    ) {
-                        Text(
-                            text = purchase.paymentStatus,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPaid) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RestoBadge(text = statusText, variant = statusVariant)
 
                 if (!isReceived) {
-                    Button(
-                        onClick = onReceiveClick,
-                        shape = MaterialTheme.shapes.medium,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.LocalShipping,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Receive Goods", style = MaterialTheme.typography.labelMedium)
-                    }
+                    RestoButton(
+                        text = if (isPersian) "تحویل و ورود به انبار" else "Receive into Stock",
+                        onClick = onReceive,
+                        variant = RestoButtonVariant.Primary
+                    )
                 }
             }
         }
@@ -295,269 +324,157 @@ fun PurchaseCard(
 fun CreatePurchaseDialog(
     suppliers: List<Supplier>,
     products: List<Product>,
-    activeWarehouseId: String,
-    onSubmit: (supplierId: String, supplierName: String, warehouseId: String, items: List<PurchaseItem>) -> Unit,
+    isPersian: Boolean,
+    currencyUnit: String,
+    onSubmit: (supplierId: String, supplierName: String, items: List<PurchaseItem>) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedSupplier by remember { mutableStateOf(suppliers.firstOrNull()) }
-    var selectedWarehouse by remember { mutableStateOf(activeWarehouseId) }
-
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
-    var qtyStr by remember { mutableStateOf("1") }
-    var unitCostStr by remember { mutableStateOf("100.00") }
-
-    val items = remember { mutableStateListOf<PurchaseItem>() }
-
     var supplierDropdownExpanded by remember { mutableStateOf(false) }
+
+    var selectedProduct by remember { mutableStateOf(products.firstOrNull()) }
     var productDropdownExpanded by remember { mutableStateOf(false) }
 
-    val totalCost = items.sumOf { it.totalCost }
+    var quantityText by remember { mutableStateOf("10") }
+    var unitCostText by remember { mutableStateOf(selectedProduct?.costPrice?.toString() ?: "0") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
+    val qty = quantityText.toIntOrNull() ?: 0
+    val cost = unitCostText.toDoubleOrNull() ?: 0.0
+
+    RestoDialog(
+        title = if (isPersian) "ثبت فاکتور خرید کالا" else "New Purchase Order",
+        confirmText = if (isPersian) "ثبت سفارش خرید" else "Submit Order",
+        onConfirm = {
+            val sup = selectedSupplier ?: return@RestoDialog
+            val prod = selectedProduct ?: return@RestoDialog
+            if (qty > 0 && cost > 0) {
+                val item = PurchaseItem(
+                    productId = prod.id,
+                    productName = prod.name,
+                    quantity = qty,
+                    unitCost = cost,
+                    totalCost = qty * cost
+                )
+                onSubmit(sup.id, sup.name, listOf(item))
+            }
+        },
+        confirmEnabled = selectedSupplier != null && selectedProduct != null && qty > 0 && cost > 0,
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            // Supplier Picker
+            ExposedDropdownMenuBox(
+                expanded = supplierDropdownExpanded,
+                onExpandedChange = { supplierDropdownExpanded = it }
             ) {
-                Text(
-                    text = "New Purchase Order",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                OutlinedTextField(
+                    value = selectedSupplier?.name ?: (if (isPersian) "انتخاب تأمین‌کننده..." else "Select Supplier..."),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(if (isPersian) "تأمین‌کننده طرف حساب *" else "Supplier *") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierDropdownExpanded) },
+                    shape = RestoShapes.medium,
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = supplierDropdownExpanded,
+                    onDismissRequest = { supplierDropdownExpanded = false }
+                ) {
+                    suppliers.forEach { sup ->
+                        DropdownMenuItem(
+                            text = { Text(sup.name) },
+                            onClick = {
+                                selectedSupplier = sup
+                                supplierDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Product Picker
+            ExposedDropdownMenuBox(
+                expanded = productDropdownExpanded,
+                onExpandedChange = { productDropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedProduct?.name ?: (if (isPersian) "انتخاب کالا..." else "Select Product..."),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(if (isPersian) "کالای خریداری‌شده *" else "Product *") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = productDropdownExpanded) },
+                    shape = RestoShapes.medium,
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = productDropdownExpanded,
+                    onDismissRequest = { productDropdownExpanded = false }
+                ) {
+                    products.forEach { prod ->
+                        DropdownMenuItem(
+                            text = { Text("${prod.name} (${prod.sku})") },
+                            onClick = {
+                                selectedProduct = prod
+                                unitCostText = prod.costPrice.toString()
+                                productDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = quantityText,
+                    onValueChange = { quantityText = it.filter { ch -> ch.isDigit() } },
+                    label = if (isPersian) "تعداد خرید *" else "Quantity *",
+                    modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Supplier Selector
-                ExposedDropdownMenuBox(
-                    expanded = supplierDropdownExpanded,
-                    onExpandedChange = { supplierDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = selectedSupplier?.name ?: "Select Supplier *",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Supplier") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierDropdownExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = supplierDropdownExpanded,
-                        onDismissRequest = { supplierDropdownExpanded = false }
-                    ) {
-                        suppliers.forEach { sup ->
-                            DropdownMenuItem(
-                                text = { Text(sup.name) },
-                                onClick = {
-                                    selectedSupplier = sup
-                                    supplierDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Item Addition Builder
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "Add Product Item",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        ExposedDropdownMenuBox(
-                            expanded = productDropdownExpanded,
-                            onExpandedChange = { productDropdownExpanded = it }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedProduct?.name ?: "Select Product",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = productDropdownExpanded) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor()
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = productDropdownExpanded,
-                                onDismissRequest = { productDropdownExpanded = false }
-                            ) {
-                                products.forEach { prod ->
-                                    DropdownMenuItem(
-                                        text = { Text("${prod.name} (${prod.sku})") },
-                                        onClick = {
-                                            selectedProduct = prod
-                                            unitCostStr = prod.costPrice.toString()
-                                            productDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = qtyStr,
-                                onValueChange = { qtyStr = it },
-                                label = { Text("Qty") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            OutlinedTextField(
-                                value = unitCostStr,
-                                onValueChange = { unitCostStr = it },
-                                label = { Text("Unit Cost") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            onClick = {
-                                val prod = selectedProduct
-                                val qty = qtyStr.toIntOrNull() ?: 1
-                                val cost = unitCostStr.toDoubleOrNull() ?: 100.0
-                                if (prod != null) {
-                                    items.add(
-                                        PurchaseItem(
-                                            productId = prod.id,
-                                            productName = prod.name,
-                                            quantity = qty,
-                                            unitCost = cost,
-                                            totalCost = qty * cost
-                                        )
-                                    )
-                                    selectedProduct = null
-                                    qtyStr = "1"
-                                }
-                            },
-                            enabled = selectedProduct != null,
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Item")
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Added Items List
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                ) {
-                    items(items) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.surface,
-                                    shape = MaterialTheme.shapes.small
-                                )
-                                .padding(8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(item.productName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                Text("Qty: ${item.quantity} x $${String.format("%.2f", item.unitCost)}", style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text("$${String.format("%.2f", item.totalCost)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            IconButton(onClick = { items.remove(item) }) {
-                                Icon(imageVector = Icons.Rounded.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Total Order Amount:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("$${String.format("%.2f", totalCost)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            val sup = selectedSupplier
-                            if (sup != null && items.isNotEmpty()) {
-                                onSubmit(sup.id, sup.name, selectedWarehouse, items.toList())
-                            }
-                        },
-                        enabled = selectedSupplier != null && items.isNotEmpty(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Submit Order")
-                    }
-                }
+                RestoTextField(
+                    value = unitCostText,
+                    onValueChange = { unitCostText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    label = if (isPersian) "قیمت خرید واحد ($currencyUnit) *" else "Unit Cost *",
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PurchaseDetailDialog(
+fun PurchaseDetailSheet(
     purchase: Purchase,
-    onReceiveGoods: () -> Unit,
-    onPaySupplier: (id: String, amount: Double, method: String) -> Unit,
+    isPersian: Boolean,
+    currencyUnit: String,
+    onReceive: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var isPaying by remember { mutableStateOf(false) }
-    var payAmountStr by remember { mutableStateOf(purchase.totalAmount.toString()) }
+    val isReceived = purchase.status == "RECEIVED"
+    val formattedAmount = if (isPersian) {
+        "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", purchase.totalAmount)}"
+    }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+    RestoBottomSheet(
+        onDismissRequest = onDismiss,
+        title = purchase.purchaseNumber,
+        subtitle = "${if (isPersian) "فاکتور خرید از" else "From"} ${purchase.supplierName}"
+    ) {
+        Column(
             modifier = Modifier
-                .padding(12.dp)
                 .fillMaxWidth()
+                .padding(bottom = RestoSpacing.xl),
+            verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth()
+            RestoCard(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -566,104 +483,85 @@ fun PurchaseDetailDialog(
                 ) {
                     Column {
                         Text(
-                            text = purchase.purchaseNumber,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            text = if (isPersian) "مبلغ کل فاکتور خرید" else "Total Purchase Amount",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Supplier: ${purchase.supplierName}",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = formattedAmount,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Order Items Breakdown:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        purchase.items.forEach { item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("${item.productName.ifBlank { item.productId }} (x${item.quantity})", style = MaterialTheme.typography.bodyMedium)
-                                Text("$${String.format("%.2f", item.totalCost)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Actions Section
-                if (purchase.status == "ORDERED") {
-                    Button(
-                        onClick = onReceiveGoods,
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Rounded.LocalShipping, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Receive Goods Into Warehouse")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                if (purchase.paymentStatus != "PAID") {
-                    if (!isPaying) {
-                        OutlinedButton(
-                            onClick = { isPaying = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(imageVector = Icons.Rounded.Payment, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Record Supplier Payment")
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium)
-                                .padding(12.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = payAmountStr,
-                                onValueChange = { payAmountStr = it },
-                                label = { Text("Payment Amount ($)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    val amt = payAmountStr.toDoubleOrNull() ?: purchase.totalAmount
-                                    onPaySupplier(purchase.id, amt, "BANK_TRANSFER")
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Confirm Payment")
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Close")
+                    RestoBadge(
+                        text = if (isReceived) (if (isPersian) "تحویل شده" else "Received") else (if (isPersian) "در انتظار ورود" else "Pending"),
+                        variant = if (isReceived) RestoBadgeVariant.Success else RestoBadgeVariant.Warning
+                    )
                 }
             }
+
+            Text(
+                text = if (isPersian) "کالاهای این فاکتور" else "Purchased Items",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            purchase.items.forEach { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = item.productName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        val qtyText = if (isPersian)
+                            "${PersianFormatter.toPersianDigits(item.quantity)} عدد × ${PersianFormatter.formatTomans(item.unitCost)} $currencyUnit"
+                        else
+                            "${item.quantity}x @ $${String.format("%.2f", item.unitCost)}"
+                        Text(
+                            text = qtyText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    val totalText = if (isPersian) {
+                        "${PersianFormatter.formatTomans(item.totalCost)} $currencyUnit"
+                    } else {
+                        "$${String.format("%.2f", item.totalCost)}"
+                    }
+
+                    Text(
+                        text = totalText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            if (!isReceived) {
+                RestoButton(
+                    text = if (isPersian) "تأیید تحویل و افزایش موجودی انبار" else "Confirm Delivery & Update Stock",
+                    onClick = onReceive,
+                    variant = RestoButtonVariant.Primary,
+                    fullWidth = true
+                )
+            }
+
+            RestoButton(
+                text = if (isPersian) "بستن" else "Close",
+                onClick = onDismiss,
+                variant = RestoButtonVariant.Outlined,
+                fullWidth = true
+            )
         }
     }
 }

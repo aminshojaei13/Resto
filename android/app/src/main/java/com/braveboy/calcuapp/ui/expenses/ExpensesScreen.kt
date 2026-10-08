@@ -18,30 +18,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddCard
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Payments
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,10 +41,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.braveboy.calcuapp.data.model.Expense
+import com.braveboy.calcuapp.ui.components.RestoBadge
+import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
+import com.braveboy.calcuapp.ui.components.RestoBottomSheet
+import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
+import com.braveboy.calcuapp.ui.components.RestoCard
+import com.braveboy.calcuapp.ui.components.RestoDialog
+import com.braveboy.calcuapp.ui.components.RestoEmptyState
+import com.braveboy.calcuapp.ui.components.RestoSearchField
+import com.braveboy.calcuapp.ui.components.RestoTextField
+import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.theme.RestoShapes
+import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.util.PersianFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +74,8 @@ fun ExpensesScreen(
     val selectedExpenseForEdit by viewModel.selectedExpenseForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
+    val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -83,32 +89,21 @@ fun ExpensesScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Operating Expenses",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+            RestoTopBar(
+                title = if (isPersian) "هزینه‌های جاری کسب‌وکار" else "Operating Expenses",
+                subtitle = if (isPersian) "مخارج دفتری، اجاره، تبلیغات، حمل‌ونقل و حقوق" else "Rent, utilities, ads & other operating costs"
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openCreateExpenseDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(imageVector = Icons.Rounded.AddCard, contentDescription = "Record Expense")
+                Icon(
+                    imageVector = Icons.Rounded.AddCard,
+                    contentDescription = if (isPersian) "ثبت هزینه جدید" else "Add Expense"
+                )
             }
         }
     ) { innerPadding ->
@@ -116,52 +111,78 @@ fun ExpensesScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(horizontal = RestoSpacing.md)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Search expenses by category or notes...") },
-                leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(imageVector = Icons.Rounded.Clear, contentDescription = "Clear")
-                        }
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            // Explanation Banner: clarifies difference between Purchase and Expense
+            RestoCard(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                    Column {
+                        Text(
+                            text = if (isPersian) "تعریف هزینه‌های جاری:" else "What are Operating Expenses?",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isPersian)
+                                "مخارجی مثل اجاره، بسته بندی، تبلیغات، اینترنت، حقوق و ارسال. (توجه: خرید کالای انبار در بخش «خرید و تامین» ثبت می‌شود)."
+                            else
+                                "Non-inventory costs such as rent, ads, internet, packaging and salaries.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.large
+                }
+            }
+
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            RestoSearchField(
+                query = searchQuery,
+                onQueryChange = { viewModel.setSearchQuery(it) },
+                placeholder = if (isPersian) "جستجو در شرح یا دسته‌بندی هزینه‌ها..." else "Search expenses..."
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
             if (expenses.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No operating expenses recorded",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                RestoEmptyState(
+                    title = if (isPersian) "هیچ هزینه‌ای ثبت نشده است" else "No expenses recorded",
+                    description = if (isPersian)
+                        "برای محاسبه دقیق سود و زیان کسب‌وکار، مخارج و هزینه‌های روزمره را ثبت کنید."
+                    else
+                        "Record your ongoing business expenses to keep your operating profit accurate.",
+                    actionText = if (isPersian) "+ ثبت هزینه جدید" else "+ Record Expense",
+                    onActionClick = { viewModel.openCreateExpenseDialog() },
+                    modifier = Modifier.weight(1f)
+                )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(expenses, key = { it.id }) { expense ->
-                        ExpenseCard(
+                        ExpenseItemCard(
                             expense = expense,
+                            isPersian = isPersian,
+                            currencyUnit = currencyUnit,
                             onClick = { viewModel.selectExpenseDetail(expense) },
-                            onEditClick = { viewModel.openEditExpense(expense) },
-                            onDeleteClick = { viewModel.deleteExpense(expense) }
+                            onEditClick = { viewModel.openEditExpense(expense) }
                         )
                     }
                 }
@@ -169,437 +190,325 @@ fun ExpensesScreen(
         }
     }
 
-    // Create Expense Dialog
+    // Add / Edit Expense Dialog
     if (isCreateExpenseDialogOpen) {
-        CreateExpenseDialog(
-            onSubmit = { category, amount, date, method, notes ->
+        ExpenseFormDialog(
+            title = if (isPersian) "ثبت هزینه جدید" else "Record New Expense",
+            initialExpense = null,
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onSubmit = { category, amount, method, date, notes ->
                 viewModel.addExpense(category, amount, date, method, notes)
             },
             onDismiss = { viewModel.closeCreateExpenseDialog() }
         )
     }
 
-    // Edit Expense Dialog (Pre-Populated)
     selectedExpenseForEdit?.let { expense ->
-        EditExpenseDialog(
-            expense = expense,
-            onSubmit = { updatedExpense ->
-                viewModel.updateExpense(updatedExpense)
+        ExpenseFormDialog(
+            title = if (isPersian) "ویرایش اطلاعات هزینه" else "Edit Expense",
+            initialExpense = expense,
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onSubmit = { category, amount, method, date, notes ->
+                viewModel.updateExpense(
+                    expense.copy(category = category, amount = amount, paymentMethod = method, date = date, notes = notes)
+                )
             },
             onDismiss = { viewModel.closeEditExpense() }
         )
     }
 
-    // Expense Detail Dialog
+    // Detail Sheet
     selectedExpenseDetail?.let { expense ->
-        ExpenseDetailDialog(
+        ExpenseDetailSheet(
             expense = expense,
-            onEditClick = { viewModel.openEditExpense(expense) },
-            onDeleteClick = { viewModel.deleteExpense(expense) },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit,
+            onEditClick = {
+                viewModel.selectExpenseDetail(null)
+                viewModel.openEditExpense(expense)
+            },
             onDismiss = { viewModel.selectExpenseDetail(null) }
         )
     }
 }
 
 @Composable
-fun ExpenseCard(
+fun ExpenseItemCard(
     expense: Expense,
+    isPersian: Boolean,
+    currencyUnit: String,
     onClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onEditClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth()
+    val formattedAmount = if (isPersian) {
+        "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", expense.amount)}"
+    }
+
+    RestoCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        onClick = onClick
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = CircleShape
-                    ),
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Payments,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onErrorContainer
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(RestoSpacing.md))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = expense.category,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = expense.category,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(RestoSpacing.xs))
+                    RestoBadge(
+                        text = expense.paymentMethod,
+                        variant = RestoBadgeVariant.Neutral
+                    )
+                }
 
                 if (expense.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = expense.notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                Text(
-                    text = "Date: ${expense.date} | ${expense.paymentMethod}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "$${String.format("%.2f", expense.amount)}",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.error
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.Edit,
-                            contentDescription = "Edit Expense",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.Delete,
-                            contentDescription = "Delete Expense",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
+            Text(
+                text = formattedAmount,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateExpenseDialog(
-    onSubmit: (category: String, amount: Double, date: String, method: String, notes: String) -> Unit,
+fun ExpenseFormDialog(
+    title: String,
+    initialExpense: Expense?,
+    isPersian: Boolean,
+    currencyUnit: String,
+    onSubmit: (category: String, amount: Double, method: String, date: String, notes: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var category by remember { mutableStateOf("Store Utilities") }
-    var amountStr by remember { mutableStateOf("100.00") }
-    var date by remember { mutableStateOf("2025-01-20") }
-    var paymentMethod by remember { mutableStateOf("CASH") }
-    var notes by remember { mutableStateOf("") }
+    val defaultCategories = if (isPersian) {
+        listOf(
+            "اجاره دفتر و انبار",
+            "تبلیغات و بازاریابی",
+            "هزینه بسته‌بندی و پاکت",
+            "هزینه پست و حمل‌ونقل",
+            "اینترنت، هاست و نرم‌افزار",
+            "حقوق و دستمزد پرسنل",
+            "تعمیرات و نگهداری",
+            "سایر مخارج اداری"
+        )
+    } else {
+        listOf(
+            "Rent & Facility",
+            "Marketing & Ads",
+            "Packaging Materials",
+            "Shipping & Courier",
+            "Internet & SaaS",
+            "Payroll & Wages",
+            "Repairs & Maintenance",
+            "General Office Expenses"
+        )
+    }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
+    var category by remember { mutableStateOf(initialExpense?.category ?: defaultCategories.first()) }
+    var categoryDropdownExpanded by remember { mutableStateOf(false) }
+
+    var amountText by remember { mutableStateOf(initialExpense?.amount?.toString() ?: "") }
+    var paymentMethod by remember { mutableStateOf(initialExpense?.paymentMethod ?: "نقد / کارت") }
+    var notes by remember { mutableStateOf(initialExpense?.notes ?: "") }
+
+    val amountVal = amountText.toDoubleOrNull() ?: 0.0
+
+    RestoDialog(
+        title = title,
+        confirmText = if (isPersian) "ثبت هزینه" else "Save Expense",
+        onConfirm = {
+            if (amountVal > 0) {
+                onSubmit(category, amountVal, paymentMethod, "", notes.trim())
+            }
+        },
+        confirmEnabled = amountVal > 0,
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            // Category Dropdown
+            ExposedDropdownMenuBox(
+                expanded = categoryDropdownExpanded,
+                onExpandedChange = { categoryDropdownExpanded = it }
             ) {
-                Text(
-                    text = "Record Operating Expense",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 OutlinedTextField(
                     value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Expense Category *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(if (isPersian) "دسته‌بندی هزینه *" else "Category *") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
+                    shape = RestoShapes.medium,
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = amountStr,
-                        onValueChange = { amountStr = it },
-                        label = { Text("Amount ($) *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = date,
-                        onValueChange = { date = it },
-                        label = { Text("Date *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = paymentMethod,
-                    onValueChange = { paymentMethod = it },
-                    label = { Text("Payment Method (CASH, BANK_TRANSFER, CARD)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Description / Notes") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ExposedDropdownMenu(
+                    expanded = categoryDropdownExpanded,
+                    onDismissRequest = { categoryDropdownExpanded = false }
                 ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            val amt = amountStr.toDoubleOrNull() ?: 0.0
-                            if (category.isNotBlank() && amt > 0) {
-                                onSubmit(category.trim(), amt, date.trim(), paymentMethod.trim(), notes.trim())
+                    defaultCategories.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                category = cat
+                                categoryDropdownExpanded = false
                             }
-                        },
-                        enabled = category.isNotBlank() && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Save Expense")
+                        )
                     }
                 }
             }
+
+            // Amount input
+            RestoTextField(
+                value = amountText,
+                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                label = if (isPersian) "مبلغ هزینه ($currencyUnit) *" else "Amount ($currencyUnit) *",
+                placeholder = "0"
+            )
+
+            // Payment method input
+            RestoTextField(
+                value = paymentMethod,
+                onValueChange = { paymentMethod = it },
+                label = if (isPersian) "روش پرداخت (کارت، نقد، شبا...)" else "Payment Method"
+            )
+
+            // Notes
+            RestoTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = if (isPersian) "توضیحات و بابت" else "Notes / Description",
+                singleLine = false,
+                maxLines = 2
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditExpenseDialog(
+fun ExpenseDetailSheet(
     expense: Expense,
-    onSubmit: (updatedExpense: Expense) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var category by remember { mutableStateOf(expense.category) }
-    var amountStr by remember { mutableStateOf(expense.amount.toString()) }
-    var date by remember { mutableStateOf(expense.date) }
-    var paymentMethod by remember { mutableStateOf(expense.paymentMethod) }
-    var notes by remember { mutableStateOf(expense.notes) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = "Edit Operating Expense",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Expense Category *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = amountStr,
-                        onValueChange = { amountStr = it },
-                        label = { Text("Amount ($) *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = date,
-                        onValueChange = { date = it },
-                        label = { Text("Date *") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = paymentMethod,
-                    onValueChange = { paymentMethod = it },
-                    label = { Text("Payment Method") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Description / Notes") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            val amt = amountStr.toDoubleOrNull() ?: expense.amount
-                            if (category.isNotBlank() && amt > 0) {
-                                onSubmit(
-                                    expense.copy(
-                                        category = category.trim(),
-                                        amount = amt,
-                                        date = date.trim(),
-                                        paymentMethod = paymentMethod.trim(),
-                                        notes = notes.trim()
-                                    )
-                                )
-                            }
-                        },
-                        enabled = category.isNotBlank() && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ExpenseDetailDialog(
-    expense: Expense,
+    isPersian: Boolean,
+    currencyUnit: String,
     onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+    val formattedAmount = if (isPersian) {
+        "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
+    } else {
+        "$${String.format("%.2f", expense.amount)}"
+    }
+
+    RestoBottomSheet(
+        onDismissRequest = onDismiss,
+        title = expense.category,
+        subtitle = if (isPersian) "رسید سند هزینه جاری" else "Operating Expense Record"
+    ) {
+        Column(
             modifier = Modifier
-                .padding(12.dp)
                 .fillMaxWidth()
+                .padding(bottom = RestoSpacing.xl),
+            verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth()
+            RestoCard(
+                containerColor = MaterialTheme.colorScheme.errorContainer
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = expense.category,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                    Column {
+                        Text(
+                            text = if (isPersian) "مبلغ هزینه" else "Expense Amount",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = formattedAmount,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+
+                    RestoBadge(
+                        text = expense.paymentMethod,
+                        variant = RestoBadgeVariant.Neutral
                     )
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
-                    }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+            if (expense.notes.isNotBlank()) {
+                Text(
+                    text = if (isPersian) "توضیحات:" else "Notes:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = expense.notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Expense Amount", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Text("$${String.format("%.2f", expense.amount)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    }
-                }
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+            ) {
+                RestoButton(
+                    text = if (isPersian) "ویرایش" else "Edit",
+                    onClick = onEditClick,
+                    variant = RestoButtonVariant.Outlined,
+                    modifier = Modifier.weight(1f)
+                )
 
-                Text("Date: ${expense.date}", style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Payment Method: ${expense.paymentMethod}", style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Notes: ${expense.notes.ifBlank { "None" }}", style = MaterialTheme.typography.bodyLarge)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Edit")
-                    }
-
-                    Button(
-                        onClick = onDeleteClick,
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Delete")
-                    }
-                }
+                RestoButton(
+                    text = if (isPersian) "بستن" else "Close",
+                    onClick = onDismiss,
+                    variant = RestoButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
