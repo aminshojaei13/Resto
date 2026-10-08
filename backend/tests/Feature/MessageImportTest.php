@@ -153,4 +153,47 @@ class MessageImportTest extends TestCase
         $this::assertEquals(8.0, $order['tax_rate']);
         $this::assertEquals(round($order['subtotal'] + $order['tax_amount'], 2), $order['total_amount']);
     }
+
+    public function test_parses_conversational_message_with_customer_intro_and_verbs(): void
+    {
+        $this->postJson('/api/v1/products', [
+            'sku' => 'APX-CBL-001',
+            'barcode' => '990000000002',
+            'name' => 'کابل USB',
+            'price' => 50000,
+            'cost_price' => 20000,
+            'category' => 'لوازم جانبی',
+            'unit' => 'عدد',
+        ], ['X-Tenant-ID' => 'org_apex'])->assertStatus(201);
+
+        $response = $this->parse('حسینی هستتم ۱۰ عدد کابل usb میخوام');
+
+        $response->assertStatus(200);
+
+        $parsed = $response->json();
+
+        $this::assertEquals('حسینی', $parsed['customer']['name']);
+        $this::assertCount(1, $parsed['items']);
+        $this::assertCount(0, $parsed['unmatched_items']);
+
+        $item = $parsed['items'][0];
+        $this::assertEquals(10, $item['quantity']);
+        $this::assertEquals('کابل USB', $item['product_name']);
+        $this::assertNotEmpty($item['product_id']);
+
+        // Check checkout with parsed item
+        $checkout = $this->postJson('/api/v1/orders/checkout', [
+            'store_id' => 'store_apex_1',
+            'warehouse_id' => 'wh_apex_1a',
+            'customer_name' => $parsed['customer']['name'],
+            'payment_method' => 'CASH',
+            'source' => 'MESSAGE',
+            'items' => [[
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+            ]],
+        ], ['X-Tenant-ID' => 'org_apex']);
+
+        $checkout->assertStatus(201);
+    }
 }

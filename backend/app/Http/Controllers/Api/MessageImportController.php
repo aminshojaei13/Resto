@@ -168,6 +168,26 @@ class MessageImportController extends Controller
             }
         }
 
+        // Conversational customer name patterns if name is still null
+        if (!$name) {
+            foreach ($lines as $line) {
+                if (preg_match('/(?:سلام\s+)?(?:من\s+)?([\p{L}\s]{2,30}?)\s+(?:هستم|هستتم|باشم)/u', $line, $m)) {
+                    $cand = $this->tidy($m[1]);
+                    $cand = preg_replace('/^(?:سلام|درود)\s+/u', '', $cand);
+                    if (mb_strlen($cand) >= 2) {
+                        $name = $cand;
+                        break;
+                    }
+                } elseif (preg_match('/(?:از\s+طرف|مشتری|سفارش)\s+([\p{L}\s]{2,30}?)(?:\s+باشم|\s+هستم|\s+هستتم|\n|$)/u', $line, $m)) {
+                    $cand = $this->tidy($m[1]);
+                    if (mb_strlen($cand) >= 2) {
+                        $name = $cand;
+                        break;
+                    }
+                }
+            }
+        }
+
         // A phone number written on its own line is still a phone number.
         if (!$phone) {
             foreach ($lines as $line) {
@@ -231,10 +251,30 @@ class MessageImportController extends Controller
     }
 
     /**
+     * Clean product query strings from noise, greeting, customer names, and closing verbs.
+     */
+    private function cleanProductQuery(string $query): string
+    {
+        $query = $this->tidy($query);
+
+        // Strip customer introduction phrases like "حسینی هستتم", "سلام من علی هستم"
+        $query = preg_replace('/(?:سلام\s+)?(?:من\s+)?[\p{L}\s]{2,30}?\s+(?:هستم|هستتم)/u', '', $query);
+
+        // Strip leading greetings/fillers
+        $query = preg_replace('/^(?:سلام|درود|سپاس|تشکر|لطفا|لطفاً|ممنون|ببخشید|روز بخیر|وقت بخیر|نام|مشتری)\s+/iu', '', $query);
+
+        // Strip trailing closing verbs / fillers
+        $query = preg_replace('/\s+(?:میخوام|می‌خوام|میخام|می‌خام|خواستم|میخواستم|می‌خواستم|بفرستید|ارسال|کنید|لطفا|لطفاً|ممنون|تشکر|بشه|لازم\s+دارم|نیاز\s+دارم|خرید\s+دارم|ثبت\s+کنید|ثبت\s+بفرمایید)$/iu', '', $query);
+
+        return $this->tidy($query);
+    }
+
+    /**
      * Pull order lines out of free text.
      *
      * Recognised shapes, for example:
      *   ۲ عدد قهوه اسپرسو
+     *   حسینی هستتم ۱۰ عدد کابل usb میخوام
      *   2 عدد بسته قهوه ۲۵۰ گرمی
      *   3 x Espresso
      *   قهوه اسپرسو - 2
@@ -242,15 +282,17 @@ class MessageImportController extends Controller
     private function extractLines(string $rawText): array
     {
         $lines = [];
+        $unitPattern = '(?:عدد|عددی|تا|بسته|جعبه|بطری|دست|سرو|سفارش|کیلو|کیلوگرم|گرم|گرمی|متر|شاخه|حلقه|جفت|کارتن|پک|رول|طغری|دستگاه|حعدد|PCS?|ITEMS?|BOX(?:ES)?|PACK(?:S)?|BOTTLE(?:S)?|SET|SERVING(?:S)?|KG|G|M)';
+        $closingPattern = '(?:میخوام|می‌خوام|میخام|می‌خام|خواستم|میخواستم|می‌خواستم|بفرستید|ارسال|لطفا|لطفاً|ممنون|تشکر|لازم|نیاز|خرید|ثبت)';
 
         foreach ($this->normalisedLines($rawText) as $raw) {
-            if ($this->isNoise($raw)) {
+            if ($this->isNoise($raw) || $this->isMetadataLine($raw)) {
                 continue;
             }
 
             // A labelled line: "کالا: قهوه" / "Quantity: 2" / "تعداد: 2"
             if (preg_match('/^(?:کالا|محصول|product|item)\s*[:：\-]\s*(.+)$/iu', $raw, $m)) {
-                $query = $this->tidy($m[1]);
+                $query = $this->cleanProductQuery($m[1]);
                 $quantity = $this->peekQuantity($raw);
 
                 if ($query !== '') {
@@ -263,30 +305,44 @@ class MessageImportController extends Controller
             $quantity = null;
             $query = null;
 
-            // "<count> <unit-word> <name>" — the natural form.
-            if (preg_match('/^([\p{L}\p{N}٠-٩۰-۹]+)\s*(?:عدد|حعدد|بسته|جعبه|بطری|دست|سرو|سفارش|PCS?|ITEMS?|BOX(?:ES)?|PACK(?:S)?|BOTTLE(?:S)?|SET|SERVING(?:S)?)\s+(.+)$/iu', $raw, $m)) {
+            // Pattern 1: "<count> <unit> <name>" anywhere in line
+            if (preg_match('/(?:^|\s)([\d٠-٩۰-۹]+)\s*' . $unitPattern . '\s+(.+?)(?=\s*' . $closingPattern . '|$)/iu', $raw, $m)) {
                 $quantity = $this->toInt($m[1]);
-                $query = $this->tidy($m[2]);
+                $query = $this->cleanProductQuery($m[2]);
             }
-            // "<count> x <name>"
-            elseif (preg_match('/^([\p{L}\p{N}٠-٩۰-۹]+)\s*[x×*]\s*(.+)$/iu', $raw, $m)) {
+            // Pattern 2: "<count> x <name>"
+            elseif (preg_match('/(?:^|\s)([\d٠-٩۰-۹]+)\s*[x×*]\s*(.+?)(?=\s*' . $closingPattern . '|$)/iu', $raw, $m)) {
                 $quantity = $this->toInt($m[1]);
-                $query = $this->tidy($m[2]);
+                $query = $this->cleanProductQuery($m[2]);
             }
-            // "<name> - <count>"
-            elseif (preg_match('/^(.+?)\s*[-–—]\s*([\p{L}\p{N}٠-٩۰-۹]+)$/u', $raw, $m)) {
-                $query = $this->tidy($m[1]);
+            // Pattern 3: "<name> - <count>"
+            elseif (preg_match('/^(.+?)\s*[-–—]\s*([\d٠-٩۰-۹]+)$/u', $raw, $m)) {
+                $query = $this->cleanProductQuery($m[1]);
                 $quantity = $this->toInt($m[2]);
+            }
+            // Pattern 4: "<name> <count> <unit>"
+            elseif (preg_match('/^(.+?)\s+([\d٠-٩۰-۹]+)\s*' . $unitPattern . '$/iu', $raw, $m)) {
+                $query = $this->cleanProductQuery($m[1]);
+                $quantity = $this->toInt($m[2]);
+            }
+            // Pattern 5: "<count> <name>" without explicit unit word
+            elseif (preg_match('/(?:^|\s)([\d٠-٩۰-۹]+)\s+(.+?)(?=\s*' . $closingPattern . '|$)/iu', $raw, $m)) {
+                $quantity = $this->toInt($m[1]);
+                $query = $this->cleanProductQuery($m[2]);
+            }
+            // Pattern 6: Just product name
+            else {
+                $query = $this->cleanProductQuery($raw);
+                $quantity = $this->peekQuantity($raw) ?: 1;
             }
 
             if ($query === null || $query === '') {
                 continue;
             }
 
-            // Trailing size/packaging descriptors belong to the product name.
             $quantity ??= $this->peekQuantity($raw) ?: 1;
 
-            $lines[] = ['raw' => $raw, 'query' => $query, 'quantity' => $quantity];
+            $lines[] = ['raw' => $raw, 'query' => $query, 'quantity' => max(1, $quantity)];
         }
 
         return $lines;
@@ -305,47 +361,72 @@ class MessageImportController extends Controller
     }
 
     /**
-     * Find the catalog product a line refers to.
-     *
-     * Returns null rather than guessing. Previously an unrecognised line was
-     * silently replaced with the first product in the table, which produced
-     * confident, wrong orders.
+     * Find the catalog product a line refers to using smart multi-tier token matching.
      */
     private function matchProduct(string $query, string $organizationId): ?Product
     {
-        $query = trim($query);
+        $query = $this->cleanProductQuery($query);
+        $normQuery = $this->normalise($query);
 
-        if ($query === '') {
+        if ($normQuery === '') {
             return null;
         }
 
-        $bySku = Product::where('organization_id', $organizationId)
-            ->where('sku', $query)
-            ->first();
+        $products = Product::where('organization_id', $organizationId)->get();
 
-        if ($bySku) {
-            return $bySku;
+        if ($products->isEmpty()) {
+            return null;
         }
 
-        $exact = Product::where('organization_id', $organizationId)
-            ->where('name', $query)
-            ->first();
+        $queryTokens = array_values(array_filter(explode(' ', $normQuery), fn ($t) => strlen($t) > 0));
 
-        if ($exact) {
-            return $exact;
+        $bestProduct = null;
+        $bestScore = 0;
+
+        foreach ($products as $product) {
+            $normName = $this->normalise($product->name);
+            $normSku = $this->normalise($product->sku);
+
+            $score = 0;
+
+            if ($normName === $normQuery || $normSku === $normQuery) {
+                $score = 1000;
+            } elseif (!empty($normSku) && (str_contains($normSku, $normQuery) || str_contains($normQuery, $normSku))) {
+                $score = 900;
+            } elseif (str_replace(' ', '', $normName) === str_replace(' ', '', $normQuery)) {
+                $score = 850;
+            } elseif (str_starts_with($normName, $normQuery)) {
+                $score = 800;
+            } elseif (str_starts_with($normQuery, $normName)) {
+                $score = 750;
+            } elseif (str_contains($normName, $normQuery)) {
+                $score = 700;
+            } else {
+                $matchedTokens = 0;
+                foreach ($queryTokens as $token) {
+                    if (str_contains($normName, $token) || str_contains($normSku, $token)) {
+                        $matchedTokens++;
+                    }
+                }
+
+                if ($matchedTokens > 0) {
+                    $ratio = $matchedTokens / max(count($queryTokens), 1);
+                    if ($ratio >= 0.5) {
+                        $score = (int)(200 + ($ratio * 400));
+                    }
+                }
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestProduct = $product;
+            }
         }
 
-        $candidates = Product::where('organization_id', $organizationId)
-            ->where('name', 'like', "%{$query}%")
-            ->orWhere('sku', 'like', "%{$query}%")
-            ->get();
-
-        if ($candidates->count() === 1) {
-            return $candidates->first();
+        if ($bestScore >= 200) {
+            return $bestProduct;
         }
 
-        // Several plausible products: return the closest so the person can
-        // choose, but keep the alternatives visible.
         return null;
     }
 
@@ -381,6 +462,11 @@ class MessageImportController extends Controller
         }
 
         return false;
+    }
+
+    private function isMetadataLine(string $line): bool
+    {
+        return (bool) preg_match('/^(?:پرداخت|روش پرداخت|مشتری|نام|تلفن|موبایل|همراه|شماره|آدرس|نشانی|توضیحات|payment|customer|name|phone|mobile|address)\s*[:：\-]/iu', trim($line));
     }
 
     /** @return array<int, string> */

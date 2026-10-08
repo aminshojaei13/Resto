@@ -230,10 +230,15 @@ class SalesOrderController extends Controller
             'notes' => 'nullable|string|max:1000',
             'source' => 'nullable|string|max:40',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|string',
+            'items.*.product_id' => 'required|string|filled',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'nullable|numeric|min:0',
             'items.*.discount_percent' => 'nullable|numeric|min:0|max:100',
+        ], [
+            'items.required' => 'اقلام سفارش نمی‌تواند خالی باشد.',
+            'items.min' => 'حداقل یک کالا برای ثبت سفارش لازم است.',
+            'items.*.product_id.required' => 'شناسه کالا در اقلام سفارش مشخص نشده است.',
+            'items.*.product_id.filled' => 'شناسه کالا در اقلام سفارش نامعتبر یا خالی است.',
         ]);
 
         $storeId = $validated['store_id'] ?? $storeId;
@@ -295,6 +300,10 @@ class SalesOrderController extends Controller
         $priced = $this->pricing->price($lines, $taxRate);
 
         return DB::transaction(function () use ($request, $organizationId, $storeId, $warehouse, $priced, $taxRate, $validated) {
+            $source = $validated['source'] ?? 'POS';
+            $defaultPaymentStatus = ($source === 'POS') ? 'PAID' : 'PENDING';
+            $defaultFulfillmentStatus = ($source === 'POS') ? 'COMPLETED' : 'PENDING';
+
             $order = Order::create([
                 'id' => (string) Str::uuid(),
                 'order_number' => $this->nextOrderNumber($organizationId),
@@ -309,10 +318,10 @@ class SalesOrderController extends Controller
                 'tax_rate' => 0,
                 'total_amount' => 0,
                 'payment_method' => $validated['payment_method'],
-                'payment_status' => $validated['payment_status'] ?? 'PAID',
-                'fulfillment_status' => $validated['fulfillment_status'] ?? 'COMPLETED',
+                'payment_status' => $validated['payment_status'] ?? $defaultPaymentStatus,
+                'fulfillment_status' => $validated['fulfillment_status'] ?? $defaultFulfillmentStatus,
                 'notes' => $validated['notes'] ?? '',
-                'source' => $validated['source'] ?? 'POS',
+                'source' => $source,
                 'created_by_user_id' => $request->user()?->id,
             ]);
 
@@ -358,21 +367,30 @@ class SalesOrderController extends Controller
     }
 
     /**
-     * A collision-free order number: the sequence continues from the last
-     * order this business wrote, so numbers read in order.
+     * A collision-free order number: respects the global unique constraint on orders.order_number.
      */
     private function nextOrderNumber(string $organizationId): string
     {
         $year = date('Y');
 
-        $last = Order::where('organization_id', $organizationId)
-            ->where('order_number', 'like', "ORD-{$year}-%")
+        $last = Order::where('order_number', 'like', "ORD-{$year}-%")
             ->orderByDesc('order_number')
             ->value('order_number');
 
-        $sequence = $last ? ((int) substr($last, -6)) + 1 : 1;
+        $sequence = 1;
+        if ($last && preg_match('/ORD-\d{4}-(\d+)/', $last, $m)) {
+            $sequence = ((int) $m[1]) + 1;
+        }
 
-        return sprintf('ORD-%s-%06d', $year, $sequence);
+        do {
+            $candidate = sprintf('ORD-%s-%06d', $year, $sequence);
+            $exists = Order::where('order_number', $candidate)->exists();
+            if ($exists) {
+                $sequence++;
+            }
+        } while ($exists);
+
+        return $candidate;
     }
 
     /**

@@ -55,7 +55,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState('PENDING');
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<{ id: string; name: string; sku: string; price: number; unit?: string }[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
   const [showExamples, setShowExamples] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -71,7 +73,45 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
         setWarehouseId(list.length === 1 ? list[0].id : getCurrentContext().warehouseId);
       })
       .catch(() => setWarehouses([]));
+
+    apiClient
+      .getProducts()
+      .then(setCatalogProducts)
+      .catch(() => setCatalogProducts([]));
   }, []);
+
+  const addCatalogProductToDraft = (product: { id: string; name: string; sku: string; price: number; unit?: string }, quantity: number = 1) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+
+      const existingIndex = prev.items.findIndex((line) => line.productId === product.id);
+
+      let updatedItems: DraftLine[];
+      if (existingIndex >= 0) {
+        updatedItems = prev.items.map((line, i) =>
+          i === existingIndex ? { ...line, quantity: line.quantity + quantity } : line
+        );
+      } else {
+        updatedItems = [
+          ...prev.items,
+          {
+            productId: product.id,
+            productName: product.name,
+            sku: product.sku,
+            unit: product.unit,
+            price: product.price,
+            quantity: quantity,
+            discountPercent: 0,
+          },
+        ];
+      }
+
+      return {
+        ...prev,
+        items: updatedItems,
+      };
+    });
+  };
 
   const review = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,10 +123,33 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
 
     try {
       const result = await apiClient.parseMessage(rawText.trim(), 'manual_paste');
-      setDraft(result);
-      setCustomerName(result.customer?.name ?? '');
-      setCustomerPhone(result.customer?.phone ?? '');
-      setPaymentMethod(result.payment_method ?? 'CASH');
+
+      const mappedDraft: Draft = {
+        id: result.id,
+        customer: result.customer || { is_new: true },
+        items: (result.items || []).map((item: any) => ({
+          productId: item.product_id || item.productId || '',
+          productName: item.product_name || item.productName || '',
+          sku: item.sku || '',
+          unit: item.unit,
+          unitLabel: item.unit_label || item.unitLabel,
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 1,
+          discountPercent: Number(item.discount_percent ?? item.discountPercent) || 0,
+        })),
+        unmatched_items: result.unmatched_items || [],
+        tax_rate: Number(result.tax_rate) || 0,
+        payment_method: result.payment_method || 'CASH',
+        subtotal: Number(result.subtotal) || 0,
+        discount_amount: Number(result.discount_amount) || 0,
+        tax_amount: Number(result.tax_amount) || 0,
+        grand_total: Number(result.grand_total) || 0,
+      };
+
+      setDraft(mappedDraft);
+      setCustomerName(mappedDraft.customer?.name ?? '');
+      setCustomerPhone(mappedDraft.customer?.phone ?? '');
+      setPaymentMethod(mappedDraft.payment_method ?? 'CASH');
     } catch (err) {
       setErrorMessage(err instanceof ApiError ? err.message : isFa ? 'بررسی پیام ناموفق بود.' : 'Could not read the message.');
     } finally {
@@ -141,23 +204,33 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
     setErrorMessage('');
 
     try {
+      const validItems = draft.items
+        .map((line: any) => ({
+          productId: line.productId || line.product_id || '',
+          quantity: Math.max(1, Number(line.quantity) || 1),
+          discountPercent: Number(line.discountPercent ?? line.discount_percent) || 0,
+        }))
+        .filter((item) => Boolean(item.productId && item.productId.trim()));
+
+      if (validItems.length === 0) {
+        setErrorMessage(isFa ? 'هیچ کالای معتبری در پیش‌نویس برای ثبت وجود ندارد.' : 'No valid items in draft to checkout.');
+        return;
+      }
+
       const order = await apiClient.checkout({
         warehouseId,
         customerId: draft.customer.id,
         customerName: customerName.trim() || undefined,
         paymentMethod,
+        paymentStatus: orderPaymentStatus,
         source: 'MESSAGE',
-        items: draft.items.map((line) => ({
-          productId: line.productId,
-          quantity: Math.max(1, line.quantity),
-          discountPercent: line.discountPercent,
-        })),
+        items: validItems,
       });
 
       setNotice(
         isFa
-          ? `سفارش ${order.orderNumber} ثبت شد و موجودی انبار کسر گردید.`
-          : `Order ${order.orderNumber} registered and stock deducted.`
+          ? `سفارش ${order.orderNumber} با موفقیت ثبت شد (${order.paymentStatus === 'PAID' ? 'پرداخت‌شده' : 'در انتظار پرداخت'}).`
+          : `Order ${order.orderNumber} registered (${order.paymentStatus === 'PAID' ? 'Paid' : 'Pending payment'}).`
       );
 
       setDraft(null);
@@ -304,6 +377,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
                 <option value="CARD">{isFa ? 'کارت' : 'Card'}</option>
                 <option value="BANK_TRANSFER">{isFa ? 'حواله' : 'Bank transfer'}</option>
               </select>
+              <select value={orderPaymentStatus} onChange={(e) => setOrderPaymentStatus(e.target.value)} style={inputStyle(theme)}>
+                <option value="PENDING">{isFa ? 'در انتظار پرداخت' : 'Pending payment'}</option>
+                <option value="PAID">{isFa ? 'پرداخت شده' : 'Paid'}</option>
+              </select>
               <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} style={inputStyle(theme)}>
                 <option value="">{s.selectWarehouse}</option>
                 {warehouses.map((w) => (
@@ -324,33 +401,61 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
               padding: theme.spacing.lg,
             }}
           >
-            <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
-              {isFa ? 'کالاها' : 'Items'}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
+                {isFa ? 'کالاهای سفارش' : 'Order Items'}
+              </h3>
+
+              {catalogProducts.length > 0 && (
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    const selected = catalogProducts.find((p) => p.id === e.target.value);
+                    if (selected) {
+                      addCatalogProductToDraft(selected, 1);
+                      e.target.value = '';
+                    }
+                  }}
+                  style={{ ...inputStyle(theme), width: 'auto', minWidth: 200, fontSize: '12px' }}
+                >
+                  <option value="">{isFa ? '＋ افزودن دستی کالا از انبار…' : '＋ Add product manually…'}</option>
+                  {catalogProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({formatMoney(p.price, isFa)})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
 
             {draft.items.length === 0 ? (
               <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary }}>
-                {isFa ? 'هیچ کالایی از این پیام خوانده نشد.' : 'No items could be read from this message.'}
+                {isFa ? 'هیچ کالایی متصل نشده است. از لیست زیر یا انبار کالا را انتخاب کنید.' : 'No items attached yet. Match or select a product below.'}
               </p>
             ) : (
-              draft.items.map((line, index) => (
-                <div
-                  key={`${line.productId}-${index}`}
-                  style={{
-                    display: 'flex',
-                    gap: theme.spacing.sm,
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    padding: '10px 0',
-                    borderBottom: `1px solid ${theme.colors.border}`,
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 180 }}>
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: theme.colors.textPrimary }}>{line.productName}</div>
-                    <div style={{ fontSize: '11px', color: theme.colors.textMuted }}>
-                      {line.sku} · {formatMoney(line.price, isFa)} / {line.unitLabel ?? line.unit}
+              draft.items.map((line: any, index) => {
+                const pId = line.productId || line.product_id || '';
+                const pName = line.productName || line.product_name || (isFa ? 'کالای انتخابی' : 'Selected Product');
+                const pSku = line.sku || '';
+
+                return (
+                  <div
+                    key={`${pId}-${index}`}
+                    style={{
+                      display: 'flex',
+                      gap: theme.spacing.sm,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      padding: '10px 0',
+                      borderBottom: `1px solid ${theme.colors.border}`,
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: theme.colors.textPrimary }}>{pName}</div>
+                      <div style={{ fontSize: '11px', color: theme.colors.textMuted }}>
+                        {pSku ? `${pSku} · ` : ''}{formatMoney(line.price, isFa)} / {line.unitLabel ?? line.unit}
+                      </div>
                     </div>
-                  </div>
 
                   <input
                     type="number"
@@ -376,7 +481,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
                     ✕
                   </button>
                 </div>
-              ))
+                );
+              })
             )}
           </section>
 
@@ -393,10 +499,53 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
               <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 700, color: theme.colors.textPrimary }}>
                 {s.unmatchedLines}
               </h3>
-              <p style={{ margin: '0 0 8px', fontSize: '13px', color: theme.colors.textSecondary }}>{s.unmatchedExplain}</p>
+              <p style={{ margin: '0 0 12px', fontSize: '13px', color: theme.colors.textSecondary }}>
+                {isFa ? 'متن‌های زیر مستقیماً به کالا متصل نشدند. می‌توانید کالای مربوطه را از انبار انتخاب کنید:' : s.unmatchedExplain}
+              </p>
               {draft.unmatched_items.map((line, index) => (
-                <div key={index} style={{ fontSize: '13px', color: theme.colors.textPrimary }}>
-                  • {line.raw_text}
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    gap: theme.spacing.md,
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    padding: '8px 0',
+                    borderBottom: index < draft.unmatched_items.length - 1 ? `1px dashed ${theme.colors.border}` : 'none',
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: theme.colors.textPrimary }}>
+                    • {line.raw_text} ({quantityWithUnit(line.quantity, 'عدد', language)})
+                  </div>
+
+                  {catalogProducts.length > 0 && (
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        const selected = catalogProducts.find((p) => p.id === e.target.value);
+                        if (selected) {
+                          addCatalogProductToDraft(selected, line.quantity || 1);
+                          setDraft((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  unmatched_items: prev.unmatched_items.filter((_, i) => i !== index),
+                                }
+                              : prev
+                          );
+                        }
+                      }}
+                      style={{ ...inputStyle(theme), maxWidth: 260, fontSize: '12px' }}
+                    >
+                      <option value="">{isFa ? '🔍 اتصال به کالا در انبار…' : 'Match to catalog product…'}</option>
+                      {catalogProducts.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({formatMoney(p.price, isFa)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               ))}
             </section>
