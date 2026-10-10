@@ -36,7 +36,11 @@ interface SalesOrderRepository {
         customer: Customer?,
         cartItems: List<CartItem>,
         paymentMethod: PaymentMethod,
-        notes: String = ""
+        notes: String = "",
+        idempotencyKey: String = UUID.randomUUID().toString(),
+        source: String = "POS",
+        paymentStatus: PaymentStatus = PaymentStatus.PAID,
+        fulfillmentStatus: FulfillmentStatus = FulfillmentStatus.COMPLETED
     ): SalesOrder
 
     suspend fun updateOrderStatus(
@@ -113,15 +117,19 @@ class SalesOrderRepositoryImpl(
         customer: Customer?,
         cartItems: List<CartItem>,
         paymentMethod: PaymentMethod,
-        notes: String
+        notes: String,
+        idempotencyKey: String,
+        source: String,
+        paymentStatus: PaymentStatus,
+        fulfillmentStatus: FulfillmentStatus
     ): SalesOrder {
         val validCartItems = cartItems.filter { it.productId.isNotBlank() }
         require(validCartItems.isNotEmpty()) { "Cart contains no valid products for checkout" }
 
-        // Sync with remote API (Backend Source of Truth)
+        // Sync with remote API (Backend Source of Truth) with Idempotency protection
         val remoteOrder: OrderDto? = try {
             val response = apiService.checkout(
-                CheckoutRequestDto(
+                request = CheckoutRequestDto(
                     orgId = orgId,
                     storeId = storeId,
                     warehouseId = warehouseId,
@@ -129,6 +137,9 @@ class SalesOrderRepositoryImpl(
                     customerName = customer?.name ?: "مشتری حضوری",
                     paymentMethod = paymentMethod.name,
                     notes = notes,
+                    source = source,
+                    paymentStatus = paymentStatus.name,
+                    fulfillmentStatus = fulfillmentStatus.name,
                     items = validCartItems.map {
                         CheckoutItemDto(
                             productId = it.productId,
@@ -141,7 +152,8 @@ class SalesOrderRepositoryImpl(
                             taxRate = it.taxRate
                         )
                     }
-                )
+                ),
+                idempotencyKey = idempotencyKey
             )
             if (response.isSuccessful && response.body() != null) {
                 response.body()
@@ -190,8 +202,8 @@ class SalesOrderRepositoryImpl(
             taxAmount = taxAmount,
             totalAmount = totalAmount,
             paymentMethod = paymentMethod,
-            paymentStatus = PaymentStatus.PAID,
-            fulfillmentStatus = FulfillmentStatus.COMPLETED,
+            paymentStatus = remoteOrder?.paymentStatus?.let { runCatching { PaymentStatus.valueOf(it) }.getOrNull() } ?: paymentStatus,
+            fulfillmentStatus = remoteOrder?.fulfillmentStatus?.let { runCatching { FulfillmentStatus.valueOf(it) }.getOrNull() } ?: fulfillmentStatus,
             notes = notes,
             createdAt = System.currentTimeMillis()
         )

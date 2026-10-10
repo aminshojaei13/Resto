@@ -169,7 +169,8 @@ fun MainAppScreen(
             appContainer.tenantRepository,
             appContainer.messageRepository,
             appContainer.salesOrderRepository,
-            appContainer.customerRepository
+            appContainer.customerRepository,
+            appContainer.productRepository
         )
     )
 

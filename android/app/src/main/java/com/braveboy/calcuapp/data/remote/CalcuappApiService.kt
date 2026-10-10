@@ -77,7 +77,10 @@ interface CalcuappApiService {
     ): Response<List<OrderDto>>
 
     @POST("orders/checkout")
-    suspend fun checkout(@Body request: CheckoutRequestDto): Response<OrderDto>
+    suspend fun checkout(
+        @Body request: CheckoutRequestDto,
+        @retrofit2.http.Header("X-Idempotency-Key") idempotencyKey: String? = null
+    ): Response<OrderDto>
 
     @GET("customers")
     suspend fun getCustomers(
@@ -122,7 +125,9 @@ interface CalcuappApiService {
     suspend fun addExpense(@Body expense: ExpenseDto): Response<ExpenseDto>
 
     @POST("messages/parse")
-    suspend fun parseMessage(@Query("raw_text") rawText: String, @Query("source") source: String): Response<Map<String, Any>>
+    suspend fun parseMessage(
+        @Body request: com.braveboy.calcuapp.data.remote.dto.ParseMessageRequestDto
+    ): Response<com.braveboy.calcuapp.data.remote.dto.ParseMessageResponseDto>
 
     @GET("messages")
     suspend fun getImportedMessages(@Query("org_id") orgId: String): Response<List<Map<String, Any>>>

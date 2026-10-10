@@ -197,7 +197,65 @@ data class CheckoutRequestDto(
     @Json(name = "customer_name") val customerName: String,
     @Json(name = "payment_method") val paymentMethod: String,
     @Json(name = "notes") val notes: String?,
+    @Json(name = "source") val source: String? = null,
+    @Json(name = "payment_status") val paymentStatus: String? = null,
+    @Json(name = "fulfillment_status") val fulfillmentStatus: String? = null,
     @Json(name = "items") val items: List<CheckoutItemDto>
+)
+
+@JsonClass(generateAdapter = true)
+data class ParseMessageRequestDto(
+    @Json(name = "raw_text") val rawText: String,
+    @Json(name = "source") val source: String = "manual_paste",
+    @Json(name = "locale") val locale: String = "fa"
+)
+
+@JsonClass(generateAdapter = true)
+data class ParsedCustomerDto(
+    @Json(name = "id") val id: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "phone") val phone: String? = null,
+    @Json(name = "email") val email: String? = null,
+    @Json(name = "address") val address: String? = null,
+    @Json(name = "is_new") val isNew: Boolean = true
+)
+
+@JsonClass(generateAdapter = true)
+data class ParsedItemDto(
+    @Json(name = "product_id") val productId: String,
+    @Json(name = "name") val name: String,
+    @Json(name = "sku") val sku: String? = null,
+    @Json(name = "quantity") val quantity: Int = 1,
+    @Json(name = "unit") val unit: String? = "piece",
+    @Json(name = "unit_label") val unitLabel: String? = "عدد",
+    @Json(name = "price") val price: Double = 0.0,
+    @Json(name = "discount_percent") val discountPercent: Double = 0.0,
+    @Json(name = "total") val total: Double = 0.0
+)
+
+@JsonClass(generateAdapter = true)
+data class UnmatchedItemDto(
+    @Json(name = "raw_text") val rawText: String? = null,
+    @Json(name = "product_name") val productName: String,
+    @Json(name = "quantity") val quantity: Int = 1,
+    @Json(name = "reason") val reason: String = "no_catalog_match"
+)
+
+@JsonClass(generateAdapter = true)
+data class ParseMessageResponseDto(
+    @Json(name = "id") val id: String? = null,
+    @Json(name = "source") val source: String? = null,
+    @Json(name = "raw_text") val rawText: String,
+    @Json(name = "customer") val customer: ParsedCustomerDto? = null,
+    @Json(name = "items") val items: List<ParsedItemDto> = emptyList(),
+    @Json(name = "unmatched_items") val unmatchedItems: List<UnmatchedItemDto> = emptyList(),
+    @Json(name = "tax_rate") val taxRate: Double = 0.0,
+    @Json(name = "payment_method") val paymentMethod: String = "CASH",
+    @Json(name = "subtotal") val subtotal: Double = 0.0,
+    @Json(name = "discount_amount") val discountAmount: Double = 0.0,
+    @Json(name = "tax_amount") val taxAmount: Double = 0.0,
+    @Json(name = "grand_total") val grandTotal: Double = 0.0,
+    @Json(name = "requires_review") val requiresReview: Boolean = true
 )
 
 @JsonClass(generateAdapter = true)
