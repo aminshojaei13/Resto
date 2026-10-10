@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
 import com.braveboy.calcuapp.data.model.LedgerType
+import com.braveboy.calcuapp.ui.MainDestination
 import com.braveboy.calcuapp.ui.components.RestoBadge
 import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
 import com.braveboy.calcuapp.ui.components.RestoButton
@@ -68,6 +69,8 @@ import com.braveboy.calcuapp.ui.components.RestoSection
 import com.braveboy.calcuapp.ui.components.RestoStatCard
 import com.braveboy.calcuapp.ui.components.RestoTextField
 import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.dashboard.components.OnboardingChecklistCard
+import com.braveboy.calcuapp.ui.dashboard.components.OnboardingWelcomeDialog
 import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import com.braveboy.calcuapp.ui.theme.RestoTheme
@@ -80,11 +83,14 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> }
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val metrics by viewModel.metricsSummary.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
+    val onboardingState by viewModel.onboardingState.collectAsState()
+    val showWelcomeDialog by viewModel.showWelcomeDialog.collectAsState()
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
@@ -129,6 +135,20 @@ fun DashboardScreen(
             contentPadding = PaddingValues(top = RestoSpacing.md, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
+            // Onboarding Interactive Checklist (Guidance for first-time / active learning)
+            item {
+                if (!onboardingState.isDismissed) {
+                    OnboardingChecklistCard(
+                        state = onboardingState,
+                        isPersian = isPersian,
+                        onNavigate = onNavigateToDestination,
+                        onSkipSupplierStep = { viewModel.skipSupplierStep() },
+                        onDismiss = { viewModel.dismissOnboarding() },
+                        onShowWelcomeDialog = { viewModel.openWelcomeDialog() }
+                    )
+                }
+            }
+
             // Priority Action Banner (What to do right now?)
             item {
                 if (metrics.lowStockCount > 0) {
@@ -286,6 +306,19 @@ fun DashboardScreen(
             onDismiss = { viewModel.closeRecordEntryDialog() },
             isPersian = isPersian,
             currencyUnit = currencyUnit
+        )
+    }
+
+    // Welcome Dialog on first entry (or when requested by user)
+    if (showWelcomeDialog) {
+        OnboardingWelcomeDialog(
+            userName = tenantState.userName,
+            isPersian = isPersian,
+            onStartOnboarding = {
+                viewModel.dismissWelcomeDialog(permanently = true)
+                onNavigateToDestination(MainDestination.INVENTORY, true)
+            },
+            onDismiss = { viewModel.dismissWelcomeDialog(permanently = true) }
         )
     }
 }

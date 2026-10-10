@@ -38,8 +38,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ language = 'fa' }) =
 
     try {
       const [productList, unitList] = await Promise.all([apiClient.getProducts(), apiClient.getUnits()]);
-      setProducts(productList);
-      setUnits(unitList);
+      setProducts(productList ?? []);
+      setUnits(unitList ?? []);
     } catch (err) {
       setErrorMessage(
         err instanceof ApiError ? err.message : isFa ? 'دریافت کالاها ناموفق بود.' : 'Could not load products.'
@@ -69,11 +69,34 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ language = 'fa' }) =
         }
       />
 
+      {units.length > 0 && (
+        <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
+            {isFa ? 'واحدهای سنجش تعریف‌شده:' : 'Measurement units:'}
+          </span>
+          {units.map((u) => (
+            <span
+              key={u.code}
+              style={{
+                fontSize: '12px',
+                padding: '4px 10px',
+                borderRadius: theme.borderRadius.full,
+                backgroundColor: theme.colors.surfaceElevated,
+                border: `1px solid ${theme.colors.border}`,
+                color: theme.colors.textPrimary,
+              }}
+            >
+              {u.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       <FormError message={errorMessage} />
 
       {isLoading ? (
         <p style={{ color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
-      ) : products.length === 0 ? (
+      ) : (products ?? []).length === 0 ? (
         <EmptyState
           title={isFa ? 'هنوز کالایی ثبت نشده است' : 'No products yet'}
           description={

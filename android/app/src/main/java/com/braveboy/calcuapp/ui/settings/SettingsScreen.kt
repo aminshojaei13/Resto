@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.HorizontalDivider
@@ -169,6 +170,58 @@ fun SettingsScreen(
                             subtitle = if (isPersian) "تومان (محاسبات دقیق مالی)" else "USD / Precision Monetary",
                             leadingIcon = Icons.Rounded.Tune
                         )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = RestoSpacing.md),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+
+                        // Onboarding Walkthrough toggle
+                        val isOnboardingDismissed by tenantRepository.isOnboardingDismissed.collectAsState(initial = false)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(RestoSpacing.md),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.School,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.padding(start = RestoSpacing.md))
+                                Column {
+                                    Text(
+                                        text = if (isPersian) "راهنمای شروع به کار و آموزش" else "Getting Started Guide",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = if (isPersian) "نمایش کارت چک‌لیست ۴ مرحله‌ای در داشبورد" else "Show 4-step checklist on Dashboard",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = !isOnboardingDismissed,
+                                onCheckedChange = { show ->
+                                    scope.launch {
+                                        tenantRepository.setOnboardingDismissed(!show)
+                                        if (show) {
+                                            tenantRepository.setSupplierStepSkipped(false)
+                                            tenantRepository.setHasSeenOnboardingDialog(false)
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

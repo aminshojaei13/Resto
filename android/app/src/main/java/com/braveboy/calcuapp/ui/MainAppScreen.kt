@@ -183,7 +183,10 @@ fun MainAppScreen(
     val dashboardViewModel: DashboardViewModel = viewModel(
         factory = DashboardViewModel.Factory(
             appContainer.tenantRepository,
-            appContainer.ledgerRepository
+            appContainer.ledgerRepository,
+            appContainer.productRepository,
+            appContainer.supplierRepository,
+            appContainer.salesOrderRepository
         )
     )
 
@@ -250,7 +253,15 @@ fun MainAppScreen(
             ) {
                 when (currentDestination) {
                     MainDestination.ACCOUNTING -> {
-                        DashboardScreen(viewModel = dashboardViewModel)
+                        DashboardScreen(
+                            viewModel = dashboardViewModel,
+                            onNavigateToDestination = { destination, openAddProduct ->
+                                if (openAddProduct) {
+                                    inventoryViewModel.openAddProductDialog()
+                                }
+                                currentDestination = destination
+                            }
+                        )
                     }
                     MainDestination.ORDERS -> {
                         SalesOrdersScreen(viewModel = salesOrdersViewModel)

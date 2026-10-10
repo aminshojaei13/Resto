@@ -180,7 +180,10 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ language = 'fa' }) => {
         <input
           type="search"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setAppliedSearch(e.target.value.trim());
+          }}
           placeholder={s.searchOrders}
           style={{
             flex: 1,

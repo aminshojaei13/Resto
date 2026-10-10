@@ -100,6 +100,29 @@ class SalesOrdersViewModel(
         _selectedOrderForDetail.value = order
     }
 
+    fun updateOrderStatus(
+        orderId: String,
+        paymentStatus: PaymentStatus? = null,
+        fulfillmentStatus: FulfillmentStatus? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                salesOrderRepository.updateOrderStatus(orderId, paymentStatus, fulfillmentStatus)
+                _snackbarMessage.value = "وضعیت سفارش به‌روزرسانی شد"
+                _selectedOrderForDetail.value?.let { current ->
+                    if (current.id == orderId) {
+                        _selectedOrderForDetail.value = current.copy(
+                            paymentStatus = paymentStatus ?: current.paymentStatus,
+                            fulfillmentStatus = fulfillmentStatus ?: current.fulfillmentStatus
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _snackbarMessage.value = "خطا در تغییر وضعیت: ${e.localizedMessage}"
+            }
+        }
+    }
+
     fun clearSnackbarMessage() {
         _snackbarMessage.value = null
     }

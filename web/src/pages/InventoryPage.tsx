@@ -57,10 +57,11 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
         apiClient.getProducts(),
       ]);
 
-      setWarehouses(warehouseList);
-      setStock(stockRows);
-      setProducts(productList);
-      setMovements(await apiClient.getStockMovements(warehouseFilter ? { warehouseId: warehouseFilter } : {}));
+      setWarehouses(warehouseList ?? []);
+      setStock(stockRows ?? []);
+      setProducts(productList ?? []);
+      const movRes = await apiClient.getStockMovements(warehouseFilter ? { warehouseId: warehouseFilter } : {});
+      setMovements(Array.isArray(movRes) ? movRes : Array.isArray((movRes as any)?.data) ? (movRes as any).data : []);
       setWarehousesLoaded(true);
     } catch (err) {
       setErrorMessage(
@@ -95,7 +96,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
           <p style={{ margin: '0 auto 20px', maxWidth: 460, fontSize: '14px', color: theme.colors.textSecondary, lineHeight: 1.8 }}>
             {s.noWarehouseBody}
           </p>
-          <PrimaryButton onClick={() => setIsWarehouseOpen(true)}>🏗 {s.createWarehouse}</PrimaryButton>
+          <PrimaryButton onClick={() => setIsWarehouseOpen(true)}>{s.createWarehouse}</PrimaryButton>
         </div>
 
         {isWarehouseOpen && (
@@ -118,7 +119,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
         title={s.currentStockTitle}
         description={s.currentStockSubtitle}
         actions={
-          <PrimaryButton onClick={() => setIsStockInOpen(true)}>➕ {s.submitStockIn}</PrimaryButton>
+          <PrimaryButton onClick={() => setIsStockInOpen(true)}>➕ {isFa ? 'افزایش موجودی' : 'Increase stock'}</PrimaryButton>
         }
       />
 
@@ -150,12 +151,10 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
 
       {isLoading ? (
         <p style={{ color: theme.colors.textSecondary }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
-      ) : stock.length === 0 ? (
+      ) : (stock ?? []).length === 0 ? (
         <EmptyState
           title={isFa ? 'موجودی ثبت نشده است' : 'No stock recorded yet'}
           description={isFa ? 'برای ثبت موجودی از دکمه بالا استفاده کنید.' : 'Use the button above to record stock coming in.'}
-          actionText={s.submitStockIn}
-          onAction={() => setIsStockInOpen(true)}
           icon="📦"
         />
       ) : (
@@ -212,7 +211,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
         </div>
       )}
 
-      {movements.length > 0 && (
+      {(movements ?? []).length > 0 && (
         <section>
           <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: theme.colors.textPrimary }}>
             {s.stockMovementsTitle}

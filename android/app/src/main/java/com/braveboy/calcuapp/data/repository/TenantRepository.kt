@@ -20,6 +20,12 @@ interface TenantRepository {
     suspend fun setActiveWarehouse(warehouseId: String)
     suspend fun setLanguage(language: String)
     suspend fun seedInitialData()
+    val isOnboardingDismissed: Flow<Boolean>
+    suspend fun setOnboardingDismissed(dismissed: Boolean)
+    val isSupplierStepSkipped: Flow<Boolean>
+    suspend fun setSupplierStepSkipped(skipped: Boolean)
+    val hasSeenOnboardingDialog: Flow<Boolean>
+    suspend fun setHasSeenOnboardingDialog(seen: Boolean)
 }
 
 class TenantRepositoryImpl(
@@ -70,5 +76,23 @@ class TenantRepositoryImpl(
 
     override suspend fun seedInitialData() {
         // Intentionally no-op: All organizations, stores, and entities are sourced from real backend
+    }
+
+    override val isOnboardingDismissed: Flow<Boolean> = tenantPreferences.isOnboardingDismissed
+
+    override suspend fun setOnboardingDismissed(dismissed: Boolean) {
+        tenantPreferences.setOnboardingDismissed(dismissed)
+    }
+
+    override val isSupplierStepSkipped: Flow<Boolean> = tenantPreferences.isSupplierStepSkipped
+
+    override suspend fun setSupplierStepSkipped(skipped: Boolean) {
+        tenantPreferences.setSupplierStepSkipped(skipped)
+    }
+
+    override val hasSeenOnboardingDialog: Flow<Boolean> = tenantPreferences.hasSeenOnboardingDialog
+
+    override suspend fun setHasSeenOnboardingDialog(seen: Boolean) {
+        tenantPreferences.setHasSeenOnboardingDialog(seen)
     }
 }

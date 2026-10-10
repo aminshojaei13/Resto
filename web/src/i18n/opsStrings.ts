@@ -519,6 +519,12 @@ export const orderSourceLabel = (source: string, language: Language): string => 
   switch ((source || '').toUpperCase()) {
     case 'MESSAGE':
       return s.sourceMessage;
+    case 'INSTAGRAM':
+      return language === 'fa' ? 'اینستاگرام' : 'Instagram';
+    case 'TELEGRAM':
+      return language === 'fa' ? 'تلگرام' : 'Telegram';
+    case 'WHATSAPP':
+      return language === 'fa' ? 'واتس‌اپ' : 'WhatsApp';
     case 'WEB':
       return s.sourceWeb;
     case 'POS':

@@ -63,7 +63,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
     void load();
   }, [load]);
 
-  const visible = categoryFilter ? expenses.filter((e) => e.category === categoryFilter) : expenses;
+  const visible = categoryFilter ? (expenses || []).filter((e) => e.category === categoryFilter) : (expenses || []);
 
   const remove = async (expense: Expense) => {
     try {
@@ -199,11 +199,14 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
               }}
             >
               <option value="">{isFa ? 'همه' : 'All'}</option>
-              {categories.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
+              {(categories || []).map((c, idx) => {
+                const val = c.code || (c as any).key || String(idx);
+                return (
+                  <option key={val} value={val}>
+                    {c.label}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -211,8 +214,6 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
             <EmptyState
               title={isFa ? 'هنوز هزینه‌ای ثبت نشده است' : 'No expenses yet'}
               description={isFa ? 'خرج‌های جاری کسب‌وکار را اینجا ثبت کنید.' : 'Record the business running costs here.'}
-              actionText={s.newExpense}
-              onAction={() => { setEditing(null); setIsOpen(true); }}
               icon="💸"
             />
           ) : (
@@ -422,11 +423,14 @@ const ExpenseModal: React.FC<{
 
         <SelectInput label={s.category} required value={category} error={errors.category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">{isFa ? 'انتخاب کنید' : 'Select a category'}</option>
-          {categories.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.label}
-            </option>
-          ))}
+          {(categories || []).map((c, idx) => {
+            const val = c.code || (c as any).key || String(idx);
+            return (
+              <option key={val} value={val}>
+                {c.label}
+              </option>
+            );
+          })}
         </SelectInput>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.md }}>

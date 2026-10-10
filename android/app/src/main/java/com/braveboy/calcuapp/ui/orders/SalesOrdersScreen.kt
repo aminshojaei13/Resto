@@ -47,6 +47,7 @@ import com.braveboy.calcuapp.ui.components.RestoBadge
 import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
 import com.braveboy.calcuapp.ui.components.RestoBottomSheet
 import com.braveboy.calcuapp.ui.components.RestoButton
+import com.braveboy.calcuapp.ui.components.RestoButtonVariant
 import com.braveboy.calcuapp.ui.components.RestoCard
 import com.braveboy.calcuapp.ui.components.RestoChip
 import com.braveboy.calcuapp.ui.components.RestoEmptyState
@@ -55,6 +56,7 @@ import com.braveboy.calcuapp.ui.components.RestoSearchField
 import com.braveboy.calcuapp.ui.components.RestoTopBar
 import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
+import com.braveboy.calcuapp.ui.theme.RestoTheme
 import com.braveboy.calcuapp.util.PersianFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -198,6 +200,9 @@ fun SalesOrdersScreen(
             order = order,
             isPersian = isPersian,
             currencyUnit = currencyUnit,
+            onUpdateStatus = { orderId, payStatus, fulStatus ->
+                viewModel.updateOrderStatus(orderId, payStatus, fulStatus)
+            },
             onDismiss = { viewModel.selectOrderForDetail(null) }
         )
     }
@@ -209,6 +214,7 @@ fun OrderDetailSheet(
     order: SalesOrder,
     isPersian: Boolean,
     currencyUnit: String,
+    onUpdateStatus: (orderId: String, paymentStatus: PaymentStatus?, fulfillmentStatus: FulfillmentStatus?) -> Unit = { _, _, _ -> },
     onDismiss: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("yyyy/MM/dd • HH:mm", Locale.getDefault())
@@ -337,11 +343,76 @@ fun OrderDetailSheet(
                 )
             }
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Order Workflow Actions
+            Text(
+                text = if (isPersian) "مراحل آماده‌سازی و پردازش" else "Order Fulfillment & Status",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                if (order.fulfillmentStatus == FulfillmentStatus.PENDING) {
+                    RestoButton(
+                        text = if (isPersian) "شروع آماده‌سازی سفارش (پردازش)" else "Start Processing",
+                        onClick = {
+                            onUpdateStatus(order.id, null, FulfillmentStatus.PROCESSING)
+                        },
+                        fullWidth = true
+                    )
+                } else if (order.fulfillmentStatus == FulfillmentStatus.PROCESSING) {
+                    RestoButton(
+                        text = if (isPersian) "تکمیل و ارسال سفارش به مشتری" else "Complete & Ship Order",
+                        onClick = {
+                            onUpdateStatus(order.id, null, FulfillmentStatus.COMPLETED)
+                        },
+                        fullWidth = true
+                    )
+                } else if (order.fulfillmentStatus == FulfillmentStatus.COMPLETED) {
+                    RestoCard(
+                        containerColor = RestoTheme.colors.successContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = null,
+                                tint = RestoTheme.colors.success,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(RestoSpacing.xs))
+                            Text(
+                                text = if (isPersian) "این سفارش با موفقیت ارسال و تکمیل شده است." else "This order has been completed.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = RestoTheme.colors.onSuccessContainer
+                            )
+                        }
+                    }
+                }
+
+                if (order.paymentStatus != PaymentStatus.PAID) {
+                    RestoButton(
+                        text = if (isPersian) "ثبت تسویه حساب (پرداخت شد)" else "Mark as Paid",
+                        onClick = {
+                            onUpdateStatus(order.id, PaymentStatus.PAID, null)
+                        },
+                        variant = RestoButtonVariant.Outlined,
+                        fullWidth = true
+                    )
+                }
+            }
+
             // Close button
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
             RestoButton(
                 text = if (isPersian) "بستن جزئیات" else "Close",
                 onClick = onDismiss,
+                variant = RestoButtonVariant.Secondary,
                 fullWidth = true
             )
         }

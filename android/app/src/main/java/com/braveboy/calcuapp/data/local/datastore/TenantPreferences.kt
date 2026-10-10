@@ -3,6 +3,7 @@ package com.braveboy.calcuapp.data.local.datastore
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -29,6 +30,9 @@ class TenantPreferences(private val context: Context) {
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_ROLE = stringPreferencesKey("user_role")
         val LANGUAGE = stringPreferencesKey("language")
+        val ONBOARDING_DISMISSED = booleanPreferencesKey("onboarding_dismissed")
+        val ONBOARDING_STEP_SUPPLIERS_SKIPPED = booleanPreferencesKey("onboarding_step_suppliers_skipped")
+        val HAS_SEEN_ONBOARDING_DIALOG = booleanPreferencesKey("has_seen_onboarding_dialog")
     }
 
     val tenantState: Flow<TenantState> = context.tenantDataStore.data.map { prefs ->
@@ -90,6 +94,36 @@ class TenantPreferences(private val context: Context) {
             prefs.remove(PreferenceKeys.USER_ID)
             prefs.remove(PreferenceKeys.USER_NAME)
             prefs.remove(PreferenceKeys.USER_ROLE)
+        }
+    }
+
+    val isOnboardingDismissed: Flow<Boolean> = context.tenantDataStore.data.map { prefs ->
+        prefs[PreferenceKeys.ONBOARDING_DISMISSED] ?: false
+    }
+
+    suspend fun setOnboardingDismissed(dismissed: Boolean) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.ONBOARDING_DISMISSED] = dismissed
+        }
+    }
+
+    val isSupplierStepSkipped: Flow<Boolean> = context.tenantDataStore.data.map { prefs ->
+        prefs[PreferenceKeys.ONBOARDING_STEP_SUPPLIERS_SKIPPED] ?: false
+    }
+
+    suspend fun setSupplierStepSkipped(skipped: Boolean) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.ONBOARDING_STEP_SUPPLIERS_SKIPPED] = skipped
+        }
+    }
+
+    val hasSeenOnboardingDialog: Flow<Boolean> = context.tenantDataStore.data.map { prefs ->
+        prefs[PreferenceKeys.HAS_SEEN_ONBOARDING_DIALOG] ?: false
+    }
+
+    suspend fun setHasSeenOnboardingDialog(seen: Boolean) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.HAS_SEEN_ONBOARDING_DIALOG] = seen
         }
     }
 }

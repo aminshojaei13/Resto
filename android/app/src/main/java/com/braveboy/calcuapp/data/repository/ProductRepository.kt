@@ -28,6 +28,12 @@ interface ProductRepository {
         storeId: String
     )
     suspend fun upsertProduct(product: Product)
+    suspend fun addProduct(
+        product: Product,
+        initialStock: Int = 0,
+        warehouseId: String = "",
+        storeId: String = ""
+    )
     suspend fun updateProduct(product: Product)
     suspend fun refreshProducts(orgId: String)
 }
@@ -141,6 +147,55 @@ class ProductRepositoryImpl(
 
     override suspend fun upsertProduct(product: Product) {
         productDao.insertProduct(product.toEntity())
+    }
+
+    override suspend fun addProduct(
+        product: Product,
+        initialStock: Int,
+        warehouseId: String,
+        storeId: String
+    ) {
+        val stockMap = if (initialStock > 0 && warehouseId.isNotBlank()) {
+            mapOf(warehouseId to initialStock)
+        } else {
+            emptyMap()
+        }
+        val productWithStock = product.copy(stockQuantityByWarehouse = stockMap)
+
+        try {
+            apiService.addProduct(
+                ProductDto(
+                    id = productWithStock.id,
+                    organizationId = productWithStock.orgId,
+                    sku = productWithStock.sku,
+                    barcode = productWithStock.barcode,
+                    name = productWithStock.name,
+                    description = productWithStock.description,
+                    price = productWithStock.price,
+                    costPrice = productWithStock.costPrice,
+                    category = productWithStock.category,
+                    unit = productWithStock.unit,
+                    imageUrl = productWithStock.imageUrl
+                )
+            )
+        } catch (_: Exception) {}
+
+        productDao.insertProduct(productWithStock.toEntity())
+
+        if (initialStock > 0 && warehouseId.isNotBlank()) {
+            val value = initialStock * productWithStock.costPrice
+            val ledgerEntry = LedgerEntry(
+                orgId = productWithStock.orgId,
+                storeId = storeId,
+                entryNumber = "INIT-${System.currentTimeMillis().toString().takeLast(6)}",
+                type = LedgerType.CREDIT,
+                category = LedgerCategory.INVENTORY_ADJUSTMENT,
+                amount = value,
+                description = "موجودی اولیه برای ${productWithStock.name} ($initialStock ${productWithStock.unit})",
+                referenceId = productWithStock.id
+            )
+            ledgerDao.insertLedgerEntry(ledgerEntry.toEntity())
+        }
     }
 
     override suspend fun updateProduct(product: Product) {

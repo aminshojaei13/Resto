@@ -41,8 +41,8 @@ interface SalesOrderRepository {
 
     suspend fun updateOrderStatus(
         orderId: String,
-        paymentStatus: PaymentStatus,
-        fulfillmentStatus: FulfillmentStatus
+        paymentStatus: PaymentStatus? = null,
+        fulfillmentStatus: FulfillmentStatus? = null
     )
     suspend fun refreshOrders(orgId: String)
 }
@@ -242,9 +242,14 @@ class SalesOrderRepositoryImpl(
 
     override suspend fun updateOrderStatus(
         orderId: String,
-        paymentStatus: PaymentStatus,
-        fulfillmentStatus: FulfillmentStatus
+        paymentStatus: PaymentStatus?,
+        fulfillmentStatus: FulfillmentStatus?
     ) {
-        // Status update logic
+        val entity = salesOrderDao.getOrderByIdDirect(orderId) ?: return
+        val updated = entity.copy(
+            paymentStatus = paymentStatus ?: entity.paymentStatus,
+            fulfillmentStatus = fulfillmentStatus ?: entity.fulfillmentStatus
+        )
+        salesOrderDao.insertSalesOrder(updated)
     }
 }

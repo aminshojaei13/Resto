@@ -9,6 +9,7 @@ import { formatPercent, formatPercentFa } from '../util/units';
 
 interface SettingsPageProps {
   language?: 'fa' | 'en';
+  navigate?: (path: string) => void;
 }
 
 /**
@@ -18,7 +19,7 @@ interface SettingsPageProps {
  * every order takes it from this value unless an authorised manager overrides
  * it for a single order.
  */
-export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa' }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa', navigate }) => {
   const s = opsStrings(language);
   const isFa = language === 'fa';
   const { theme } = useTheme();
@@ -32,9 +33,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa' }) =
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    apiClient
-      .getBusinessSettings()
+    Promise.resolve(apiClient.getBusinessSettings?.() ?? { defaultTaxRate: 8, minTaxRate: 0, maxTaxRate: 100 })
       .then((value) => {
+        if (!value) return;
         setSettings(value);
         setRateText(String(value.defaultTaxRate));
       })
@@ -87,7 +88,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa' }) =
       <FormError message={formError} />
       <FormError message={notice} />
 
-      <form
+      {!settings && !formError ? (
+        <div style={{ padding: theme.spacing.xl, color: theme.colors.textSecondary }}>
+          {isFa ? 'در حال دریافت تنظیمات...' : 'Loading settings...'}
+        </div>
+      ) : (
+        <form
         onSubmit={save}
         style={{
           backgroundColor: theme.colors.surface,
@@ -133,6 +139,60 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa' }) =
           </PrimaryButton>
         </div>
       </form>
+      )}
+
+      {/* Onboarding & Guide Section */}
+      <div
+        style={{
+          backgroundColor: theme.colors.surface,
+          border: `1px solid ${theme.colors.border}`,
+          borderRadius: theme.borderRadius.xl,
+          padding: theme.spacing['2xl'],
+          display: 'flex',
+          flexDirection: 'column',
+          gap: theme.spacing.md,
+          boxShadow: theme.shadows.card,
+        }}
+      >
+        <div style={{ fontSize: '16px', fontWeight: 700, color: theme.colors.textPrimary, display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+          <span>🎓</span>
+          <span>{isFa ? 'راهنمای شروع به کار و آموزش سیستم' : 'Getting Started Guide'}</span>
+        </div>
+        <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary, lineHeight: 1.6 }}>
+          {isFa
+            ? 'می‌توانید چک‌لیست ۴ مرحله‌ای و دیالوگ راهنمای ورود را مجدداً مشاهده و فعال کنید.'
+            : 'You can re-open the 4-step onboarding checklist and welcome guide.'}
+        </p>
+
+        <div style={{ display: 'flex', gap: theme.spacing.md, flexWrap: 'wrap', marginTop: theme.spacing.xs }}>
+          <SecondaryButton
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('resto_onboarding_welcome_seen');
+              localStorage.removeItem('resto_onboarding_dismissed');
+              localStorage.removeItem('resto_onboarding_supplier_skipped');
+              if (navigate) {
+                navigate('/app/dashboard');
+              } else {
+                window.location.pathname = '/app/dashboard';
+              }
+            }}
+          >
+            {isFa ? '📖 نمایش مجدد دیالوگ راهنمای ورود' : '📖 View Welcome Guide'}
+          </SecondaryButton>
+
+          <SecondaryButton
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('resto_onboarding_dismissed');
+              localStorage.removeItem('resto_onboarding_supplier_skipped');
+              alert(isFa ? 'چک‌لیست شروع به کار در داشبورد فعال شد.' : 'Onboarding checklist restored on dashboard.');
+            }}
+          >
+            {isFa ? '🔄 بازنشانی کارت چک‌لیست در داشبورد' : '🔄 Restore Checklist'}
+          </SecondaryButton>
+        </div>
+      </div>
     </div>
   );
 };

@@ -160,6 +160,9 @@ interface SalesOrderDao {
     @Query("SELECT * FROM sales_orders WHERE id = :id")
     fun getOrderById(id: String): Flow<SalesOrderEntity?>
 
+    @Query("SELECT * FROM sales_orders WHERE id = :id")
+    suspend fun getOrderByIdDirect(id: String): SalesOrderEntity?
+
     @Query("SELECT COUNT(*) FROM sales_orders WHERE orgId = :orgId")
     suspend fun getOrderCountForOrg(orgId: String): Int
 }

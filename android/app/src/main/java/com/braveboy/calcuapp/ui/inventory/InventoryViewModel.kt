@@ -82,6 +82,9 @@ class InventoryViewModel(
         initialValue = emptyList()
     )
 
+    private val _isAddProductDialogOpen = MutableStateFlow(false)
+    val isAddProductDialogOpen: StateFlow<Boolean> = _isAddProductDialogOpen.asStateFlow()
+
     private val _selectedProductForAdjustment = MutableStateFlow<Product?>(null)
     val selectedProductForAdjustment: StateFlow<Product?> = _selectedProductForAdjustment.asStateFlow()
 
@@ -90,6 +93,56 @@ class InventoryViewModel(
 
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+
+    fun openAddProductDialog() {
+        _isAddProductDialogOpen.value = true
+    }
+
+    fun closeAddProductDialog() {
+        _isAddProductDialogOpen.value = false
+    }
+
+    fun addProduct(
+        name: String,
+        sku: String,
+        barcode: String,
+        price: Double,
+        costPrice: Double,
+        category: String,
+        unit: String,
+        description: String,
+        initialStock: Int,
+        warehouseId: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val state = tenantState.value
+                val newProduct = Product(
+                    id = java.util.UUID.randomUUID().toString(),
+                    orgId = state.activeOrgId,
+                    sku = sku.trim(),
+                    barcode = barcode.trim(),
+                    name = name.trim(),
+                    description = description.trim(),
+                    price = price,
+                    costPrice = costPrice,
+                    category = category.trim().ifBlank { "عمومی" },
+                    unit = unit.trim().ifBlank { "عدد" }
+                )
+                val targetWarehouseId = warehouseId.ifBlank { state.activeWarehouseId }
+                productRepository.addProduct(
+                    product = newProduct,
+                    initialStock = initialStock,
+                    warehouseId = targetWarehouseId,
+                    storeId = state.activeStoreId
+                )
+                _snackbarMessage.value = "کالای '${newProduct.name}' با موفقیت ثبت شد"
+                _isAddProductDialogOpen.value = false
+            } catch (e: Exception) {
+                _snackbarMessage.value = "خطا در ثبت کالا: ${e.localizedMessage}"
+            }
+        }
+    }
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query

@@ -76,6 +76,7 @@ fun InventoryScreen(
     val warehouses by viewModel.warehouses.collectAsState()
     val selectedProductForAdjustment by viewModel.selectedProductForAdjustment.collectAsState()
     val selectedProductForEdit by viewModel.selectedProductForEdit.collectAsState()
+    val isAddProductDialogOpen by viewModel.isAddProductDialogOpen.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
     val isPersian = tenantState.language == "fa"
@@ -106,6 +107,29 @@ fun InventoryScreen(
                 title = if (isPersian) "مدیریت کالا و موجودی انبار" else "Inventory & Products",
                 subtitle = if (isPersian) "کنترل انبارها و ورود و خروج موجودی" else "Stock levels & catalog"
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.openAddProductDialog() },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = RestoSpacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = if (isPersian) "ثبت کالا" else "Add Product"
+                    )
+                    Text(
+                        text = if (isPersian) "ثبت کالای جدید" else "Add Product",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -189,11 +213,13 @@ fun InventoryScreen(
             // PRODUCT LIST
             if (products.isEmpty()) {
                 RestoEmptyState(
-                    title = if (isPersian) "کالایی یافت نشد" else "No products found",
+                    title = if (isPersian) "هنوز کالایی ثبت نشده است" else "No products found",
                     description = if (isPersian)
-                        "با عبارت جستجوی فعلی یا این دسته‌بندی، هیچ کالایی در انبار ثبت نشده است."
+                        "برای شروع صدور فاکتور و کنترل موجودی انبار، اولین کالای خود را اضافه کنید."
                     else
-                        "No products match your current search query or selected category.",
+                        "Add your first product to start inventory tracking and invoicing.",
+                    actionText = if (isPersian) "ثبت اولین کالا" else "Add First Product",
+                    onActionClick = { viewModel.openAddProductDialog() },
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -215,6 +241,31 @@ fun InventoryScreen(
                 }
             }
         }
+    }
+
+    // Add Product Dialog
+    if (isAddProductDialogOpen) {
+        AddProductDialog(
+            warehouses = warehouses,
+            activeWarehouseId = tenantState.activeWarehouseId,
+            onSubmit = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId ->
+                viewModel.addProduct(
+                    name = name,
+                    sku = sku,
+                    barcode = barcode,
+                    price = price,
+                    costPrice = costPrice,
+                    category = category,
+                    unit = unit,
+                    description = description,
+                    initialStock = initialStock,
+                    warehouseId = warehouseId
+                )
+            },
+            onDismiss = { viewModel.closeAddProductDialog() },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
+        )
     }
 
     // Stock Adjustment Dialog
@@ -458,6 +509,140 @@ fun EditProductDialog(
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            RestoTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = if (isPersian) "توضیحات اختیاری" else "Description",
+                singleLine = false,
+                maxLines = 2
+            )
+        }
+    }
+}
+
+@Composable
+fun AddProductDialog(
+    warehouses: List<Warehouse>,
+    activeWarehouseId: String,
+    onSubmit: (
+        name: String,
+        sku: String,
+        barcode: String,
+        price: Double,
+        costPrice: Double,
+        category: String,
+        unit: String,
+        description: String,
+        initialStock: Int,
+        warehouseId: String
+    ) -> Unit,
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true,
+    currencyUnit: String = "تومان"
+) {
+    var name by remember { mutableStateOf("") }
+    var sku by remember { mutableStateOf("PRD-${System.currentTimeMillis().toString().takeLast(5)}") }
+    var barcode by remember { mutableStateOf("") }
+    var priceStr by remember { mutableStateOf("") }
+    var costPriceStr by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("عمومی") }
+    var unit by remember { mutableStateOf("عدد") }
+    var description by remember { mutableStateOf("") }
+    var initialStockStr by remember { mutableStateOf("10") }
+
+    val selectedWarehouseId = remember {
+        mutableStateOf(
+            if (activeWarehouseId.isNotBlank()) activeWarehouseId
+            else warehouses.firstOrNull()?.id ?: ""
+        )
+    }
+
+    RestoDialog(
+        title = if (isPersian) "ثبت کالای جدید" else "Add New Product",
+        confirmText = if (isPersian) "ثبت و افزودن به انبار" else "Add Product",
+        onConfirm = {
+            val priceVal = priceStr.toDoubleOrNull() ?: 0.0
+            val costVal = costPriceStr.toDoubleOrNull() ?: 0.0
+            val stockVal = initialStockStr.toIntOrNull() ?: 0
+            if (name.isNotBlank() && sku.isNotBlank()) {
+                onSubmit(
+                    name.trim(),
+                    sku.trim(),
+                    barcode.trim(),
+                    priceVal,
+                    costVal,
+                    category.trim(),
+                    unit.trim(),
+                    description.trim(),
+                    stockVal,
+                    selectedWarehouseId.value
+                )
+            }
+        },
+        confirmEnabled = name.isNotBlank() && sku.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+        ) {
+            RestoTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = if (isPersian) "نام کالا *" else "Product Name *"
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = sku,
+                    onValueChange = { sku = it },
+                    label = if (isPersian) "شناسه SKU *" else "SKU *",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = barcode,
+                    onValueChange = { barcode = it },
+                    label = if (isPersian) "بارکد" else "Barcode",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = priceStr,
+                    onValueChange = { priceStr = it },
+                    label = if (isPersian) "قیمت فروش ($currencyUnit) *" else "Selling Price *",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = costPriceStr,
+                    onValueChange = { costPriceStr = it },
+                    label = if (isPersian) "قیمت خرید ($currencyUnit)" else "Cost Price",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                RestoTextField(
+                    value = initialStockStr,
+                    onValueChange = { initialStockStr = it },
+                    label = if (isPersian) "موجودی اولیه" else "Initial Stock",
+                    modifier = Modifier.weight(1f)
+                )
+                RestoTextField(
+                    value = unit,
+                    onValueChange = { unit = it },
+                    label = if (isPersian) "واحد (عدد، بسته...)" else "Unit",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            RestoTextField(
+                value = category,
+                onValueChange = { category = it },
+                label = if (isPersian) "دسته‌بندی کالا" else "Category"
+            )
 
             RestoTextField(
                 value = description,

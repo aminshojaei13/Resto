@@ -255,7 +255,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       </nav>
 
       {/* Language Switcher Footer */}
-      <div style={{ padding: theme.spacing.lg, borderTop: `1px solid ${theme.colors.sidebarItemActiveBg}` }}>
+      <div style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
         <button
           onClick={() => setLanguage(isFa ? 'en' : 'fa')}
           style={{

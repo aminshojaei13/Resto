@@ -31,7 +31,21 @@ import { Language } from '../i18n/authStrings';
 
 const BusinessAppRoutes: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname || '/');
-  const [language, setLanguage] = useState<Language>('fa');
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const stored = window.localStorage.getItem('resto_language');
+      if (stored === 'en' || stored === 'fa') return stored;
+    } catch {}
+    return 'fa';
+  });
+
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    try {
+      window.localStorage.setItem('resto_language', lang);
+    } catch {}
+  }, []);
+
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
 
   const { user, isRestoring, signOut, can } = useAuth();
@@ -152,7 +166,7 @@ const BusinessAppRoutes: React.FC = () => {
       case '/app/purchases':
         return <PurchasesPage language={language} navigate={navigate} />;
       case '/app/settings':
-        return <SettingsPage language={language} />;
+        return <SettingsPage language={language} navigate={navigate} />;
       case '/app/suppliers':
         return <SuppliersPage language={language} />;
       case '/app/customers':
@@ -173,7 +187,7 @@ const BusinessAppRoutes: React.FC = () => {
           <AccessDenied language={language} />
         );
       default:
-        return <DashboardPage language={language} />;
+        return <DashboardPage language={language} navigate={navigate} />;
     }
   };
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
-import { AccountingSummary, LedgerEntry, Product } from '../types';
+import { AccountingSummary, LedgerEntry, Product, SalesOrder, Supplier } from '../types';
 import { StatCard } from '../components/StatCard';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
+import { OnboardingChecklistCard } from '../components/OnboardingChecklistCard';
+import { OnboardingWelcomeModal } from '../components/OnboardingWelcomeModal';
 import { useTheme } from '../theme/ThemeContext';
 
 interface DashboardPageProps {
@@ -15,6 +17,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+
+  const [isOnboardingDismissed, setIsOnboardingDismissed] = useState<boolean>(
+    () => localStorage.getItem('resto_onboarding_dismissed') === 'true'
+  );
+  const [isSupplierSkipped, setIsSupplierSkipped] = useState<boolean>(
+    () => localStorage.getItem('resto_onboarding_supplier_skipped') === 'true'
+  );
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(
+    () => localStorage.getItem('resto_onboarding_welcome_seen') !== 'true'
+  );
+
   const isFa = language === 'fa';
   const { theme, effectiveMode } = useTheme();
   const isDark = effectiveMode === 'warmDark';
@@ -59,6 +72,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
     }
   };
 
+  const handleDismissOnboarding = () => {
+    setIsOnboardingDismissed(true);
+    localStorage.setItem('resto_onboarding_dismissed', 'true');
+  };
+
+  const handleSkipSupplier = () => {
+    setIsSupplierSkipped(true);
+    localStorage.setItem('resto_onboarding_supplier_skipped', 'true');
+  };
+
+  const handleCloseWelcomeModal = () => {
+    setIsWelcomeModalOpen(false);
+    localStorage.setItem('resto_onboarding_welcome_seen', 'true');
+  };
+
+  const handleStartOnboarding = () => {
+    setIsWelcomeModalOpen(false);
+    localStorage.setItem('resto_onboarding_welcome_seen', 'true');
+    handleNav('/app/products');
+  };
+
+  const hasOrders = (summary?.totalSalesCount ?? 0) > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing['2xl'] }}>
       {/* Top Header Controls */}
@@ -66,6 +102,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
         title={isFa ? 'مرکز مدیریت و عملیات کسب‌وکار' : 'Business Control Center'}
         description={isFa ? 'مدیریت متمرکز موجودی انبار، سفارش‌های آنلاین و جریان عملیاتی روزانه' : 'Centralized management of inventory, online orders, and daily business operations'}
       />
+
+      {/* Onboarding 4-Step Checklist Card */}
+      {!isOnboardingDismissed && (
+        <OnboardingChecklistCard
+          language={language}
+          hasProducts={products.length > 0}
+          hasSuppliers={isSupplierSkipped}
+          isSupplierSkipped={isSupplierSkipped}
+          hasOrders={hasOrders}
+          hasCompletedOrders={hasOrders}
+          onNavigate={handleNav}
+          onSkipSupplier={handleSkipSupplier}
+          onDismiss={handleDismissOnboarding}
+          onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
+        />
+      )}
 
       {/* 5 Prioritized Quick Actions Banner */}
       <div
@@ -561,6 +613,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           )}
         </div>
       </div>
+
+      {/* First-time Welcome Modal */}
+      {isWelcomeModalOpen && (
+        <OnboardingWelcomeModal
+          language={language}
+          onClose={handleCloseWelcomeModal}
+          onStart={handleStartOnboarding}
+        />
+      )}
     </div>
   );
 };

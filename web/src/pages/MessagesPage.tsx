@@ -59,24 +59,23 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<{ id: string; name: string; sku: string; price: number; unit?: string }[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
-  const [showExamples, setShowExamples] = useState(false);
+  const [showExamples, setShowExamples] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [notice, setNotice] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
-    apiClient
-      .getWarehouses()
+    Promise.resolve(apiClient.getWarehouses?.() ?? [])
       .then((list) => {
-        setWarehouses(list);
-        setWarehouseId(list.length === 1 ? list[0].id : getCurrentContext().warehouseId);
+        const safeList = list || [];
+        setWarehouses(safeList);
+        setWarehouseId(safeList.length === 1 ? safeList[0].id : getCurrentContext().warehouseId);
       })
       .catch(() => setWarehouses([]));
 
-    apiClient
-      .getProducts()
-      .then(setCatalogProducts)
+    Promise.resolve(apiClient.getProducts?.() ?? [])
+      .then((p) => setCatalogProducts(p || []))
       .catch(() => setCatalogProducts([]));
   }, []);
 
@@ -284,13 +283,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
       {/* 1. paste */}
       <form onSubmit={review} style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          <label style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textPrimary }}>{s.messageInputLabel}</label>
+          <label htmlFor="customer-message" style={{ fontSize: '13px', fontWeight: 700, color: theme.colors.textPrimary }}>{s.messageInputLabel}</label>
           <SecondaryButton type="button" onClick={() => setShowExamples((v) => !v)}>
             {showExamples ? s.hideExamples : s.showExamples}
           </SecondaryButton>
         </div>
 
         <textarea
+          id="customer-message"
           value={rawText}
           onChange={(e) => setRawText(e.target.value)}
           placeholder={s.messageInputPlaceholder}
@@ -310,7 +310,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
         />
 
         <PrimaryButton type="submit" disabled={isParsing || !rawText.trim()}>
-          {isParsing ? (isFa ? 'در حال بررسی…' : 'Reading…') : `🔍 ${s.reviewMessage}`}
+          {isParsing ? (isFa ? 'در حال بررسی…' : 'Reading…') : s.reviewMessage}
         </PrimaryButton>
       </form>
 
