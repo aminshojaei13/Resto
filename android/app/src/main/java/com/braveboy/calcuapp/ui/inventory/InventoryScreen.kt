@@ -407,9 +407,10 @@ fun InventoryItemCard(
                     }
 
                     RestoButton(
-                        text = if (isPersian) "افزایش / تغییر موجودی" else "Adjust Stock",
+                        text = if (isPersian) "تغییر موجودی" else "Adjust Stock",
                         onClick = onAdjustStockClick,
-                        variant = RestoButtonVariant.Outlined
+                        variant = RestoButtonVariant.Outlined,
+                        compact = true
                     )
                 }
             }

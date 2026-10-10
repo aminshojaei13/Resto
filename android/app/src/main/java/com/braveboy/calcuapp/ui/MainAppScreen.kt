@@ -220,7 +220,9 @@ fun MainAppScreen(
                             label = {
                                 Text(
                                     text = if (isPersian) destination.titleFa else destination.title,
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
                         )
@@ -240,7 +242,9 @@ fun MainAppScreen(
                         label = {
                             Text(
                                 text = if (isPersian) "بیشتر" else "More",
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                     )
@@ -370,13 +374,15 @@ fun MainAppScreen(
                                     Text(
                                         text = if (isPersian) dest.titleFa else dest.title,
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }
                         }
 
-                        item {
+                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
                             Card(
                                 onClick = {
                                     isMoreMenuOpen = false
@@ -401,7 +407,9 @@ fun MainAppScreen(
                                     Text(
                                         text = if (isPersian) "تغییر شعبه / سازمان" else "Switch Tenant",
                                         style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }

@@ -60,11 +60,13 @@ fun CheckoutModal(
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
     onProcessCheckout: (PaymentMethod, String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true,
+    currencyUnit: String = "تومان"
 ) {
     val totalAmount = cartItems.sumOf { it.total }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
-    var cashTenderedText by remember { mutableStateOf(String.format("%.2f", totalAmount)) }
+    var cashTenderedText by remember { mutableStateOf(if (isPersian) totalAmount.toLong().toString() else String.format("%.2f", totalAmount)) }
     var notesText by remember { mutableStateOf("") }
 
     val cashTendered = cashTenderedText.toDoubleOrNull() ?: 0.0
@@ -98,13 +100,18 @@ fun CheckoutModal(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Checkout & Payment",
+                            text = if (isPersian) "تسویه حساب و پرداخت" else "Checkout & Payment",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = if (isPersian) "انصراف و بستن" else "Close"
+                        )
                     }
                 }
 
@@ -125,15 +132,17 @@ fun CheckoutModal(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Total Payable Amount",
+                            text = if (isPersian) "مبلغ کل قابل پرداخت" else "Total Payable Amount",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "$${String.format("%.2f", totalAmount)}",
-                            style = MaterialTheme.typography.displayMedium,
+                            text = if (isPersian) "${com.braveboy.calcuapp.util.PersianFormatter.formatTomans(totalAmount)} $currencyUnit" else "$${String.format("%.2f", totalAmount)}",
+                            style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         if (selectedCustomer != null) {
                             Spacer(modifier = Modifier.height(4.dp))
@@ -145,10 +154,12 @@ fun CheckoutModal(
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
-                                    text = "Customer: ${selectedCustomer.name}",
+                                    text = "${if (isPersian) "مشتری:" else "Customer:"} ${selectedCustomer.name}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -159,7 +170,7 @@ fun CheckoutModal(
 
                 // Payment Method Selector
                 Text(
-                    text = "Select Payment Method",
+                    text = if (isPersian) "انتخاب روش تسویه و پرداخت" else "Select Payment Method",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -170,25 +181,29 @@ fun CheckoutModal(
                         method = PaymentMethod.CASH,
                         icon = Icons.Rounded.Money,
                         selected = selectedPaymentMethod == PaymentMethod.CASH,
-                        onClick = { selectedPaymentMethod = PaymentMethod.CASH }
+                        onClick = { selectedPaymentMethod = PaymentMethod.CASH },
+                        isPersian = isPersian
                     )
                     PaymentMethodOption(
                         method = PaymentMethod.CARD,
                         icon = Icons.Rounded.CreditCard,
                         selected = selectedPaymentMethod == PaymentMethod.CARD,
-                        onClick = { selectedPaymentMethod = PaymentMethod.CARD }
+                        onClick = { selectedPaymentMethod = PaymentMethod.CARD },
+                        isPersian = isPersian
                     )
                     PaymentMethodOption(
                         method = PaymentMethod.MOBILE_PAYMENT,
                         icon = Icons.Rounded.QrCodeScanner,
                         selected = selectedPaymentMethod == PaymentMethod.MOBILE_PAYMENT,
-                        onClick = { selectedPaymentMethod = PaymentMethod.MOBILE_PAYMENT }
+                        onClick = { selectedPaymentMethod = PaymentMethod.MOBILE_PAYMENT },
+                        isPersian = isPersian
                     )
                     PaymentMethodOption(
                         method = PaymentMethod.STORE_CREDIT,
                         icon = Icons.Rounded.Storefront,
                         selected = selectedPaymentMethod == PaymentMethod.STORE_CREDIT,
-                        onClick = { selectedPaymentMethod = PaymentMethod.STORE_CREDIT }
+                        onClick = { selectedPaymentMethod = PaymentMethod.STORE_CREDIT },
+                        isPersian = isPersian
                     )
                 }
 
@@ -206,7 +221,7 @@ fun CheckoutModal(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Cash Math",
+                            text = if (isPersian) "محاسبه مبلغ دریافتی نقدی" else "Cash Math",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -215,7 +230,7 @@ fun CheckoutModal(
                         OutlinedTextField(
                             value = cashTenderedText,
                             onValueChange = { cashTenderedText = it },
-                            label = { Text("Cash Tendered ($)") },
+                            label = { Text(if (isPersian) "مبلغ پرداختی مشتری ($currencyUnit)" else "Cash Tendered ($)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -223,32 +238,18 @@ fun CheckoutModal(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Preset quick cash buttons
+                        // Preset quick cash button
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            val next20 = (Math.ceil(totalAmount / 20.0) * 20.0).coerceAtLeast(totalAmount)
-                            val next50 = (Math.ceil(totalAmount / 50.0) * 50.0).coerceAtLeast(totalAmount)
-                            val next100 = (Math.ceil(totalAmount / 100.0) * 100.0).coerceAtLeast(totalAmount)
-
                             OutlinedButton(
-                                onClick = { cashTenderedText = String.format("%.2f", totalAmount) },
-                                modifier = Modifier.weight(1f)
+                                onClick = {
+                                    cashTenderedText = if (isPersian) totalAmount.toLong().toString() else String.format("%.2f", totalAmount)
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Exact")
-                            }
-                            OutlinedButton(
-                                onClick = { cashTenderedText = String.format("%.2f", next20) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("$$next20")
-                            }
-                            OutlinedButton(
-                                onClick = { cashTenderedText = String.format("%.2f", next100) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("$$next100")
+                                Text(if (isPersian) "مبلغ دقیق صورت‌حساب" else "Exact Amount")
                             }
                         }
 
@@ -260,15 +261,17 @@ fun CheckoutModal(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Change Due",
+                                text = if (isPersian) "باقی‌مانده (پول خرد)" else "Change Due",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "$${String.format("%.2f", changeDue)}",
-                                style = MaterialTheme.typography.titleLarge,
+                                text = if (isPersian) "${com.braveboy.calcuapp.util.PersianFormatter.formatTomans(changeDue)} $currencyUnit" else "$${String.format("%.2f", changeDue)}",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -279,7 +282,7 @@ fun CheckoutModal(
                 OutlinedTextField(
                     value = notesText,
                     onValueChange = { notesText = it },
-                    label = { Text("Order Notes / Transaction Ref (Optional)") },
+                    label = { Text(if (isPersian) "یادداشت فاکتور یا شماره پیگیری تراکنش (اختیاری)" else "Order Notes / Transaction Ref (Optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
@@ -295,7 +298,7 @@ fun CheckoutModal(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancel")
+                        Text(if (isPersian) "انصراف" else "Cancel", maxLines = 1)
                     }
 
                     Button(
@@ -310,9 +313,11 @@ fun CheckoutModal(
                         Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Complete Sale",
+                            text = if (isPersian) "ثبت نهایی و صدور" else "Complete Sale",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -326,8 +331,20 @@ fun PaymentMethodOption(
     method: PaymentMethod,
     icon: ImageVector,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isPersian: Boolean = true
 ) {
+    val methodTitle = if (isPersian) {
+        when (method) {
+            PaymentMethod.CASH -> "پرداخت نقدی"
+            PaymentMethod.CARD -> "کارت‌خوان (پوز)"
+            PaymentMethod.MOBILE_PAYMENT -> "کارت به کارت / اینترنتی"
+            PaymentMethod.STORE_CREDIT -> "نسیه / حساب دفتری"
+        }
+    } else {
+        method.displayName
+    }
+
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(
@@ -349,10 +366,12 @@ fun PaymentMethodOption(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = method.displayName,
+                text = methodTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }

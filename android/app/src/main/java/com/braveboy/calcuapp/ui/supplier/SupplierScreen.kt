@@ -226,7 +226,9 @@ fun SupplierItemCard(
                     text = supplier.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
 
                 if (supplier.phone.isNotBlank()) {
@@ -234,7 +236,8 @@ fun SupplierItemCard(
                     Text(
                         text = if (isPersian) PersianFormatter.toPersianDigits(supplier.phone) else supplier.phone,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
@@ -242,7 +245,8 @@ fun SupplierItemCard(
             RestoButton(
                 text = if (isPersian) "جزئیات" else "View",
                 onClick = onClick,
-                variant = RestoButtonVariant.Outlined
+                variant = RestoButtonVariant.Outlined,
+                compact = true
             )
         }
     }

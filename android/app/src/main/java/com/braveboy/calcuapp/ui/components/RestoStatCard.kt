@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
@@ -42,6 +43,7 @@ fun RestoStatCard(
         modifier = modifier,
         variant = RestoCardVariant.Filled,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentPadding = RestoSpacing.sm,
         onClick = onClick
     ) {
         Column {
@@ -50,11 +52,14 @@ fun RestoStatCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     if (icon != null) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(32.dp)
                                 .clip(RestoShapes.small)
                                 .background(iconBackground),
                             contentAlignment = Alignment.Center
@@ -63,31 +68,36 @@ fun RestoStatCard(
                                 imageVector = icon,
                                 contentDescription = null,
                                 tint = iconTint,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                        Spacer(modifier = Modifier.width(RestoSpacing.xs))
                     }
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 if (badgeText != null) {
+                    Spacer(modifier = Modifier.width(RestoSpacing.xxs))
                     RestoBadge(text = badgeText, variant = badgeVariant)
                 }
             }
 
-            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+            Spacer(modifier = Modifier.height(RestoSpacing.xs))
 
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             if (subtitle != null) {
@@ -95,7 +105,9 @@ fun RestoStatCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

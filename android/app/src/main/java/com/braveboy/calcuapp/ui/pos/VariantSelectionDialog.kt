@@ -34,7 +34,9 @@ import com.braveboy.calcuapp.data.model.ProductVariant
 fun VariantSelectionDialog(
     product: Product,
     onVariantSelected: (ProductVariant) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true,
+    currencyUnit: String = "تومان"
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -61,16 +63,21 @@ fun VariantSelectionDialog(
                         Text(
                             text = product.name,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Select Option / Variant",
+                            text = if (isPersian) "انتخاب تنوع یا ویژگی کالا" else "Select Option / Variant",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = if (isPersian) "بستن" else "Close"
+                        )
                     }
                 }
 
@@ -97,19 +104,23 @@ fun VariantSelectionDialog(
                                     Text(
                                         text = variant.name,
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "SKU: ${variant.sku}",
+                                        text = if (isPersian) "کد: ${variant.sku}" else "SKU: ${variant.sku}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
-                                    text = "$${String.format("%.2f", variant.price)}",
+                                    text = if (isPersian) "${com.braveboy.calcuapp.util.PersianFormatter.formatTomans(variant.price)} $currencyUnit" else "$${String.format("%.2f", variant.price)}",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
                         }

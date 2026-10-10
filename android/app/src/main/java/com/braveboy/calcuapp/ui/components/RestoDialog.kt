@@ -35,23 +35,22 @@ fun RestoDialog(
     confirmEnabled: Boolean = true,
     confirmLoading: Boolean = false,
     dismissText: String = "انصراف",
+    stackButtons: Boolean = (confirmText.length + dismissText.length > 20),
     content: @Composable ColumnScope.() -> Unit
 ) {
     BasicAlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = modifier.padding(RestoSpacing.md),
+        modifier = modifier.padding(horizontal = RestoSpacing.md, vertical = RestoSpacing.lg),
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Card(
             shape = RestoShapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(RestoSpacing.sm)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(RestoSpacing.lg)
+                    .padding(RestoSpacing.md)
                     .fillMaxWidth()
             ) {
                 Text(
@@ -61,7 +60,7 @@ fun RestoDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(RestoSpacing.md))
+                Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
                 Column(
                     modifier = Modifier
@@ -70,28 +69,53 @@ fun RestoDialog(
                     content = content
                 )
 
-                Spacer(modifier = Modifier.height(RestoSpacing.lg))
+                Spacer(modifier = Modifier.height(RestoSpacing.md))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
-                ) {
-                    RestoButton(
-                        text = dismissText,
-                        onClick = onDismissRequest,
-                        variant = RestoButtonVariant.Outlined,
-                        modifier = Modifier.weight(1f)
-                    )
+                if (stackButtons) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+                    ) {
+                        if (onConfirm != null) {
+                            RestoButton(
+                                text = confirmText,
+                                onClick = onConfirm,
+                                enabled = confirmEnabled,
+                                isLoading = confirmLoading,
+                                variant = RestoButtonVariant.Primary,
+                                fullWidth = true
+                            )
+                        }
 
-                    if (onConfirm != null) {
                         RestoButton(
-                            text = confirmText,
-                            onClick = onConfirm,
-                            enabled = confirmEnabled,
-                            isLoading = confirmLoading,
-                            variant = RestoButtonVariant.Primary,
+                            text = dismissText,
+                            onClick = onDismissRequest,
+                            variant = RestoButtonVariant.Outlined,
+                            fullWidth = true
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+                    ) {
+                        RestoButton(
+                            text = dismissText,
+                            onClick = onDismissRequest,
+                            variant = RestoButtonVariant.Outlined,
                             modifier = Modifier.weight(1f)
                         )
+
+                        if (onConfirm != null) {
+                            RestoButton(
+                                text = confirmText,
+                                onClick = onConfirm,
+                                enabled = confirmEnabled,
+                                isLoading = confirmLoading,
+                                variant = RestoButtonVariant.Primary,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }

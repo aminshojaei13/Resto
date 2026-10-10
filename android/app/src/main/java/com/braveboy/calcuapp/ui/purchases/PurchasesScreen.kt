@@ -309,9 +309,10 @@ fun PurchaseItemCard(
 
                 if (!isReceived) {
                     RestoButton(
-                        text = if (isPersian) "تحویل و ورود به انبار" else "Receive into Stock",
+                        text = if (isPersian) "ورود به انبار" else "Receive Stock",
                         onClick = onReceive,
-                        variant = RestoButtonVariant.Primary
+                        variant = RestoButtonVariant.Primary,
+                        compact = true
                     )
                 }
             }

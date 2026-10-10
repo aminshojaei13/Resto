@@ -215,38 +215,41 @@ fun MessagesScreen(
 
                     Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-                    // Quick action bar: Paste, Sample, Clear
+                    // Quick action buttons: Paste (full width), Sample & Clear (secondary row)
+                    RestoButton(
+                        text = if (isPersian) "چسباندن از حافظه" else "Paste from Clipboard",
+                        leadingIcon = Icons.Rounded.ContentPaste,
+                        variant = RestoButtonVariant.Outlined,
+                        compact = true,
+                        fullWidth = true,
+                        onClick = {
+                            val clip = clipboardManager.getText()?.text
+                            if (!clip.isNullOrBlank()) {
+                                viewModel.pasteFromClipboard(clip)
+                            }
+                        }
+                    )
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                     ) {
                         RestoButton(
-                            text = "چسباندن از حافظه",
-                            leadingIcon = Icons.Rounded.ContentPaste,
+                            text = if (isPersian) "نمونه پیام" else "Sample",
                             variant = RestoButtonVariant.Outlined,
-                            onClick = {
-                                val clip = clipboardManager.getText()?.text
-                                if (!clip.isNullOrBlank()) {
-                                    viewModel.pasteFromClipboard(clip)
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        RestoButton(
-                            text = "نمونه پیام",
-                            variant = RestoButtonVariant.Outlined,
+                            compact = true,
                             onClick = { viewModel.setRawText(sampleOrderText) },
-                            modifier = Modifier.weight(0.8f)
+                            modifier = Modifier.weight(1f)
                         )
 
                         if (uiState.rawText.isNotBlank()) {
                             RestoButton(
-                                text = "پاک‌سازی",
+                                text = if (isPersian) "پاک‌سازی" else "Clear",
                                 leadingIcon = Icons.Rounded.Clear,
                                 variant = RestoButtonVariant.Text,
+                                compact = true,
                                 onClick = { viewModel.clearDraft() },
-                                modifier = Modifier.weight(0.7f)
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }

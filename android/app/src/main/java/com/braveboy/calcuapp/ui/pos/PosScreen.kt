@@ -88,6 +88,9 @@ fun PosScreen(
     var isMobileCartSheetOpen by remember { mutableStateOf(false) }
     var isCustomerPickerOpen by remember { mutableStateOf(false) }
 
+    val isPersian = tenantState.language == "fa"
+    val currencyUnit = if (isPersian) "تومان" else "$"
+
     // Adaptive Window Size check
     val windowInfo = currentWindowAdaptiveInfo()
     val isExpandedWidth = windowInfo.windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
@@ -107,14 +110,18 @@ fun PosScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Mobile POS",
+                            text = if (isPersian) "صندوق فروش (POS)" else "Mobile POS",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Org: ${tenantState.activeOrgId} | Store: ${tenantState.activeStoreId}",
+                            text = "${if (isPersian) "سازمان" else "Org"}: ${tenantState.activeOrgId} | ${if (isPersian) "فروشگاه" else "Store"}: ${tenantState.activeStoreId}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 },
@@ -122,13 +129,13 @@ fun PosScreen(
                     IconButton(onClick = { viewModel.openBarcodeScanner() }) {
                         Icon(
                             imageVector = Icons.Rounded.QrCodeScanner,
-                            contentDescription = "Scan Barcode"
+                            contentDescription = if (isPersian) "اسکن بارکد" else "Scan Barcode"
                         )
                     }
                     IconButton(onClick = onNavigateToTenantSwitch) {
                         Icon(
                             imageVector = Icons.Rounded.Storefront,
-                            contentDescription = "Switch Store / Org"
+                            contentDescription = if (isPersian) "تغییر فروشگاه یا سازمان" else "Switch Store / Org"
                         )
                     }
                 },
@@ -143,7 +150,11 @@ fun PosScreen(
                 BadgedBox(
                     badge = {
                         if (totalItems > 0) {
-                            Badge { Text("$totalItems") }
+                            Badge {
+                                Text(
+                                    if (isPersian) com.braveboy.calcuapp.util.PersianFormatter.toPersianDigits(totalItems) else "$totalItems"
+                                )
+                            }
                         }
                     }
                 ) {
@@ -151,7 +162,10 @@ fun PosScreen(
                         onClick = { isMobileCartSheetOpen = true },
                         containerColor = MaterialTheme.colorScheme.primary
                     ) {
-                        Icon(imageVector = Icons.Rounded.ShoppingCart, contentDescription = "View Cart")
+                        Icon(
+                            imageVector = Icons.Rounded.ShoppingCart,
+                            contentDescription = if (isPersian) "مشاهده سبد خرید" else "View Cart"
+                        )
                     }
                 }
             }
@@ -173,12 +187,21 @@ fun PosScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text("Search product name, SKU, barcode, category...") },
+                    placeholder = {
+                        Text(
+                            text = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search product name, SKU, barcode, category...",
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    },
                     leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(imageVector = Icons.Rounded.Clear, contentDescription = "Clear search")
+                                Icon(
+                                    imageVector = Icons.Rounded.Clear,
+                                    contentDescription = if (isPersian) "پاک کردن جستجو" else "Clear search"
+                                )
                             }
                         }
                     },
@@ -198,14 +221,14 @@ fun PosScreen(
                         FilterChip(
                             selected = selectedCategory == null,
                             onClick = { viewModel.selectCategory(null) },
-                            label = { Text("All Categories") }
+                            label = { Text(if (isPersian) "همه دسته‌ها" else "All Categories", maxLines = 1) }
                         )
                     }
                     items(categories) { category ->
                         FilterChip(
                             selected = selectedCategory == category,
                             onClick = { viewModel.selectCategory(category) },
-                            label = { Text(category) }
+                            label = { Text(category, maxLines = 1) }
                         )
                     }
                 }
@@ -221,7 +244,7 @@ fun PosScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No products found",
+                            text = if (isPersian) "کالایی در این دسته‌بندی یافت نشد" else "No products found",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -238,7 +261,9 @@ fun PosScreen(
                             ProductCard(
                                 product = product,
                                 activeWarehouseId = tenantState.activeWarehouseId,
-                                onProductClick = { viewModel.onProductClicked(it) }
+                                onProductClick = { viewModel.onProductClicked(it) },
+                                isPersian = isPersian,
+                                currencyUnit = currencyUnit
                             )
                         }
                     }
@@ -260,7 +285,9 @@ fun PosScreen(
                         onRemoveItem = { id -> viewModel.removeFromCart(id) },
                         onClearCart = { viewModel.clearCart() },
                         onSelectCustomerClick = { isCustomerPickerOpen = true },
-                        onCheckoutClick = { viewModel.openCheckoutModal() }
+                        onCheckoutClick = { viewModel.openCheckoutModal() },
+                        isPersian = isPersian,
+                        currencyUnit = currencyUnit
                     )
                 }
             }
@@ -285,7 +312,9 @@ fun PosScreen(
                 onCheckoutClick = {
                     isMobileCartSheetOpen = false
                     viewModel.openCheckoutModal()
-                }
+                },
+                isPersian = isPersian,
+                currencyUnit = currencyUnit
             )
         }
     }
@@ -299,7 +328,8 @@ fun PosScreen(
                 viewModel.selectCustomer(it)
                 isCustomerPickerOpen = false
             },
-            onDismiss = { isCustomerPickerOpen = false }
+            onDismiss = { isCustomerPickerOpen = false },
+            isPersian = isPersian
         )
     }
 
@@ -308,7 +338,9 @@ fun PosScreen(
         VariantSelectionDialog(
             product = product,
             onVariantSelected = { variant -> viewModel.onVariantSelected(product, variant) },
-            onDismiss = { viewModel.dismissVariantDialog() }
+            onDismiss = { viewModel.dismissVariantDialog() },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
         )
     }
 
@@ -318,7 +350,9 @@ fun PosScreen(
             cartItems = cartItems,
             selectedCustomer = selectedCustomer,
             onProcessCheckout = { method, notes -> viewModel.processCheckout(method, notes) },
-            onDismiss = { viewModel.closeCheckoutModal() }
+            onDismiss = { viewModel.closeCheckoutModal() },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
         )
     }
 
@@ -326,7 +360,9 @@ fun PosScreen(
     lastCompletedOrder?.let { order ->
         ReceiptDialog(
             order = order,
-            onDismiss = { viewModel.dismissReceipt() }
+            onDismiss = { viewModel.dismissReceipt() },
+            isPersian = isPersian,
+            currencyUnit = currencyUnit
         )
     }
 
@@ -345,7 +381,8 @@ fun CustomerPickerModal(
     customers: List<Customer>,
     selectedCustomer: Customer?,
     onSelectCustomer: (Customer?) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -354,9 +391,11 @@ fun CustomerPickerModal(
                 .fillMaxWidth()
         ) {
             Text(
-                text = "Attach Customer Profile",
+                text = if (isPersian) "انتخاب یا تخصیص مشتری به فاکتور" else "Attach Customer Profile",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -369,10 +408,12 @@ fun CustomerPickerModal(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Walk-in Customer (Guest)",
+                    text = if (isPersian) "مشتری گذری / حضوری (بدون ثبت پرونده)" else "Walk-in Customer (Guest)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
 
@@ -390,17 +431,21 @@ fun CustomerPickerModal(
                             Text(
                                 text = customer.name,
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
                                 text = customer.phone.ifBlank { customer.email },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
                             )
                             Text(
-                                text = "Points: ${customer.loyaltyPoints}",
+                                text = "${if (isPersian) "امتیاز باشگاه:" else "Points:"} ${if (isPersian) com.braveboy.calcuapp.util.PersianFormatter.toPersianDigits(customer.loyaltyPoints) else customer.loyaltyPoints}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1
                             )
                         }
                     }

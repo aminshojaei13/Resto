@@ -116,7 +116,10 @@ fun OnboardingChecklistCard(
                             text = if (isPersian) "راهنمای شروع به کار با سیستم" else "Getting Started Guide",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f, fill = false),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         if (state.isAllCompleted) {
                             RestoBadge(
@@ -312,33 +315,54 @@ private fun StepItemCard(
                     modifier = Modifier.padding(start = 32.dp)
                 )
 
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 32.dp, top = RestoSpacing.xxs),
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = RestoSpacing.xxs),
+                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                 ) {
-                    RestoButton(
-                        text = if (isPersian) step.primaryActionTextFa else step.primaryActionTextEn,
-                        onClick = { onNavigate(step.primaryDestination, step.openAddProduct) }
-                    )
-
-                    if (step.secondaryDestination != null && step.secondaryActionTextFa != null) {
-                        RestoButton(
-                            text = if (isPersian) step.secondaryActionTextFa else (step.secondaryActionTextEn ?: ""),
-                            onClick = { onNavigate(step.secondaryDestination, false) },
-                            variant = RestoButtonVariant.Outlined
-                        )
-                    }
-
-                    if (step.canSkip) {
-                        TextButton(onClick = onSkipSupplierStep) {
-                            Text(
-                                text = if (isPersian) "رد شدن" else "Skip",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    val hasSecondary = step.secondaryDestination != null && step.secondaryActionTextFa != null
+                    if (hasSecondary) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+                        ) {
+                            RestoButton(
+                                text = if (isPersian) step.primaryActionTextFa else step.primaryActionTextEn,
+                                onClick = { onNavigate(step.primaryDestination, step.openAddProduct) },
+                                compact = true,
+                                fullWidth = true
                             )
+                            RestoButton(
+                                text = if (isPersian) step.secondaryActionTextFa else (step.secondaryActionTextEn ?: ""),
+                                onClick = { onNavigate(step.secondaryDestination, false) },
+                                variant = RestoButtonVariant.Outlined,
+                                compact = true,
+                                fullWidth = true
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RestoButton(
+                                text = if (isPersian) step.primaryActionTextFa else step.primaryActionTextEn,
+                                onClick = { onNavigate(step.primaryDestination, step.openAddProduct) },
+                                compact = true
+                            )
+
+                            if (step.canSkip) {
+                                TextButton(onClick = onSkipSupplierStep) {
+                                    Text(
+                                        text = if (isPersian) "رد شدن" else "Skip",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
                     }
                 }

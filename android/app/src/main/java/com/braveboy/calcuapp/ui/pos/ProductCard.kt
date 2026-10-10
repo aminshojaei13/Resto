@@ -40,7 +40,9 @@ fun ProductCard(
     product: Product,
     activeWarehouseId: String,
     onProductClick: (Product) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isPersian: Boolean = true,
+    currencyUnit: String = "تومان"
 ) {
     val stockInWarehouse = product.getStockForWarehouse(activeWarehouseId)
     val totalStock = product.getTotalStock()
@@ -99,12 +101,18 @@ fun ProductCard(
                     Text(
                         text = product.category,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
                 }
 
                 // Stock Badge overlay
                 if (isOutOfStock || isLowStock) {
+                    val stockBadgeText = if (isOutOfStock) {
+                        if (isPersian) "ناموجود" else "Out of Stock"
+                    } else {
+                        if (isPersian) "${com.braveboy.calcuapp.util.PersianFormatter.toPersianDigits(totalStock)} عدد باقی‌مانده" else "$totalStock left"
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -124,10 +132,11 @@ fun ProductCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isOutOfStock) "Out of Stock" else "$totalStock left",
+                                text = stockBadgeText,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOutOfStock) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                                color = if (isOutOfStock) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
+                                maxLines = 1
                             )
                         }
                     }
@@ -150,14 +159,16 @@ fun ProductCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "SKU: ${product.sku}",
+                    text = if (isPersian) "کد: ${product.sku}" else "SKU: ${product.sku}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
                 Text(
-                    text = "WH Stock: $stockInWarehouse",
+                    text = if (isPersian) "موجودی: ${com.braveboy.calcuapp.util.PersianFormatter.toPersianDigits(stockInWarehouse)}" else "WH Stock: $stockInWarehouse",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
                 )
             }
 
@@ -169,10 +180,12 @@ fun ProductCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "$${String.format("%.2f", product.price)}",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = if (isPersian) "${com.braveboy.calcuapp.util.PersianFormatter.formatTomans(product.price)} $currencyUnit" else "$${String.format("%.2f", product.price)}",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 FilledTonalIconButton(
@@ -184,7 +197,7 @@ fun ProductCard(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.AddShoppingCart,
-                        contentDescription = "Add to Cart"
+                        contentDescription = if (isPersian) "افزودن به سبد" else "Add to Cart"
                     )
                 }
             }
