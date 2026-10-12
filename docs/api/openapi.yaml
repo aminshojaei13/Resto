@@ -1610,6 +1610,7 @@ paths:
               required: [fields]
               properties:
                 sheet_index: { type: integer, default: 0 }
+                warehouse_id: { type: string, description: "Default warehouse ID for inventory imports if warehouse column is unmapped" }
                 fields:
                   type: object
                   additionalProperties: { type: string }

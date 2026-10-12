@@ -389,12 +389,14 @@ export interface ImportMappingResponse {
   status: string;
   target_fields: ImportTargetField[];
   datasets: ImportDatasetItem[];
+  warehouses?: Array<{ id: string; name: string; code?: string; address?: string }>;
   active_sheet_index: number;
   headers: string[];
   sample_rows: string[][];
   suggested_mappings: ImportMappingSuggestion[];
   current_mapping: {
     sheet_index?: number;
+    warehouse_id?: string | null;
     fields?: Record<string, string>;
   } | null;
 }

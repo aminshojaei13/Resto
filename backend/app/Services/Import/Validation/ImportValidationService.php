@@ -8,6 +8,8 @@ use App\Models\ImportJob;
 use App\Models\ImportSource;
 use App\Models\ImportValidationResult;
 use App\Models\Product;
+use App\Models\Warehouse;
+use App\Models\WarehouseStock;
 use App\Services\Import\ImportStateMachine;
 use App\Services\Import\Mapping\ImportMappingService;
 use App\Services\Import\Normalizer\DataNormalizer;
@@ -72,9 +74,12 @@ class ImportValidationService
             // Clear any previous validation results for this job
             ImportValidationResult::where('import_job_id', $job->id)->delete();
 
-            $validationReport = ($job->import_type === ImportType::PRODUCTS)
-                ? $this->validateProducts($job, $source, $absolutePath, $targetSheetIndex, $mapping)
-                : $this->validateCustomers($job, $source, $absolutePath, $targetSheetIndex, $mapping);
+            $validationReport = match ($job->import_type) {
+                ImportType::PRODUCTS => $this->validateProducts($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::CUSTOMERS => $this->validateCustomers($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::INVENTORY => $this->validateInventory($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
+            };
 
             // Transition to preview_ready
             $this->stateMachine->transition(
@@ -559,6 +564,276 @@ class ImportValidationService
                         'phone' => $phone,
                         'email' => $email,
                         'address' => $address,
+                    ],
+                ];
+            }
+        }
+
+        // Chunk insert validation results
+        foreach (array_chunk($validationResultsToInsert, 200) as $chunk) {
+            ImportValidationResult::insert($chunk);
+        }
+
+        // Update Job state and preview metadata
+        $existingMeta = $job->metadata ?? [];
+        $existingMeta['preview_rows'] = $previewRows;
+        $existingMeta['matched_existing_rows'] = $matchedExistingRows;
+
+        $job->update([
+            'total_rows' => $totalRows,
+            'processed_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'metadata' => $existingMeta,
+        ]);
+
+        return [
+            'total_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'matched_existing_rows' => $matchedExistingRows,
+            'preview_count' => count($previewRows),
+        ];
+    }
+
+    /**
+     * Validate inventory opening balance rows.
+     */
+    private function validateInventory(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping
+    ): array {
+        $seenItemWarehouseInFile = [];
+
+        $totalRows = 0;
+        $validRows = 0;
+        $invalidRows = 0;
+        $matchedExistingRows = 0;
+
+        $previewRows = [];
+        $validationResultsToInsert = [];
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : null;
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $totalRows++;
+
+            $rowErrors = [];
+            $rowWarnings = [];
+
+            // Extract mapped fields
+            $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+            $barcodeRaw = $this->getMappedValue($rowItem, $mapping, 'barcode');
+            $quantityRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+            $warehouseRaw = $this->getMappedValue($rowItem, $mapping, 'warehouse');
+            $unitCostRaw = $this->getMappedValue($rowItem, $mapping, 'unit_cost');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $sku = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($skuRaw ?? ''));
+            $barcode = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($barcodeRaw ?? ''));
+            $warehouseVal = DataNormalizer::cleanString($warehouseRaw ?? '');
+            $notes = DataNormalizer::cleanString($notesRaw ?? '');
+
+            // 1. Identify Product (Tenant-isolated, pre-existing only)
+            $matchedProduct = null;
+            if ($sku === '' && $barcode === '') {
+                $rowErrors[] = [
+                    'field' => 'sku',
+                    'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                    'message' => 'کد یا شناسه کالا (SKU) الزامی است.',
+                    'value' => (string) $skuRaw,
+                ];
+            } else {
+                $prodQuery = Product::where('organization_id', $job->organization_id);
+                if ($sku !== '' && $barcode !== '') {
+                    $prodQuery->where(function ($q) use ($sku, $barcode) {
+                        $q->where('sku', $sku)->orWhere('barcode', $barcode);
+                    });
+                } elseif ($sku !== '') {
+                    $prodQuery->where(function ($q) use ($sku) {
+                        $q->where('sku', $sku)->orWhere('barcode', $sku);
+                    });
+                } else {
+                    $prodQuery->where('barcode', $barcode);
+                }
+
+                $candidates = $prodQuery->get();
+                if ($candidates->count() > 1) {
+                    $rowErrors[] = [
+                        'field' => 'sku',
+                        'code' => ImportErrorCode::AMBIGUOUS_PRODUCT,
+                        'message' => "چندین کالا با شناسه مشابه یافت شد ({$candidates->count()} مورد).",
+                        'value' => $sku ?: $barcode,
+                    ];
+                } elseif ($candidates->isEmpty()) {
+                    $rowErrors[] = [
+                        'field' => 'sku',
+                        'code' => ImportErrorCode::PRODUCT_NOT_FOUND,
+                        'message' => "کالایی با شناسه '{$sku}' در سامانه یافت نشد. موجودی اولیه فقط برای کالاهای از قبل تعریف‌شده امکان‌پذیر است.",
+                        'value' => $sku ?: $barcode,
+                    ];
+                } else {
+                    $matchedProduct = $candidates->first();
+                }
+            }
+
+            // 2. Resolve Warehouse (Tenant-isolated)
+            $resolvedWarehouse = null;
+            if ($warehouseVal !== '') {
+                $resolvedWarehouse = $tenantWarehouses->first(function ($wh) use ($warehouseVal) {
+                    return mb_strtolower($wh->code ?? '') === mb_strtolower($warehouseVal)
+                        || mb_strtolower($wh->name ?? '') === mb_strtolower($warehouseVal)
+                        || $wh->id === $warehouseVal;
+                });
+            }
+
+            if (!$resolvedWarehouse) {
+                $resolvedWarehouse = $defaultWarehouse;
+            }
+
+            if (!$resolvedWarehouse) {
+                $rowErrors[] = [
+                    'field' => 'warehouse',
+                    'code' => ImportErrorCode::WAREHOUSE_NOT_FOUND,
+                    'message' => ($warehouseVal !== '')
+                        ? "انبار با مشخصات '{$warehouseVal}' یافت نشد."
+                        : 'انبار مقصد مشخص نشده است و انبار پیش‌فرضی نیز برای عملیات انتخاب نشده است.',
+                    'value' => (string) $warehouseRaw,
+                ];
+            }
+
+            // 3. Validate Quantity (must be positive integer > 0)
+            $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($quantityRaw ?? ''));
+            $parsedQty = null;
+            if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                $rowErrors[] = [
+                    'field' => 'quantity',
+                    'code' => ImportErrorCode::INVALID_QUANTITY,
+                    'message' => 'مقدار موجودی باید عدد صحیح مثبت (بزرگتر از صفر) باشد.',
+                    'value' => (string) $quantityRaw,
+                ];
+            } else {
+                $parsedQty = (int) $qtyNorm;
+            }
+
+            // 4. Validate Unit Cost (Optional)
+            $parsedUnitCost = null;
+            if ($unitCostRaw !== null && trim((string) $unitCostRaw) !== '') {
+                $parsedUnitCost = DataNormalizer::parseMoney($unitCostRaw);
+                if ($parsedUnitCost === null) {
+                    $rowErrors[] = [
+                        'field' => 'unit_cost',
+                        'code' => ImportErrorCode::NUMERIC_INVALID,
+                        'message' => 'بهای تمام شده / قیمت خرید نامعتبر است.',
+                        'value' => (string) $unitCostRaw,
+                    ];
+                }
+            }
+
+            // 5. Check in-file duplicate (Product + Warehouse pair)
+            if ($matchedProduct && $resolvedWarehouse) {
+                $pairKey = "{$matchedProduct->id}:{$resolvedWarehouse->id}";
+                if (isset($seenItemWarehouseInFile[$pairKey])) {
+                    $rowErrors[] = [
+                        'field' => 'sku',
+                        'code' => ImportErrorCode::DUPLICATE_IN_FILE,
+                        'message' => "موجودی کالا '{$matchedProduct->name}' برای انبار '{$resolvedWarehouse->name}' در ردیف {$seenItemWarehouseInFile[$pairKey]} نیز تکرار شده است.",
+                        'value' => $sku ?: $barcode,
+                    ];
+                } else {
+                    $seenItemWarehouseInFile[$pairKey] = $rowNumber;
+                }
+
+                // 6. Check existing database balance
+                $existingStock = WarehouseStock::where('organization_id', $job->organization_id)
+                    ->where('warehouse_id', $resolvedWarehouse->id)
+                    ->where('product_id', $matchedProduct->id)
+                    ->first();
+
+                if ($existingStock && $existingStock->quantity > 0) {
+                    $matchedExistingRows++;
+                    $rowWarnings[] = [
+                        'field' => 'quantity',
+                        'code' => ImportErrorCode::EXISTING_BALANCE_CONFLICT,
+                        'message' => "این کالا در انبار '{$resolvedWarehouse->name}' دارای موجودی قبلی ({$existingStock->quantity}) است.",
+                        'value' => (string) $existingStock->quantity,
+                    ];
+                }
+            }
+
+            $isRowValid = empty($rowErrors);
+            if ($isRowValid) {
+                $validRows++;
+            } else {
+                $invalidRows++;
+            }
+
+            // Record DB validation results
+            foreach ($rowErrors as $err) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'source_file_id' => $source->id,
+                    'worksheet_name' => 'Sheet' . ($sheetIndex + 1),
+                    'row_number' => $rowNumber,
+                    'field_name' => $err['field'],
+                    'original_value' => mb_substr($err['value'] ?? '', 0, 255),
+                    'error_code' => $err['code'],
+                    'message' => $err['message'],
+                    'suggested_action' => 'مقدار این فیلد را در فایل منبع تصحیح نمایید.',
+                    'severity' => 'error',
+                    'is_eligible' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach ($rowWarnings as $warn) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'source_file_id' => $source->id,
+                    'worksheet_name' => 'Sheet' . ($sheetIndex + 1),
+                    'row_number' => $rowNumber,
+                    'field_name' => $warn['field'],
+                    'original_value' => mb_substr($warn['value'] ?? '', 0, 255),
+                    'error_code' => $warn['code'],
+                    'message' => $warn['message'],
+                    'suggested_action' => 'در مرحله اجرا می‌توانید نادیده گرفتن یا بروزرسانی موجودی را انتخاب کنید.',
+                    'severity' => 'warning',
+                    'is_eligible' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            // Collect preview rows up to limit
+            if (count($previewRows) < self::PREVIEW_LIMIT) {
+                $previewRows[] = [
+                    'row_number' => $rowNumber,
+                    'is_valid' => $isRowValid,
+                    'has_match' => !empty($rowWarnings),
+                    'errors' => $rowErrors,
+                    'warnings' => $rowWarnings,
+                    'mapped_data' => [
+                        'sku' => $sku,
+                        'product_name' => $matchedProduct ? $matchedProduct->name : null,
+                        'barcode' => $barcode,
+                        'quantity' => $parsedQty,
+                        'warehouse' => $resolvedWarehouse ? $resolvedWarehouse->name : $warehouseVal,
+                        'warehouse_code' => $resolvedWarehouse ? $resolvedWarehouse->code : null,
+                        'unit_cost' => $parsedUnitCost ?? ($matchedProduct ? $matchedProduct->cost_price : null),
+                        'notes' => $notes,
                     ],
                 ];
             }

@@ -18,7 +18,7 @@ interface ImportCenterPageProps {
 const IMPORT_TYPES = [
   { value: 'products', fa: 'کالاها و محصولات', en: 'Products & Catalog' },
   { value: 'customers', fa: 'مشتریان', en: 'Customers' },
-  { value: 'inventory', fa: 'موجودی اولیه انبار (فازهای بعد)', en: 'Initial Inventory Stock (Future Phase)' },
+  { value: 'inventory', fa: 'موجودی اولیه انبار', en: 'Opening Inventory Stock' },
   { value: 'expenses', fa: 'هزینه‌های جاری (فازهای بعد)', en: 'Operating Expenses (Future Phase)' },
   { value: 'orders', fa: 'سوابق سفارش‌ها (فازهای بعد)', en: 'Historical Orders (Future Phase)' },
   { value: 'suppliers', fa: 'تأمین‌کنندگان (فازهای بعد)', en: 'Suppliers (Future Phase)' },
@@ -64,6 +64,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   const [mappingData, setMappingData] = useState<ImportMappingResponse | null>(null);
   const [userFieldMappings, setUserFieldMappings] = useState<Record<string, string>>({});
   const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [previewData, setPreviewData] = useState<ImportPreviewResponse | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<'skip' | 'update'>('skip');
   const [isWizardLoading, setIsWizardLoading] = useState(false);
@@ -179,6 +180,15 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
           });
         }
         setUserFieldMappings(initialMap);
+
+        if (mapRes.current_mapping && mapRes.current_mapping.warehouse_id) {
+          setSelectedWarehouseId(mapRes.current_mapping.warehouse_id);
+        } else if (mapRes.warehouses && mapRes.warehouses.length > 0) {
+          setSelectedWarehouseId(mapRes.warehouses[0].id);
+        } else {
+          setSelectedWarehouseId('');
+        }
+
         setWizardStep('mapping');
       }
     } catch (err: any) {
@@ -216,7 +226,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
 
     try {
       // 1. Save mapping
-      await apiClient.saveImportMapping(wizardJobId, userFieldMappings, selectedSheetIndex);
+      await apiClient.saveImportMapping(wizardJobId, userFieldMappings, selectedSheetIndex, selectedWarehouseId);
 
       // 2. Run validation
       await apiClient.validateImportJob(wizardJobId);
@@ -588,6 +598,35 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                       {mappingData.datasets.map((ds) => (
                         <option key={ds.id} value={ds.sheet_index}>
                           {ds.name} ({ds.row_count} {isFa ? 'ردیف' : 'rows'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Default Warehouse Selector for inventory imports */}
+                {mappingData.import_type === 'inventory' && mappingData.warehouses && mappingData.warehouses.length > 0 && (
+                  <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                      {isFa ? 'انبار پیش‌فرض (در صورت عدم تطبیق ستون انبار):' : 'Default Warehouse (if warehouse column is not mapped):'}
+                    </label>
+                    <select
+                      value={selectedWarehouseId}
+                      onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${theme.colors.border}`,
+                        backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+                        color: theme.colors.textPrimary,
+                        fontSize: '13px',
+                        minWidth: '240px',
+                      }}
+                    >
+                      <option value="">{isFa ? '-- انتخاب انبار پیش‌فرض --' : '-- Select Default Warehouse --'}</option>
+                      {mappingData.warehouses.map((wh) => (
+                        <option key={wh.id} value={wh.id}>
+                          {wh.name} {wh.code ? `(${wh.code})` : ''}
                         </option>
                       ))}
                     </select>

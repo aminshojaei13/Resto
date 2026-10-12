@@ -21,9 +21,10 @@ class InventoryService
         ?string $variantId,
         int $delta,
         string $reason,
-        ?string $refId = null
+        ?string $refId = null,
+        ?string $unitCost = null
     ): WarehouseStock {
-        return DB::transaction(function () use ($orgId, $warehouseId, $productId, $variantId, $delta, $reason, $refId) {
+        return DB::transaction(function () use ($orgId, $warehouseId, $productId, $variantId, $delta, $reason, $refId, $unitCost) {
             $product = Product::findOrFail($productId);
 
             $stock = WarehouseStock::where('organization_id', $orgId)
@@ -58,7 +59,7 @@ class InventoryService
                 'product_variant_id' => $variantId,
                 'type' => $delta >= 0 ? 'IN' : 'OUT',
                 'quantity' => $delta,
-                'unit_cost' => $product->cost_price,
+                'unit_cost' => $unitCost ?? $product->cost_price,
                 'reason' => $reason,
                 'reference_id' => $refId,
             ]);

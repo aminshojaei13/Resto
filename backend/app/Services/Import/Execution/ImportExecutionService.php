@@ -7,6 +7,9 @@ use App\Models\ImportJob;
 use App\Models\ImportSource;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Models\WarehouseStock;
+use App\Services\InventoryService;
 use App\Services\Import\ImportStateMachine;
 use App\Services\Import\Normalizer\DataNormalizer;
 use App\Services\Import\Reader\SpreadsheetReaderService;
@@ -27,6 +30,7 @@ class ImportExecutionService
     public function __construct(
         private SpreadsheetReaderService $readerService,
         private ImportStateMachine $stateMachine,
+        private InventoryService $inventoryService,
     ) {
     }
 
@@ -69,9 +73,12 @@ class ImportExecutionService
             $sheetIndex = (int) ($job->mapping_config['sheet_index'] ?? 0);
             $mapping = $job->mapping_config['fields'] ?? [];
 
-            $result = ($job->import_type === ImportType::PRODUCTS)
-                ? $this->executeProducts($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy)
-                : $this->executeCustomers($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy);
+            $result = match ($job->import_type) {
+                ImportType::PRODUCTS => $this->executeProducts($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
+                ImportType::CUSTOMERS => $this->executeCustomers($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
+                ImportType::INVENTORY => $this->executeInventory($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
+                default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
+            };
 
             $hasFailures = $result['failed_rows'] > 0;
             $finalStatus = $hasFailures ? ImportStatus::COMPLETED_WITH_ERRORS : ImportStatus::COMPLETED;
@@ -433,6 +440,237 @@ class ImportExecutionService
                         'total_purchases' => '0.00',
                         'loyalty_points' => 0,
                     ]);
+                    $importedRows++;
+                }
+            }
+        });
+    }
+
+    /**
+     * Execute inventory opening balance import row-by-row in chunked transactions.
+     * Strictly modifies warehouse_stock and stock_movements ledger via InventoryService.
+     * Never creates fake sales, purchases, orders, expenses, or new products.
+     */
+    private function executeInventory(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping,
+        string $duplicateStrategy
+    ): array {
+        $seenItemWarehouseInFile = [];
+        $importedRows = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
+
+        $batch = [];
+        $batchSize = 100;
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : null;
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $batch[] = $rowItem;
+            if (count($batch) >= $batchSize) {
+                $this->processInventoryBatch(
+                    $batch,
+                    $job,
+                    $mapping,
+                    $duplicateStrategy,
+                    $tenantWarehouses,
+                    $defaultWarehouse,
+                    $seenItemWarehouseInFile,
+                    $importedRows,
+                    $skippedRows,
+                    $failedRows
+                );
+                $batch = [];
+            }
+        }
+
+        if (!empty($batch)) {
+            $this->processInventoryBatch(
+                $batch,
+                $job,
+                $mapping,
+                $duplicateStrategy,
+                $tenantWarehouses,
+                $defaultWarehouse,
+                $seenItemWarehouseInFile,
+                $importedRows,
+                $skippedRows,
+                $failedRows
+            );
+        }
+
+        $job->update([
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ]);
+
+        return [
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ];
+    }
+
+    private function processInventoryBatch(
+        array $batch,
+        ImportJob $job,
+        array $mapping,
+        string $duplicateStrategy,
+        $tenantWarehouses,
+        ?Warehouse $defaultWarehouse,
+        array &$seenItemWarehouseInFile,
+        int &$importedRows,
+        int &$skippedRows,
+        int &$failedRows
+    ): void {
+        DB::transaction(function () use (
+            $batch,
+            $job,
+            $mapping,
+            $duplicateStrategy,
+            $tenantWarehouses,
+            $defaultWarehouse,
+            &$seenItemWarehouseInFile,
+            &$importedRows,
+            &$skippedRows,
+            &$failedRows
+        ) {
+            foreach ($batch as $rowItem) {
+                $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+                $barcodeRaw = $this->getMappedValue($rowItem, $mapping, 'barcode');
+                $quantityRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+                $warehouseRaw = $this->getMappedValue($rowItem, $mapping, 'warehouse');
+                $unitCostRaw = $this->getMappedValue($rowItem, $mapping, 'unit_cost');
+                $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+                $sku = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($skuRaw ?? ''));
+                $barcode = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($barcodeRaw ?? ''));
+                $warehouseVal = DataNormalizer::cleanString($warehouseRaw ?? '');
+                $notes = DataNormalizer::cleanString($notesRaw ?? '');
+
+                // 1. Resolve Product strictly within tenant (pre-existing only)
+                $matchedProduct = null;
+                if ($sku !== '' || $barcode !== '') {
+                    $prodQuery = Product::where('organization_id', $job->organization_id);
+                    if ($sku !== '' && $barcode !== '') {
+                        $prodQuery->where(function ($q) use ($sku, $barcode) {
+                            $q->where('sku', $sku)->orWhere('barcode', $barcode);
+                        });
+                    } elseif ($sku !== '') {
+                        $prodQuery->where(function ($q) use ($sku) {
+                            $q->where('sku', $sku)->orWhere('barcode', $sku);
+                        });
+                    } else {
+                        $prodQuery->where('barcode', $barcode);
+                    }
+
+                    $candidates = $prodQuery->get();
+                    if ($candidates->count() === 1) {
+                        $matchedProduct = $candidates->first();
+                    }
+                }
+
+                if (!$matchedProduct) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 2. Resolve Warehouse strictly within tenant
+                $resolvedWarehouse = null;
+                if ($warehouseVal !== '') {
+                    $resolvedWarehouse = $tenantWarehouses->first(function ($wh) use ($warehouseVal) {
+                        return mb_strtolower($wh->code ?? '') === mb_strtolower($warehouseVal)
+                            || mb_strtolower($wh->name ?? '') === mb_strtolower($warehouseVal)
+                            || $wh->id === $warehouseVal;
+                    });
+                }
+
+                if (!$resolvedWarehouse) {
+                    $resolvedWarehouse = $defaultWarehouse;
+                }
+
+                if (!$resolvedWarehouse) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 3. Parse and validate Quantity (positive integer)
+                $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($quantityRaw ?? ''));
+                if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                    $failedRows++;
+                    continue;
+                }
+                $targetQuantity = (int) $qtyNorm;
+
+                // 4. Parse Unit Cost (optional)
+                $parsedUnitCost = null;
+                if ($unitCostRaw !== null && trim((string) $unitCostRaw) !== '') {
+                    $parsedUnitCost = DataNormalizer::parseMoney($unitCostRaw);
+                }
+
+                // 5. In-file duplicate guard
+                $pairKey = "{$matchedProduct->id}:{$resolvedWarehouse->id}";
+                if (isset($seenItemWarehouseInFile[$pairKey])) {
+                    $skippedRows++;
+                    continue;
+                }
+                $seenItemWarehouseInFile[$pairKey] = true;
+
+                // 6. Pessimistic lock on existing stock
+                $existingStock = WarehouseStock::where('organization_id', $job->organization_id)
+                    ->where('warehouse_id', $resolvedWarehouse->id)
+                    ->where('product_id', $matchedProduct->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $reason = $notes !== ''
+                    ? "موجودی اولیه: {$notes}"
+                    : 'موجودی اولیه (درون‌ریزی)';
+
+                if ($existingStock && $existingStock->quantity > 0) {
+                    if ($duplicateStrategy === self::STRATEGY_SKIP) {
+                        $skippedRows++;
+                        continue;
+                    }
+
+                    // In update mode: adjust delta to reach exact target opening balance
+                    $currentQty = (int) $existingStock->quantity;
+                    $delta = $targetQuantity - $currentQty;
+
+                    if ($delta !== 0) {
+                        $this->inventoryService->adjustStock(
+                            $job->organization_id,
+                            $resolvedWarehouse->id,
+                            $matchedProduct->id,
+                            null,
+                            $delta,
+                            $reason,
+                            $job->id,
+                            $parsedUnitCost
+                        );
+                    }
+                    $importedRows++;
+                } else {
+                    // No existing balance or 0 quantity: create opening stock
+                    $this->inventoryService->adjustStock(
+                        $job->organization_id,
+                        $resolvedWarehouse->id,
+                        $matchedProduct->id,
+                        null,
+                        $targetQuantity,
+                        $reason,
+                        $job->id,
+                        $parsedUnitCost
+                    );
                     $importedRows++;
                 }
             }

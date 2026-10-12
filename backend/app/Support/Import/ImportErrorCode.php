@@ -29,6 +29,11 @@ class ImportErrorCode
     public const DUPLICATE_IN_FILE = 'ERR_DUPLICATE_IN_FILE';
     public const EXISTING_RECORD_MATCH = 'WARN_EXISTING_RECORD_MATCH';
     public const AMBIGUOUS_MAPPING = 'ERR_AMBIGUOUS_MAPPING';
+    public const PRODUCT_NOT_FOUND = 'ERR_PRODUCT_NOT_FOUND';
+    public const AMBIGUOUS_PRODUCT = 'ERR_AMBIGUOUS_PRODUCT';
+    public const WAREHOUSE_NOT_FOUND = 'ERR_WAREHOUSE_NOT_FOUND';
+    public const INVALID_QUANTITY = 'ERR_INVALID_QUANTITY';
+    public const EXISTING_BALANCE_CONFLICT = 'WARN_EXISTING_BALANCE_CONFLICT';
 
     public static function persianMessage(string $code, array $params = []): string
     {
@@ -131,6 +136,26 @@ class ImportErrorCode
             self::AMBIGUOUS_MAPPING => [
                 'fa' => 'تطبیق ستون با ابهام مواجه است و نیازمند بررسی توسط کاربر می‌باشد.',
                 'en' => 'Column mapping is ambiguous and requires user review.',
+            ],
+            self::PRODUCT_NOT_FOUND => [
+                'fa' => 'کالایی با این شناسه/بارکد در سیستم یافت نشد. موجودی اولیه فقط برای کالاهای از قبل ثبت‌شده امکان‌پذیر است.',
+                'en' => 'Product was not found in the system. Opening inventory can only be imported for pre-existing products.',
+            ],
+            self::AMBIGUOUS_PRODUCT => [
+                'fa' => 'چند کالا با این مشخصات یافت شد و شناسه محصول مبهم است.',
+                'en' => 'Multiple products match this identifier, leading to ambiguity.',
+            ],
+            self::WAREHOUSE_NOT_FOUND => [
+                'fa' => 'انبار مشخص‌شده در سیستم یافت نشد یا در دسترس نیست.',
+                'en' => 'The specified warehouse was not found or is inaccessible.',
+            ],
+            self::INVALID_QUANTITY => [
+                'fa' => 'مقدار موجودی نامعتبر است. مقدار باید عدد صحیح مثبت (بزرگتر از صفر) باشد.',
+                'en' => 'Invalid quantity. Must be a positive integer greater than zero.',
+            ],
+            self::EXISTING_BALANCE_CONFLICT => [
+                'fa' => 'این کالا از قبل در این انبار دارای موجودی ثبت‌شده است.',
+                'en' => 'This product already has an existing stock balance in this warehouse.',
             ],
         ];
 

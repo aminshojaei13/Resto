@@ -190,6 +190,89 @@ class ImportMappingService
             ];
         }
 
+        if ($importType === ImportType::INVENTORY) {
+            return [
+                'sku' => [
+                    'name' => 'sku',
+                    'label_fa' => 'کد کالا / SKU',
+                    'label_en' => 'Product SKU / Code',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'کد یا شناسه کالا در سیستم (برای تطبیق با کالای از قبل تعریف شده)',
+                    'description_en' => 'Product SKU or code to match existing product',
+                    'aliases' => [
+                        'کد', 'کد کالا', 'کد محصول', 'شناسه', 'شناسه کالا', 'کد فنی', 'کد انبار',
+                        'sku', 'code', 'product code', 'product_code', 'item code', 'item_code'
+                    ],
+                ],
+                'quantity' => [
+                    'name' => 'quantity',
+                    'label_fa' => 'موجودی اولیه',
+                    'label_en' => 'Opening Quantity',
+                    'type' => 'integer',
+                    'required' => true,
+                    'description_fa' => 'تعداد یا موجودی اولیه کالا در انبار (عدد صحیح بزرگتر از صفر)',
+                    'description_en' => 'Opening balance quantity (integer greater than 0)',
+                    'aliases' => [
+                        'موجودی', 'موجودی اولیه', 'تعداد', 'مقدار', 'موجودی انبار', 'تعداد اولیه',
+                        'quantity', 'qty', 'stock', 'opening stock', 'balance', 'count'
+                    ],
+                ],
+                'warehouse' => [
+                    'name' => 'warehouse',
+                    'label_fa' => 'انبار / کد انبار',
+                    'label_en' => 'Warehouse',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد انبار (در صورت عدم انتخاب، از انبار پیش‌فرض استفاده می‌شود)',
+                    'description_en' => 'Warehouse code or name (falls back to default warehouse)',
+                    'aliases' => [
+                        'انبار', 'کد انبار', 'نام انبار', 'انبار کالا', 'محل انبار',
+                        'warehouse', 'warehouse code', 'warehouse_code', 'wh', 'location'
+                    ],
+                ],
+                'barcode' => [
+                    'name' => 'barcode',
+                    'label_fa' => 'بارکد کالا',
+                    'label_en' => 'Barcode',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'بارکد کالا به عنوان شناسه تکمیلی',
+                    'description_en' => 'Product barcode as secondary identifier',
+                    'aliases' => [
+                        'بارکد', 'کد میله ای', 'کد میله‌ای', 'بارکد کالا',
+                        'barcode', 'bar code', 'upc', 'ean'
+                    ],
+                ],
+                'unit_cost' => [
+                    'name' => 'unit_cost',
+                    'label_fa' => 'بهای تمام شده / قیمت خرید',
+                    'label_en' => 'Unit Cost',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'ارزش واحد موجودی (در صورت خالی بودن از بهای خرید تعریف شده کالا استفاده می‌شود)',
+                    'description_en' => 'Unit cost of opening stock (defaults to product cost price)',
+                    'aliases' => [
+                        'قیمت خرید', 'بهای تمام شده', 'قیمت تمام شده', 'فی خرید', 'هزینه واحد',
+                        'cost', 'unit cost', 'unit_cost', 'cost price', 'purchase price'
+                    ],
+                ],
+                'notes' => [
+                    'name' => 'notes',
+                    'label_fa' => 'توضیحات / یادداشت',
+                    'label_en' => 'Notes',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'یادداشت یا توضیحات برای گردش موجودی',
+                    'description_en' => 'Audit notes or remarks for stock adjustment',
+                    'aliases' => [
+                        'توضیحات', 'یادداشت', 'شرح', 'علت', 'علت موجودی',
+                        'notes', 'description', 'remark', 'remarks'
+                    ],
+                ],
+            ];
+        }
+
         throw new InvalidArgumentException("نوع درون‌ریزی '{$importType}' برای تطبیق ستون‌ها پشتیبانی نمی‌شود.");
     }
 
