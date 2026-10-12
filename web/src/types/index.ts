@@ -365,6 +365,60 @@ export interface ImportJobItem {
   datasets?: ImportDatasetItem[];
 }
 
+export interface ImportTargetField {
+  name: string;
+  label_fa: string;
+  label_en: string;
+  type: string;
+  required: boolean;
+  description_fa: string;
+  description_en: string;
+  aliases: string[];
+}
+
+export interface ImportMappingSuggestion {
+  source_column: string;
+  source_index: number;
+  target_field: string | null;
+  confidence: number | null;
+}
+
+export interface ImportMappingResponse {
+  job_id: string;
+  import_type: string;
+  status: string;
+  target_fields: ImportTargetField[];
+  datasets: ImportDatasetItem[];
+  active_sheet_index: number;
+  headers: string[];
+  sample_rows: string[][];
+  suggested_mappings: ImportMappingSuggestion[];
+  current_mapping: {
+    sheet_index?: number;
+    fields?: Record<string, string>;
+  } | null;
+}
+
+export interface ImportPreviewRowItem {
+  row_number: number;
+  is_valid: boolean;
+  has_match: boolean;
+  errors: Array<{ field: string; code: string; message: string; value: string }>;
+  warnings: Array<{ field: string; code: string; message: string; value: string }>;
+  mapped_data: Record<string, any>;
+}
+
+export interface ImportPreviewResponse {
+  job_id: string;
+  status: string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  matched_existing_rows: number;
+  preview_rows: ImportPreviewRowItem[];
+  can_execute: boolean;
+}
+
 export interface ImportValidationResultItem {
   id: string;
   import_job_id: string;
@@ -377,3 +431,5 @@ export interface ImportValidationResultItem {
   severity: 'error' | 'warning';
   is_eligible: boolean;
 }
+
+

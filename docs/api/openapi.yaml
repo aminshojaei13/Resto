@@ -1577,6 +1577,100 @@ paths:
                 type: string
                 format: binary
 
+  /import/jobs/{id}/mapping:
+    get:
+      summary: Get Target Fields and Mapping Suggestions
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: sheet_index
+          in: query
+          required: false
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Target schema and suggested column mappings
+    post:
+      summary: Save User Column Mapping Configuration
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fields]
+              properties:
+                sheet_index: { type: integer, default: 0 }
+                fields:
+                  type: object
+                  additionalProperties: { type: string }
+      responses:
+        '200':
+          description: Mapping saved and job transitioned to ready_to_validate
+        '422':
+          description: Mapping validation failure (missing required fields or conflicts)
+
+  /import/jobs/{id}/validate:
+    post:
+      summary: Run Row and Field Level Validation
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Validation completed and preview ready
+        '422':
+          description: Job status not eligible for validation
+
+  /import/jobs/{id}/preview:
+    get:
+      summary: Retrieve Validation Summary and Sample Preview Rows
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Preview rows with row errors, existing matches, and execution readiness
+
+  /import/jobs/{id}/execute:
+    post:
+      summary: Execute User Confirmed Import
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duplicate_strategy:
+                  type: string
+                  enum: [skip, update]
+                  default: skip
+      responses:
+        '200':
+          description: Import completed or completed with errors
+
 components:
   securitySchemes:
     BearerAuth:

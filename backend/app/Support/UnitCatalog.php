@@ -125,7 +125,18 @@ class UnitCatalog
             return $trimmed;
         }
 
-        return self::ALIASES[$trimmed] ?? null;
+        if (isset(self::ALIASES[$trimmed])) {
+            return self::ALIASES[$trimmed];
+        }
+
+        // Check if value matches Persian label in UNITS
+        foreach (self::UNITS as $code => [$fa, $en]) {
+            if ($trimmed === strtolower(trim($fa)) || $trimmed === strtolower(trim($en))) {
+                return $code;
+            }
+        }
+
+        return null;
     }
 
     /**

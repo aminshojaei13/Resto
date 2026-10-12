@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api\Import;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
+use App\Services\Import\Execution\ImportExecutionService;
 use App\Services\Import\ImportJobService;
+use App\Services\Import\ImportStateMachine;
 use App\Services\Import\ImportStorageService;
+use App\Services\Import\Mapping\ImportMappingService;
+use App\Services\Import\Validation\ImportValidationService;
+use App\Support\Import\ImportStatus;
 use App\Support\MembershipContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +21,10 @@ class ImportJobController extends Controller
     public function __construct(
         private ImportJobService $jobService,
         private ImportStorageService $storageService,
+        private ImportMappingService $mappingService,
+        private ImportValidationService $validationService,
+        private ImportExecutionService $executionService,
+        private ImportStateMachine $stateMachine,
     ) {
     }
 
@@ -266,4 +275,196 @@ class ImportJobController extends Controller
             ], 404);
         }
     }
+
+    /**
+     * Get target fields, datasets, and mapping suggestions for the job.
+     */
+    public function getMapping(Request $request, string $id): JsonResponse
+    {
+        $organizationId = MembershipContext::activeOrganizationId($request);
+
+        $job = ImportJob::where('organization_id', $organizationId)
+            ->where('id', $id)
+            ->with(['datasets'])
+            ->first();
+
+        if (!$job) {
+            return response()->json(['message' => 'عملیات درون‌ریزی مورد نظر یافت نشد.'], 404);
+        }
+
+        $targetFields = $this->mappingService->getTargetFields($job->import_type);
+
+        $datasets = $job->datasets;
+        $sheetIndex = (int) $request->query('sheet_index', 0);
+        $dataset = $datasets->firstWhere('sheet_index', $sheetIndex) ?? $datasets->first();
+
+        $headers = $dataset ? ($dataset->headers ?? []) : [];
+        $suggestions = $this->mappingService->suggestMappings($headers, $job->import_type);
+
+        return response()->json([
+            'job_id' => $job->id,
+            'import_type' => $job->import_type,
+            'status' => $job->status,
+            'target_fields' => array_values($targetFields),
+            'datasets' => $datasets,
+            'active_sheet_index' => $dataset ? $dataset->sheet_index : 0,
+            'headers' => $headers,
+            'sample_rows' => $dataset ? ($dataset->sample_rows ?? []) : [],
+            'suggested_mappings' => $suggestions,
+            'current_mapping' => $job->mapping_config,
+        ]);
+    }
+
+    /**
+     * Save column mapping configuration for the job.
+     */
+    public function saveMapping(Request $request, string $id): JsonResponse
+    {
+        $organizationId = MembershipContext::activeOrganizationId($request);
+
+        $job = ImportJob::where('organization_id', $organizationId)
+            ->where('id', $id)
+            ->first();
+
+        if (!$job) {
+            return response()->json(['message' => 'عملیات درون‌ریزی مورد نظر یافت نشد.'], 404);
+        }
+
+        $request->validate([
+            'fields' => 'required|array',
+            'sheet_index' => 'nullable|integer',
+        ], [
+            'fields.required' => 'تطبیق فیلدها الزامی است.',
+            'fields.array' => 'فرمت تطبیق فیلدها معتبر نیست.',
+        ]);
+
+        $fields = $request->input('fields');
+        $sheetIndex = (int) $request->input('sheet_index', 0);
+
+        // Validate mapping logic
+        $valResult = $this->mappingService->validateMapping($fields, $job->import_type);
+        if (!$valResult['valid']) {
+            return response()->json([
+                'message' => 'خطا در اعتبارسنجی تطبیق ستون‌ها',
+                'errors' => $valResult['errors'],
+            ], 422);
+        }
+
+        // Save mapping config
+        $job->update([
+            'mapping_config' => [
+                'sheet_index' => $sheetIndex,
+                'fields' => $fields,
+                'saved_at' => now()->toIso8601String(),
+            ],
+        ]);
+
+        // If status is mapping_required, advance to ready_to_validate
+        if ($job->status === ImportStatus::MAPPING_REQUIRED) {
+            $this->stateMachine->transition($job, ImportStatus::READY_TO_VALIDATE, 'Mapping configuration saved');
+        }
+
+        return response()->json([
+            'message' => 'پیکربندی تطبیق ستون‌ها با موفقیت ذخیره شد.',
+            'job' => $job->fresh(['datasets', 'sources']),
+        ]);
+    }
+
+    /**
+     * Run row-level and field-level validation on the mapped file.
+     */
+    public function validateData(Request $request, string $id): JsonResponse
+    {
+        $organizationId = MembershipContext::activeOrganizationId($request);
+
+        $job = ImportJob::where('organization_id', $organizationId)
+            ->where('id', $id)
+            ->first();
+
+        if (!$job) {
+            return response()->json(['message' => 'عملیات درون‌ریزی مورد نظر یافت نشد.'], 404);
+        }
+
+        try {
+            $summary = $this->validationService->validateJob($job);
+
+            return response()->json([
+                'message' => 'اعتبارسنجی داده‌ها با موفقیت انجام شد.',
+                'summary' => $summary,
+                'job' => $job->fresh(),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'خطا در اعتبارسنجی: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Retrieve preview data and summary.
+     */
+    public function preview(Request $request, string $id): JsonResponse
+    {
+        $organizationId = MembershipContext::activeOrganizationId($request);
+
+        $job = ImportJob::where('organization_id', $organizationId)
+            ->where('id', $id)
+            ->first();
+
+        if (!$job) {
+            return response()->json(['message' => 'عملیات درون‌ریزی مورد نظر یافت نشد.'], 404);
+        }
+
+        $meta = $job->metadata ?? [];
+        $previewRows = $meta['preview_rows'] ?? [];
+
+        return response()->json([
+            'job_id' => $job->id,
+            'status' => $job->status,
+            'total_rows' => $job->total_rows,
+            'valid_rows' => $job->valid_rows,
+            'invalid_rows' => $job->invalid_rows,
+            'matched_existing_rows' => $meta['matched_existing_rows'] ?? 0,
+            'preview_rows' => $previewRows,
+            'can_execute' => in_array($job->status, [ImportStatus::PREVIEW_READY, ImportStatus::READY_TO_IMPORT], true) && $job->valid_rows > 0,
+        ]);
+    }
+
+    /**
+     * Execute user-confirmed import.
+     */
+    public function executeImport(Request $request, string $id): JsonResponse
+    {
+        $organizationId = MembershipContext::activeOrganizationId($request);
+        $user = MembershipContext::user($request);
+
+        if (!$user) {
+            return response()->json(['message' => 'کاربر احراز هویت نشده است.'], 401);
+        }
+
+        $job = ImportJob::where('organization_id', $organizationId)
+            ->where('id', $id)
+            ->first();
+
+        if (!$job) {
+            return response()->json(['message' => 'عملیات درون‌ریزی مورد نظر یافت نشد.'], 404);
+        }
+
+        $strategy = $request->input('duplicate_strategy', ImportExecutionService::STRATEGY_SKIP);
+
+        try {
+            $result = $this->executionService->executeJob($job, $user, $strategy);
+
+            return response()->json([
+                'message' => 'عملیات درون‌ریزی با موفقیت به پایان رسید.',
+                'result' => $result,
+                'job' => $job->fresh(),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'خطا در اجرای درون‌ریزی: ' . $e->getMessage()], 500);
+        }
+    }
 }
+

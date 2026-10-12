@@ -24,6 +24,8 @@ import {
   Warehouse,
   ImportJobItem,
   ImportValidationResultItem,
+  ImportMappingResponse,
+  ImportPreviewResponse,
 } from '../types';
 import {
   BusinessContext,
@@ -1143,6 +1145,36 @@ export const apiClient = {
 
   getImportDownloadUrl: (id: string): string => {
     return `${BASE_URL}import/jobs/${id}/download`;
+  },
+
+  getImportMapping: async (id: string, sheetIndex: number = 0): Promise<ImportMappingResponse> => {
+    return request<ImportMappingResponse>(`/import/jobs/${id}/mapping`, {
+      query: { sheet_index: String(sheetIndex) },
+    });
+  },
+
+  saveImportMapping: async (id: string, fields: Record<string, string>, sheetIndex: number = 0): Promise<{ message: string; job: ImportJobItem }> => {
+    return request<{ message: string; job: ImportJobItem }>(`/import/jobs/${id}/mapping`, {
+      method: 'POST',
+      body: { fields, sheet_index: sheetIndex },
+    });
+  },
+
+  validateImportJob: async (id: string): Promise<{ message: string; summary: any; job: ImportJobItem }> => {
+    return request<{ message: string; summary: any; job: ImportJobItem }>(`/import/jobs/${id}/validate`, {
+      method: 'POST',
+    });
+  },
+
+  getImportPreview: async (id: string): Promise<ImportPreviewResponse> => {
+    return request<ImportPreviewResponse>(`/import/jobs/${id}/preview`);
+  },
+
+  executeImportJob: async (id: string, duplicateStrategy: 'skip' | 'update' = 'skip'): Promise<{ message: string; result: any; job: ImportJobItem }> => {
+    return request<{ message: string; result: any; job: ImportJobItem }>(`/import/jobs/${id}/execute`, {
+      method: 'POST',
+      body: { duplicate_strategy: duplicateStrategy },
+    });
   },
 };
 

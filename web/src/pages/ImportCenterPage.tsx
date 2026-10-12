@@ -4,7 +4,12 @@ import { PageHeader } from '../components/PageHeader';
 import { FormError, PrimaryButton, SecondaryButton } from '../components/Field';
 import { EmptyState } from '../components/EmptyState';
 import { useTheme } from '../theme/ThemeContext';
-import { ImportJobItem } from '../types';
+import {
+  ImportJobItem,
+  ImportMappingResponse,
+  ImportPreviewResponse,
+  ImportValidationResultItem,
+} from '../types';
 
 interface ImportCenterPageProps {
   language?: 'fa' | 'en';
@@ -13,11 +18,11 @@ interface ImportCenterPageProps {
 const IMPORT_TYPES = [
   { value: 'products', fa: 'کالاها و محصولات', en: 'Products & Catalog' },
   { value: 'customers', fa: 'مشتریان', en: 'Customers' },
-  { value: 'inventory', fa: 'موجودی اولیه انبار', en: 'Initial Inventory Stock' },
-  { value: 'expenses', fa: 'هزینه‌های جاری', en: 'Operating Expenses' },
-  { value: 'orders', fa: 'سوابق سفارش‌ها', en: 'Historical Orders' },
-  { value: 'suppliers', fa: 'تأمین‌کنندگان', en: 'Suppliers' },
-  { value: 'purchases', fa: 'سفارش‌های خرید', en: 'Purchases' },
+  { value: 'inventory', fa: 'موجودی اولیه انبار (فازهای بعد)', en: 'Initial Inventory Stock (Future Phase)' },
+  { value: 'expenses', fa: 'هزینه‌های جاری (فازهای بعد)', en: 'Operating Expenses (Future Phase)' },
+  { value: 'orders', fa: 'سوابق سفارش‌ها (فازهای بعد)', en: 'Historical Orders (Future Phase)' },
+  { value: 'suppliers', fa: 'تأمین‌کنندگان (فازهای بعد)', en: 'Suppliers (Future Phase)' },
+  { value: 'purchases', fa: 'سفارش‌های خرید (فازهای بعد)', en: 'Purchases (Future Phase)' },
 ];
 
 const STATUS_LABELS: Record<string, { fa: string; en: string; color: string; bg: string }> = {
@@ -52,6 +57,19 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   const [selectedType, setSelectedType] = useState('products');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+
+  // Wizard Modal State
+  const [wizardJobId, setWizardJobId] = useState<string | null>(null);
+  const [wizardStep, setWizardStep] = useState<'mapping' | 'preview' | 'executing' | 'result'>('mapping');
+  const [mappingData, setMappingData] = useState<ImportMappingResponse | null>(null);
+  const [userFieldMappings, setUserFieldMappings] = useState<Record<string, string>>({});
+  const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
+  const [previewData, setPreviewData] = useState<ImportPreviewResponse | null>(null);
+  const [duplicateStrategy, setDuplicateStrategy] = useState<'skip' | 'update'>('skip');
+  const [isWizardLoading, setIsWizardLoading] = useState(false);
+  const [wizardError, setWizardError] = useState('');
+  const [jobErrorsList, setJobErrorsList] = useState<ImportValidationResultItem[]>([]);
+  const [executionResult, setExecutionResult] = useState<any>(null);
 
   const loadJobs = useCallback(async () => {
     setIsLoading(true);
@@ -98,6 +116,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
           : `Import job for "${res.job.original_filename}" created successfully.`
       );
       await loadJobs();
+      // Automatically open wizard if in mapping_required or uploaded
+      openWizard(res.job.id);
     } catch (err) {
       if (err instanceof ApiError) {
         setUploadError(err.message);
@@ -110,17 +130,14 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   };
 
   const handleCancelJob = async (jobId: string) => {
-    if (!window.confirm(isFa ? 'آیا از لغو این عملیات اطمینان دارید؟' : 'Are you sure you want to cancel this job?')) {
+    if (!window.confirm(isFa ? 'آیا از لغو این عملیات مطمئن هستید؟' : 'Are you sure you want to cancel this job?')) {
       return;
     }
 
     try {
-      const res = await apiClient.cancelImportJob(jobId, isFa ? 'لغو توسط کاربر' : 'Cancelled by user');
-      setActionNotice(res.message || (isFa ? 'عملیات لغو شد.' : 'Job cancelled.'));
+      await apiClient.cancelImportJob(jobId);
+      setActionNotice(isFa ? 'عملیات درون‌ریزی لغو شد.' : 'Import job was cancelled.');
       await loadJobs();
-      if (selectedJob && selectedJob.id === jobId) {
-        setSelectedJob(res.job);
-      }
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
@@ -130,14 +147,111 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
     }
   };
 
-  const handleViewJob = async (jobId: string) => {
+  const openWizard = async (jobId: string) => {
+    setWizardJobId(jobId);
+    setWizardError('');
+    setIsWizardLoading(true);
+
     try {
-      const res = await apiClient.getImportJob(jobId);
-      setSelectedJob(res.job);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setErrorMessage(err.message);
+      const jobDetails = await apiClient.getImportJob(jobId);
+      const currentStatus = jobDetails.job.status;
+
+      if (['preview_ready', 'ready_to_import', 'completed', 'completed_with_errors'].includes(currentStatus)) {
+        // Load preview directly
+        const prev = await apiClient.getImportPreview(jobId);
+        setPreviewData(prev);
+        setWizardStep('preview');
+      } else {
+        // Load mapping step
+        const mapRes = await apiClient.getImportMapping(jobId, 0);
+        setMappingData(mapRes);
+        setSelectedSheetIndex(mapRes.active_sheet_index);
+
+        // Populate initial field mappings from suggested mappings or saved mapping
+        const initialMap: Record<string, string> = {};
+        if (mapRes.current_mapping && mapRes.current_mapping.fields) {
+          Object.assign(initialMap, mapRes.current_mapping.fields);
+        } else {
+          mapRes.suggested_mappings.forEach((sug) => {
+            if (sug.target_field) {
+              initialMap[sug.target_field] = sug.source_column;
+            }
+          });
+        }
+        setUserFieldMappings(initialMap);
+        setWizardStep('mapping');
       }
+    } catch (err: any) {
+      setWizardError(err.message || 'Error loading wizard');
+    } finally {
+      setIsWizardLoading(false);
+    }
+  };
+
+  const handleSheetChange = async (newIndex: number) => {
+    if (!wizardJobId) return;
+    setIsWizardLoading(true);
+    setSelectedSheetIndex(newIndex);
+    try {
+      const mapRes = await apiClient.getImportMapping(wizardJobId, newIndex);
+      setMappingData(mapRes);
+      const newMap: Record<string, string> = {};
+      mapRes.suggested_mappings.forEach((sug) => {
+        if (sug.target_field) {
+          newMap[sug.target_field] = sug.source_column;
+        }
+      });
+      setUserFieldMappings(newMap);
+    } catch (err: any) {
+      setWizardError(err.message);
+    } finally {
+      setIsWizardLoading(false);
+    }
+  };
+
+  const handleSaveMappingAndValidate = async () => {
+    if (!wizardJobId) return;
+    setIsWizardLoading(true);
+    setWizardError('');
+
+    try {
+      // 1. Save mapping
+      await apiClient.saveImportMapping(wizardJobId, userFieldMappings, selectedSheetIndex);
+
+      // 2. Run validation
+      await apiClient.validateImportJob(wizardJobId);
+
+      // 3. Load preview
+      const prev = await apiClient.getImportPreview(wizardJobId);
+      setPreviewData(prev);
+
+      // 4. Load any validation errors
+      const errs = await apiClient.getImportJobErrors(wizardJobId, 1);
+      setJobErrorsList(errs.data ?? []);
+
+      setWizardStep('preview');
+      await loadJobs();
+    } catch (err: any) {
+      setWizardError(err.message || (isFa ? 'خطا در اعتبارسنجی فایل.' : 'Validation failed.'));
+    } finally {
+      setIsWizardLoading(false);
+    }
+  };
+
+  const handleExecuteImport = async () => {
+    if (!wizardJobId) return;
+    setIsWizardLoading(true);
+    setWizardError('');
+
+    try {
+      const res = await apiClient.executeImportJob(wizardJobId, duplicateStrategy);
+      setExecutionResult(res.result);
+      setWizardStep('result');
+      await loadJobs();
+    } catch (err: any) {
+      setWizardError(err.message || (isFa ? 'خطا در اجرای درون‌ریزی.' : 'Import execution failed.'));
+    } finally {
+      setIsWizardLoading(false);
     }
   };
 
@@ -162,8 +276,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
         title={isFa ? 'مرکز درون‌ریزی داده‌ها' : 'Import Center'}
         description={
           isFa
-            ? 'مهاجرت و انتقال اطلاعات قبلی (کالاها، مشتریان، موجودی و سوابق مالی) از فایل‌های اکسل و CSV'
-            : 'Migrate business data (products, customers, inventory, and finances) from Excel and CSV files'
+            ? 'مهاجرت مستقیم و تطبیق ستون‌های فایل‌های اکسل و CSV برای کالاها و مشتریان با اعتبارسنجی دقیق و حفظ یکپارچگی'
+            : 'Migrate products and customers from Excel and CSV files with deterministic column mapping, row-by-row validation, and auditability'
         }
         actions={
           <PrimaryButton onClick={() => setIsUploadModalOpen(true)}>
@@ -201,8 +315,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
             title={isFa ? 'هیچ فایل درون‌ریزی ثبت نشده است' : 'No import jobs recorded'}
             description={
               isFa
-                ? 'می‌توانید اطلاعات کسب‌وکار خود را از طریق فایل اکسل (.xlsx) یا CSV به سامانه منتقل کنید.'
-                : 'You can migrate your existing business records using an Excel (.xlsx) or CSV spreadsheet.'
+                ? 'می‌توانید کاتالوگ محصولات یا لیست مشتریان خود را از طریق فایل اکسل (.xlsx) یا CSV به سامانه منتقل کنید.'
+                : 'You can migrate your products or customers using an Excel (.xlsx) or CSV spreadsheet.'
             }
             actionText={isFa ? 'شروع اولین درون‌ریزی' : 'Start First Import'}
             onAction={() => setIsUploadModalOpen(true)}
@@ -227,7 +341,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
               }}
             >
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
-                {isFa ? 'تاریخچه عملیات‌های مهاجرت داده' : 'Migration Job History'}
+                {isFa ? 'سوابق و وضعیت عملیات‌های درون‌ریزی' : 'Import Migration Records'}
               </h3>
               <SecondaryButton onClick={loadJobs}>
                 {isFa ? 'بروزرسانی لیست' : 'Refresh List'}
@@ -249,7 +363,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                     <th style={{ padding: '12px 16px' }}>{isFa ? 'نوع داده' : 'Data Type'}</th>
                     <th style={{ padding: '12px 16px' }}>{isFa ? 'وضعیت' : 'Status'}</th>
                     <th style={{ padding: '12px 16px' }}>{isFa ? 'تعداد ردیف' : 'Rows'}</th>
-                    <th style={{ padding: '12px 16px' }}>{isFa ? 'حجم فایل' : 'Size'}</th>
+                    <th style={{ padding: '12px 16px' }}>{isFa ? 'معتبر / نامعتبر' : 'Valid / Invalid'}</th>
+                    <th style={{ padding: '12px 16px' }}>{isFa ? 'درج شده' : 'Imported'}</th>
                     <th style={{ padding: '12px 16px' }}>{isFa ? 'تاریخ ثبت' : 'Created At'}</th>
                     <th style={{ padding: '12px 16px' }}>{isFa ? 'عملیات' : 'Actions'}</th>
                   </tr>
@@ -273,6 +388,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                       'ready_to_import',
                     ].includes(job.status);
 
+                    const canConfigure = ['mapping_required', 'ready_to_validate', 'validating', 'preview_ready', 'ready_to_import'].includes(job.status);
+
                     return (
                       <tr
                         key={job.id}
@@ -283,8 +400,10 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                       >
                         <td style={{ padding: '12px 16px', fontWeight: 500 }}>
                           {job.original_filename}
-                          <div style={{ fontSize: '11px', color: theme.colors.textSecondary }}>
-                            {job.detected_format?.toUpperCase()}
+                          <div style={{ fontSize: '11px', color: theme.colors.textSecondary, display: 'flex', gap: '6px' }}>
+                            <span>{job.detected_format?.toUpperCase()}</span>
+                            <span>•</span>
+                            <span>{formatFileSize(job.file_size)}</span>
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
@@ -308,33 +427,63 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                         <td style={{ padding: '12px 16px' }}>
                           {job.total_rows > 0 ? job.total_rows.toLocaleString() : '—'}
                         </td>
-                        <td style={{ padding: '12px 16px', color: theme.colors.textSecondary }}>
-                          {formatFileSize(job.file_size)}
+                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                          {job.valid_rows > 0 || job.invalid_rows > 0 ? (
+                            <span>
+                              <span style={{ color: '#16A34A', fontWeight: 600 }}>{job.valid_rows}</span>
+                              {' / '}
+                              <span style={{ color: job.invalid_rows > 0 ? '#DC2626' : theme.colors.textSecondary }}>{job.invalid_rows}</span>
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#2563EB' }}>
+                          {job.imported_rows > 0 ? job.imported_rows.toLocaleString() : '—'}
                         </td>
                         <td style={{ padding: '12px 16px', color: theme.colors.textSecondary }}>
                           {new Date(job.created_at).toLocaleDateString(isFa ? 'fa-IR' : 'en-US')}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleViewJob(job.id)}
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '12px',
-                                borderRadius: '6px',
-                                border: `1px solid ${theme.colors.border}`,
-                                backgroundColor: isDark ? theme.colors.surfaceElevated : '#FFFFFF',
-                                color: theme.colors.textPrimary,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {isFa ? 'جزئیات' : 'Details'}
-                            </button>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {canConfigure ? (
+                              <button
+                                onClick={() => openWizard(job.id)}
+                                style={{
+                                  padding: '5px 10px',
+                                  fontSize: '12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #3B82F6',
+                                  backgroundColor: '#EFF6FF',
+                                  color: '#1D4ED8',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {job.status === 'mapping_required' || job.status === 'ready_to_validate'
+                                  ? (isFa ? 'تطبیق و بررسی' : 'Map & Validate')
+                                  : (isFa ? 'پیش‌نمایش و اجرا' : 'Preview & Import')}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setSelectedJob(job)}
+                                style={{
+                                  padding: '5px 10px',
+                                  fontSize: '12px',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${theme.colors.border}`,
+                                  backgroundColor: isDark ? theme.colors.surfaceElevated : '#FFFFFF',
+                                  color: theme.colors.textPrimary,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {isFa ? 'مشاهده' : 'View'}
+                              </button>
+                            )}
+
                             {isCancellable && (
                               <button
                                 onClick={() => handleCancelJob(job.id)}
                                 style={{
-                                  padding: '4px 8px',
+                                  padding: '5px 8px',
                                   fontSize: '12px',
                                   borderRadius: '6px',
                                   border: '1px solid #FCA5A5',
@@ -358,8 +507,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
         )}
       </div>
 
-      {/* Job Details Modal / Drawer */}
-      {selectedJob && (
+      {/* Multi-step Wizard Modal for Mapping, Validation, and Execution */}
+      {wizardJobId && (
         <div
           style={{
             position: 'fixed',
@@ -367,38 +516,45 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(0,0,0,0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
             padding: '16px',
           }}
-          onClick={() => setSelectedJob(null)}
         >
           <div
             style={{
               backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
               borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '650px',
+              padding: '28px',
+              maxWidth: '900px',
               width: '100%',
-              maxHeight: '90vh',
+              maxHeight: '92vh',
               overflowY: 'auto',
               border: `1px solid ${theme.colors.border}`,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
-                {isFa ? 'جزئیات عملیات درون‌ریزی' : 'Import Job Details'}
-              </h3>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
+                  {isFa ? 'مراحل آماده‌سازی و ورود داده‌ها' : 'Data Migration Wizard'}
+                </h3>
+                <div style={{ fontSize: '13px', color: theme.colors.textSecondary, marginTop: '4px' }}>
+                  {wizardStep === 'mapping' && (isFa ? 'مرحله ۱: انتخاب کاربرگ و تطبیق ستون‌ها' : 'Step 1: Sheet & Column Mapping')}
+                  {wizardStep === 'preview' && (isFa ? 'مرحله ۲: نتایج اعتبارسنجی و پیش‌نمایش رکوردها' : 'Step 2: Validation Summary & Row Preview')}
+                  {wizardStep === 'result' && (isFa ? 'مرحله ۳: گزارش نهایی درون‌ریزی' : 'Step 3: Import Result Summary')}
+                </div>
+              </div>
               <button
-                onClick={() => setSelectedJob(null)}
+                onClick={() => setWizardJobId(null)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  fontSize: '20px',
+                  fontSize: '22px',
                   cursor: 'pointer',
                   color: theme.colors.textSecondary,
                 }}
@@ -407,79 +563,275 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'نام فایل' : 'Filename'}</div>
-                <div style={{ fontWeight: 500 }}>{selectedJob.original_filename}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'وضعیت جاری' : 'Current Status'}</div>
-                <div>{STATUS_LABELS[selectedJob.status]?.[isFa ? 'fa' : 'en'] || selectedJob.status}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'نوع محتوا' : 'Content Type'}</div>
-                <div>{IMPORT_TYPES.find((t) => t.value === selectedJob.import_type)?.[isFa ? 'fa' : 'en'] || selectedJob.import_type}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'تعداد کل ردیف‌ها' : 'Total Rows'}</div>
-                <div style={{ fontWeight: 600 }}>{selectedJob.total_rows.toLocaleString()}</div>
-              </div>
-            </div>
+            {wizardError && <FormError message={wizardError} />}
 
-            {selectedJob.error_summary && (
-              <div
-                style={{
-                  padding: '12px',
-                  backgroundColor: isDark ? '#7F1D1D' : '#FEF2F2',
-                  color: '#DC2626',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  marginBottom: '16px',
-                }}
-              >
-                <strong>{isFa ? 'گزارش خطا:' : 'Error Summary:'}</strong> {selectedJob.error_summary}
+            {/* STEP 1: MAPPING */}
+            {wizardStep === 'mapping' && mappingData && (
+              <div>
+                {/* Worksheet Selector if multiple datasets */}
+                {mappingData.datasets.length > 1 && (
+                  <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                      {isFa ? 'انتخاب کاربرگ (Sheet):' : 'Select Sheet:'}
+                    </label>
+                    <select
+                      value={selectedSheetIndex}
+                      onChange={(e) => handleSheetChange(Number(e.target.value))}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${theme.colors.border}`,
+                        backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+                        color: theme.colors.textPrimary,
+                      }}
+                    >
+                      {mappingData.datasets.map((ds) => (
+                        <option key={ds.id} value={ds.sheet_index}>
+                          {ds.name} ({ds.row_count} {isFa ? 'ردیف' : 'rows'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '16px', fontSize: '14px', color: theme.colors.textSecondary }}>
+                  {isFa
+                    ? 'ستون‌های فایل خود را به فیلدهای متناظر در سیستم متصل نمایید. پیشنهادهای هوشمند بر اساس نام ستون‌ها اعمال شده‌اند.'
+                    : 'Map your spreadsheet columns to Resto fields. Deterministic suggestions have been pre-selected.'}
+                </div>
+
+                <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB', borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                        <th style={{ padding: '10px 14px' }}>{isFa ? 'فیلد مقصد در سامانه' : 'Resto Field'}</th>
+                        <th style={{ padding: '10px 14px' }}>{isFa ? 'ستون متناظر در فایل' : 'Spreadsheet Column'}</th>
+                        <th style={{ padding: '10px 14px' }}>{isFa ? 'توضیحات فیلد' : 'Description'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mappingData.target_fields.map((field) => {
+                        const currentSourceCol = userFieldMappings[field.name] || '';
+                        return (
+                          <tr key={field.name} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 600 }}>
+                              {isFa ? field.label_fa : field.label_en}
+                              {field.required && <span style={{ color: '#DC2626', marginRight: '4px' }}>*</span>}
+                            </td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <select
+                                value={currentSourceCol}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setUserFieldMappings((prev) => ({
+                                    ...prev,
+                                    [field.name]: val,
+                                  }));
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${currentSourceCol ? '#3B82F6' : theme.colors.border}`,
+                                  backgroundColor: isDark ? theme.colors.surfaceElevated : '#FFFFFF',
+                                  color: theme.colors.textPrimary,
+                                  fontSize: '13px',
+                                }}
+                              >
+                                <option value="">{isFa ? '-- نادیده گرفتن این فیلد --' : '-- Ignore Field --'}</option>
+                                {mappingData.headers.map((hdr) => (
+                                  <option key={hdr} value={hdr}>
+                                    {hdr}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '12px 14px', color: theme.colors.textSecondary, fontSize: '12px' }}>
+                              {isFa ? field.description_fa : field.description_en}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <SecondaryButton onClick={() => setWizardJobId(null)}>
+                    {isFa ? 'انصراف' : 'Cancel'}
+                  </SecondaryButton>
+                  <PrimaryButton onClick={handleSaveMappingAndValidate} disabled={isWizardLoading}>
+                    {isWizardLoading
+                      ? (isFa ? 'در حال بررسی و اعتبارسنجی...' : 'Validating...')
+                      : (isFa ? 'تایید تطبیق و اعتبارسنجی داده‌ها' : 'Save & Run Validation')}
+                  </PrimaryButton>
+                </div>
               </div>
             )}
 
-            {/* Datasets / Worksheets if discovered */}
-            {selectedJob.datasets && selectedJob.datasets.length > 0 && (
-              <div style={{ marginTop: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-                  {isFa ? 'کاربرگ‌ها و جداول شناسایی‌شده' : 'Discovered Worksheets'}
+            {/* STEP 2: PREVIEW & DUPLICATE STRATEGY */}
+            {wizardStep === 'preview' && previewData && (
+              <div>
+                {/* Stats cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
+                    <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'کل ردیف‌ها' : 'Total Rows'}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700 }}>{previewData.total_rows}</div>
+                  </div>
+                  <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: isDark ? '#064E3B' : '#ECFDF5' }}>
+                    <div style={{ fontSize: '12px', color: isDark ? '#A7F3D0' : '#065F46' }}>{isFa ? 'ردیف‌های معتبر' : 'Valid Rows'}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#10B981' }}>{previewData.valid_rows}</div>
+                  </div>
+                  <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: isDark ? '#7F1D1D' : '#FEF2F2' }}>
+                    <div style={{ fontSize: '12px', color: isDark ? '#FECACA' : '#991B1B' }}>{isFa ? 'دارای خطا' : 'Invalid Rows'}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#EF4444' }}>{previewData.invalid_rows}</div>
+                  </div>
+                  <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: isDark ? '#78350F' : '#FFFBEB' }}>
+                    <div style={{ fontSize: '12px', color: isDark ? '#FDE68A' : '#92400E' }}>{isFa ? 'مشابه در سامانه' : 'Existing Matches'}</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#F59E0B' }}>{previewData.matched_existing_rows}</div>
+                  </div>
+                </div>
+
+                {/* Duplicate Handling Strategy */}
+                <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '10px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600 }}>
+                    {isFa ? 'راهبرد برخورد با رکوردهای تکراری یا موجود در سیستم:' : 'Duplicate Records Handling Strategy:'}
+                  </h4>
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="dupStrategy"
+                        value="skip"
+                        checked={duplicateStrategy === 'skip'}
+                        onChange={() => setDuplicateStrategy('skip')}
+                      />
+                      <span><strong>{isFa ? 'صرف‌نظر کردن (Skip):' : 'Skip:'}</strong> {isFa ? 'رکوردهای تکراری رد شده و تغییر نمی‌کنند' : 'Do not modify existing records'}</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="dupStrategy"
+                        value="update"
+                        checked={duplicateStrategy === 'update'}
+                        onChange={() => setDuplicateStrategy('update')}
+                      />
+                      <span><strong>{isFa ? 'بروزرسانی (Update):' : 'Update:'}</strong> {isFa ? 'اطلاعات رکورد موجود با فایل جایگزین می‌شود' : 'Overwrite existing record with spreadsheet values'}</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sample Preview Rows */}
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>
+                  {isFa ? 'نمونه ردیف‌های پردازش‌شده (پیش‌نمایش ۵۰ ردیف اول):' : 'Preview Sample Rows (First 50 Rows):'}
                 </h4>
-                {selectedJob.datasets.map((ds) => (
-                  <div
-                    key={ds.id}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB',
-                      marginBottom: '8px',
-                      border: `1px solid ${theme.colors.border}`,
+                <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB', borderBottom: `1px solid ${theme.colors.border}`, fontSize: '12px' }}>
+                        <th style={{ padding: '8px 10px' }}>{isFa ? 'ردیف' : 'Row'}</th>
+                        <th style={{ padding: '8px 10px' }}>{isFa ? 'وضعیت' : 'Status'}</th>
+                        <th style={{ padding: '8px 10px' }}>{isFa ? 'داده‌های استخراج‌شده' : 'Parsed Data'}</th>
+                        <th style={{ padding: '8px 10px' }}>{isFa ? 'پیام / هشدار' : 'Messages'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewData.preview_rows.map((row) => (
+                        <tr key={row.row_number} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '12px' }}>
+                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>{row.row_number}</td>
+                          <td style={{ padding: '8px 10px' }}>
+                            {row.is_valid ? (
+                              row.has_match ? (
+                                <span style={{ color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 6px', borderRadius: '4px' }}>
+                                  {isFa ? 'موجود در سیستم' : 'Existing Match'}
+                                </span>
+                              ) : (
+                                <span style={{ color: '#16A34A', backgroundColor: '#DCFCE7', padding: '2px 6px', borderRadius: '4px' }}>
+                                  {isFa ? 'معتبر' : 'Valid'}
+                                </span>
+                              )
+                            ) : (
+                              <span style={{ color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 6px', borderRadius: '4px' }}>
+                                {isFa ? 'دارای خطا' : 'Invalid'}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            {Object.entries(row.mapped_data)
+                              .filter(([_, v]) => v !== null && v !== '')
+                              .map(([k, v]) => `${k}: ${v}`)
+                              .join(' | ')}
+                          </td>
+                          <td style={{ padding: '8px 10px', color: row.is_valid ? '#D97706' : '#DC2626' }}>
+                            {row.errors.length > 0 && row.errors.map((e) => e.message).join(', ')}
+                            {row.warnings.length > 0 && row.warnings.map((w) => w.message).join(', ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <SecondaryButton
+                    onClick={() => {
+                      if (wizardJobId) openWizard(wizardJobId);
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <strong>{ds.name}</strong>
-                      <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
-                        {ds.row_count} {isFa ? 'ردیف' : 'rows'}
-                      </span>
-                    </div>
-                    {ds.headers && ds.headers.length > 0 && (
-                      <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
-                        <strong>{isFa ? 'سرستون‌ها: ' : 'Headers: '}</strong>
-                        {ds.headers.join(' | ')}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    {isFa ? '← بازگشت به تطبیق ستون‌ها' : '← Back to Mapping'}
+                  </SecondaryButton>
+                  <PrimaryButton
+                    onClick={handleExecuteImport}
+                    disabled={isWizardLoading || previewData.valid_rows === 0}
+                  >
+                    {isWizardLoading
+                      ? (isFa ? 'در حال اجرای درون‌ریزی...' : 'Executing Import...')
+                      : (isFa ? 'تایید و اجرای نهایی درون‌ریزی' : 'Confirm & Execute Import')}
+                  </PrimaryButton>
+                </div>
               </div>
             )}
 
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <SecondaryButton onClick={() => setSelectedJob(null)}>
-                {isFa ? 'بستن' : 'Close'}
-              </SecondaryButton>
-            </div>
+            {/* STEP 3: RESULT */}
+            {wizardStep === 'result' && executionResult && (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>
+                  {isFa ? 'درون‌ریزی اطلاعات با موفقیت انجام شد' : 'Import Executed Successfully'}
+                </h3>
+                <p style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>
+                  {isFa
+                    ? 'داده‌های معتبر بدون دستکاری در انبار یا سوابق مالی ثبت شدند.'
+                    : 'Valid records have been safely migrated into your catalog.'}
+                </p>
+
+                <div style={{ display: 'inline-flex', gap: '20px', padding: '16px 32px', borderRadius: '12px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6', marginBottom: '24px' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{isFa ? 'درج / بروزرسانی شده' : 'Imported'}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#16A34A' }}>{executionResult.imported_rows}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{isFa ? 'رد شده (تکراری)' : 'Skipped'}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#F59E0B' }}>{executionResult.skipped_rows}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{isFa ? 'ناموفق (خطا)' : 'Failed'}</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#DC2626' }}>{executionResult.failed_rows}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <PrimaryButton
+                    onClick={() => {
+                      setWizardJobId(null);
+                      void loadJobs();
+                    }}
+                  >
+                    {isFa ? 'بستن و بازگشت به لیست' : 'Close and Return'}
+                  </PrimaryButton>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -569,8 +921,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                 />
                 <div style={{ fontSize: '11px', color: theme.colors.textSecondary, marginTop: '4px' }}>
                   {isFa
-                    ? 'حداکثر حجم مجاز: ۲۰ مگابایت. فایل‌های ماکرو (.xlsm) پذیرفته نمی‌شوند.'
-                    : 'Maximum size: 20MB. Macro-enabled workbooks (.xlsm) are rejected.'}
+                    ? 'حداکثر حجم مجاز: ۲۰ مگابایت. فرمت‌های اکسل (.xlsx) و CSV پشتیبانی می‌شوند.'
+                    : 'Maximum size: 20MB. Excel (.xlsx) and CSV spreadsheets supported.'}
                 </div>
               </div>
 
@@ -584,10 +936,87 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                 <PrimaryButton type="submit" disabled={isUploading || !selectedFile}>
                   {isUploading
                     ? (isFa ? 'در حال ارسال و ثبت...' : 'Uploading...')
-                    : (isFa ? 'بارگذاری و شروع بررسی' : 'Upload & Start Inspection')}
+                    : (isFa ? 'بارگذاری و ادامه به مرحله تطبیق' : 'Upload & Proceed to Mapping')}
                 </PrimaryButton>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Job Details Modal */}
+      {selectedJob && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+          onClick={() => setSelectedJob(null)}
+        >
+          <div
+            style={{
+              backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              border: `1px solid ${theme.colors.border}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
+                {isFa ? 'جزئیات عملیات درون‌ریزی' : 'Import Job Details'}
+              </h3>
+              <button
+                onClick={() => setSelectedJob(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: theme.colors.textSecondary,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'نام فایل' : 'Filename'}</div>
+                <div style={{ fontWeight: 500 }}>{selectedJob.original_filename}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'وضعیت جاری' : 'Current Status'}</div>
+                <div>{STATUS_LABELS[selectedJob.status]?.[isFa ? 'fa' : 'en'] || selectedJob.status}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'تعداد کل ردیف‌ها' : 'Total Rows'}</div>
+                <div style={{ fontWeight: 600 }}>{selectedJob.total_rows.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{isFa ? 'رکوردهای درون‌ریزی شده' : 'Imported Rows'}</div>
+                <div style={{ fontWeight: 600, color: '#16A34A' }}>{selectedJob.imported_rows.toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <SecondaryButton onClick={() => setSelectedJob(null)}>
+                {isFa ? 'بستن' : 'Close'}
+              </SecondaryButton>
+            </div>
           </div>
         </div>
       )}

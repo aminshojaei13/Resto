@@ -14,12 +14,29 @@ class ImportErrorCode
     public const DUPLICATE_HEADER = 'ERR_DUPLICATE_HEADER';
     public const INVALID_FIELD_TYPE = 'ERR_INVALID_FIELD_TYPE';
     public const MISSING_REQUIRED_FIELD = 'ERR_MISSING_REQUIRED_FIELD';
+    public const REQUIRED_FIELD_MISSING = 'ERR_MISSING_REQUIRED_FIELD';
     public const INVALID_DATE_FORMAT = 'ERR_INVALID_DATE_FORMAT';
     public const INVALID_NUMBER_FORMAT = 'ERR_INVALID_NUMBER_FORMAT';
+    public const NUMERIC_INVALID = 'ERR_INVALID_NUMBER_FORMAT';
+    public const STRING_TOO_LONG = 'ERR_STRING_TOO_LONG';
     public const DUPLICATE_KEY_CANDIDATE = 'WARN_DUPLICATE_KEY_CANDIDATE';
     public const FOREIGN_ENTITY_NOT_FOUND = 'ERR_FOREIGN_ENTITY_NOT_FOUND';
     public const ROW_LIMIT_EXCEEDED = 'ERR_ROW_LIMIT_EXCEEDED';
     public const PARSING_FAILED = 'ERR_PARSING_FAILED';
+    public const INVALID_UNIT = 'ERR_INVALID_UNIT';
+    public const INVALID_PHONE = 'ERR_INVALID_PHONE';
+    public const INVALID_EMAIL = 'ERR_INVALID_EMAIL';
+    public const DUPLICATE_IN_FILE = 'ERR_DUPLICATE_IN_FILE';
+    public const EXISTING_RECORD_MATCH = 'WARN_EXISTING_RECORD_MATCH';
+    public const AMBIGUOUS_MAPPING = 'ERR_AMBIGUOUS_MAPPING';
+
+    public static function persianMessage(string $code, array $params = []): string
+    {
+        if ($code === self::REQUIRED_FIELD_MISSING && isset($params['field'])) {
+            return "فیلد اجباری '{$params['field']}' مقداردهی نشده است.";
+        }
+        return self::defaultMessage($code, 'fa');
+    }
 
     /**
      * Get default localized message for an error code.
@@ -90,6 +107,30 @@ class ImportErrorCode
             self::PARSING_FAILED => [
                 'fa' => 'خطا در پردازش محتوای فایل.',
                 'en' => 'Error parsing file content.',
+            ],
+            self::INVALID_UNIT => [
+                'fa' => 'واحد کالا در سامانه تعریف نشده است. لطفاً از واحدهای مجاز (مانند عدد، کیلوگرم، بسته و ...) استفاده کنید.',
+                'en' => 'Invalid unit of measurement. Please use a recognized unit (e.g. piece, kilogram, pack, etc.).',
+            ],
+            self::INVALID_PHONE => [
+                'fa' => 'شماره تلفن معتبر نیست.',
+                'en' => 'Invalid phone number format.',
+            ],
+            self::INVALID_EMAIL => [
+                'fa' => 'فرمت ایمیل نامعتبر است.',
+                'en' => 'Invalid email address format.',
+            ],
+            self::DUPLICATE_IN_FILE => [
+                'fa' => 'این رکورد در ردیف دیگری از همین فایل تکرار شده است.',
+                'en' => 'This record is duplicated within the source file.',
+            ],
+            self::EXISTING_RECORD_MATCH => [
+                'fa' => 'رکورد مشابهی از قبل در سامانه ثبت شده است.',
+                'en' => 'A matching record already exists in the system.',
+            ],
+            self::AMBIGUOUS_MAPPING => [
+                'fa' => 'تطبیق ستون با ابهام مواجه است و نیازمند بررسی توسط کاربر می‌باشد.',
+                'en' => 'Column mapping is ambiguous and requires user review.',
             ],
         ];
 
