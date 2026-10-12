@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\Import\ImportJobController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\MessageImportController;
 use App\Http\Controllers\Api\OrganizationController;
@@ -254,6 +255,22 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
         // Audit trail
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
             ->middleware('permission:' . RolePermission::AUDIT_VIEW);
+
+        // Import Center
+        Route::get('/import/jobs', [ImportJobController::class, 'index'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
+        Route::post('/import/jobs', [ImportJobController::class, 'store'])
+            ->middleware('permission:' . RolePermission::IMPORT_MANAGE);
+        Route::get('/import/jobs/{id}', [ImportJobController::class, 'show'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
+        Route::get('/import/jobs/{id}/progress', [ImportJobController::class, 'progress'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
+        Route::post('/import/jobs/{id}/cancel', [ImportJobController::class, 'cancel'])
+            ->middleware('permission:' . RolePermission::IMPORT_MANAGE);
+        Route::get('/import/jobs/{id}/errors', [ImportJobController::class, 'errors'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
+        Route::get('/import/jobs/{id}/download', [ImportJobController::class, 'download'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
     });
 
     /* ------------------------------------------------------------------

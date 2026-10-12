@@ -22,6 +22,8 @@ import {
   Supplier,
   UnitOption,
   Warehouse,
+  ImportJobItem,
+  ImportValidationResultItem,
 } from '../types';
 import {
   BusinessContext,
@@ -124,11 +126,15 @@ interface RequestOptions {
 
 const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
   const { method = 'GET', body, query, anonymous = false } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
   };
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (!anonymous) {
     const token = getAccessToken();
@@ -161,7 +167,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     response = await fetch(url, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? (body as any) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError('ارتباط با سرور برقرار نشد. اتصال اینترنت خود را بررسی کنید.', 0);
@@ -1092,6 +1098,51 @@ export const apiClient = {
       totalSalesCount: Number(data.total_sales_count ?? data.totalSalesCount ?? 0),
       todaySalesCount: Number(data.today_sales_count ?? data.todaySalesCount ?? 0),
     };
+  },
+
+  /* -------------------------------------------------------- import center */
+
+  getImportJobs: async (page: number = 1, status?: string, type?: string): Promise<Paginated<ImportJobItem>> => {
+    const query: Record<string, string> = {
+      page: String(page),
+      org_id: getBusinessContext().organizationId,
+    };
+    if (status) query.status = status;
+    if (type) query.import_type = type;
+
+    return request<Paginated<ImportJobItem>>('/import/jobs', { query });
+  },
+
+  getImportJob: async (id: string): Promise<{ job: ImportJobItem; summary: any }> => {
+    return request<{ job: ImportJobItem; summary: any }>(`/import/jobs/${id}`);
+  },
+
+  createImportJob: async (formData: FormData): Promise<{ job: ImportJobItem; summary: any }> => {
+    return request<{ job: ImportJobItem; summary: any }>('/import/jobs', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  cancelImportJob: async (id: string, reason?: string): Promise<{ message: string; job: ImportJobItem }> => {
+    return request<{ message: string; job: ImportJobItem }>(`/import/jobs/${id}/cancel`, {
+      method: 'POST',
+      body: { reason },
+    });
+  },
+
+  getImportJobProgress: async (id: string): Promise<{ status: string; progress: any; summary: any }> => {
+    return request<{ status: string; progress: any; summary: any }>(`/import/jobs/${id}/progress`);
+  },
+
+  getImportJobErrors: async (id: string, page: number = 1): Promise<Paginated<ImportValidationResultItem>> => {
+    return request<Paginated<ImportValidationResultItem>>(`/import/jobs/${id}/errors`, {
+      query: { page: String(page) },
+    });
+  },
+
+  getImportDownloadUrl: (id: string): string => {
+    return `${BASE_URL}import/jobs/${id}/download`;
   },
 };
 

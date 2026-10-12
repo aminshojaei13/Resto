@@ -1386,6 +1386,197 @@ paths:
                 items:
                   $ref: '#/components/schemas/AuditLog'
 
+  /import/jobs:
+    get:
+      summary: List Import Jobs
+      tags: [Import Center]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: import_type
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 15 }
+      responses:
+        '200':
+          description: Paginated import jobs for tenant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImportJob'
+                  total: { type: integer }
+                  current_page: { type: integer }
+    post:
+      summary: Create Import Job and Upload Source File
+      tags: [Import Center]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, import_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel (.xlsx) or CSV file (max 20MB)
+                import_type:
+                  type: string
+                  enum: [products, customers, inventory, expenses, orders, suppliers, purchases]
+                idempotency_key:
+                  type: string
+      responses:
+        '201':
+          description: Import job created and inspection queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job:
+                    $ref: '#/components/schemas/ImportJob'
+                  summary:
+                    type: object
+        '422':
+          description: Validation error or unsupported / malicious file format
+
+  /import/jobs/{id}:
+    get:
+      summary: Get Import Job Details
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Import job details with sources and datasets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job:
+                    $ref: '#/components/schemas/ImportJob'
+                  summary:
+                    type: object
+        '404':
+          description: Job not found
+
+  /import/jobs/{id}/progress:
+    get:
+      summary: Get Import Progress and Counters
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current progress counters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  progress: { type: object }
+                  summary: { type: object }
+
+  /import/jobs/{id}/cancel:
+    post:
+      summary: Cancel a Cancellable Import Job
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: Job successfully cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  job:
+                    $ref: '#/components/schemas/ImportJob'
+        '422':
+          description: Job is not in a cancellable state
+
+  /import/jobs/{id}/errors:
+    get:
+      summary: List Validation and Processing Errors
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: severity
+          in: query
+          schema: { type: string, enum: [error, warning] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Paginated validation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImportValidationResult'
+                  total: { type: integer }
+
+  /import/jobs/{id}/download:
+    get:
+      summary: Download Original Source File
+      tags: [Import Center]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Source file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1712,3 +1903,85 @@ components:
       properties:
         error: { type: string, example: "Unauthorized organization access" }
         message: { type: string, example: "User usr_cashier_1 is not authorized to access organization org_braveboy" }
+
+    ImportJob:
+      type: object
+      properties:
+        id: { type: string, example: "45f94b30-e2b2-4d56-8292-ccbf625da651" }
+        organization_id: { type: string, example: "org_apex" }
+        user_id: { type: string, example: "usr_admin_1" }
+        import_type: { type: string, example: "products" }
+        status: { type: string, example: "uploaded" }
+        original_filename: { type: string, example: "products_2026.xlsx" }
+        detected_format: { type: string, example: "xlsx" }
+        file_size: { type: integer, example: 1048576 }
+        total_rows: { type: integer, example: 1500 }
+        processed_rows: { type: integer, example: 0 }
+        valid_rows: { type: integer, example: 0 }
+        invalid_rows: { type: integer, example: 0 }
+        imported_rows: { type: integer, example: 0 }
+        skipped_rows: { type: integer, example: 0 }
+        failed_rows: { type: integer, example: 0 }
+        error_summary: { type: string, nullable: true }
+        idempotency_key: { type: string, nullable: true }
+        mapping_config: { type: object, nullable: true }
+        metadata: { type: object, nullable: true }
+        started_at: { type: string, nullable: true }
+        completed_at: { type: string, nullable: true }
+        created_at: { type: string }
+        updated_at: { type: string }
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportSource'
+        datasets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportDataset'
+
+    ImportSource:
+      type: object
+      properties:
+        id: { type: string, example: "87c4731b-2521-464a-a0f1-6784d5df65b6" }
+        import_job_id: { type: string }
+        organization_id: { type: string }
+        original_filename: { type: string }
+        storage_path: { type: string }
+        file_format: { type: string }
+        file_size: { type: integer }
+        checksum: { type: string }
+        upload_status: { type: string }
+        created_at: { type: string }
+
+    ImportDataset:
+      type: object
+      properties:
+        id: { type: string, example: "21c1723e-89a1-43ef-b3e5-829cb8c51139" }
+        import_job_id: { type: string }
+        import_source_id: { type: string }
+        name: { type: string, example: "Sheet1" }
+        sheet_index: { type: integer, example: 0 }
+        row_count: { type: integer, example: 150 }
+        headers:
+          type: array
+          items: { type: string }
+        sample_rows:
+          type: array
+          items:
+            type: array
+            items: { type: string }
+        status: { type: string }
+
+    ImportValidationResult:
+      type: object
+      properties:
+        id: { type: string }
+        import_job_id: { type: string }
+        row_number: { type: integer, example: 12 }
+        field_name: { type: string, example: "price" }
+        original_value: { type: string, example: "N/A" }
+        error_code: { type: string, example: "ERR_INVALID_NUMBER_FORMAT" }
+        message: { type: string, example: "فرمت عدد نامعتبر است." }
+        suggested_action: { type: string, nullable: true }
+        severity: { type: string, example: "error" }
+        is_eligible: { type: boolean, example: false }

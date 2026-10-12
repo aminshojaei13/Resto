@@ -318,3 +318,62 @@ export interface StaffMember {
   joinedAt: string | null;
   isSelf: boolean;
 }
+
+export interface ImportDatasetItem {
+  id: string;
+  name: string;
+  sheet_index: number;
+  row_count: number;
+  headers: string[];
+  sample_rows: string[][];
+  status: string;
+}
+
+export interface ImportSourceItem {
+  id: string;
+  original_filename: string;
+  storage_path: string;
+  file_format: string;
+  file_size: number;
+  checksum: string;
+  upload_status: string;
+  created_at: string;
+}
+
+export interface ImportJobItem {
+  id: string;
+  organization_id: string;
+  user_id: string | null;
+  import_type: string;
+  status: string;
+  original_filename: string;
+  detected_format: string;
+  file_size: number;
+  total_rows: number;
+  processed_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  imported_rows: number;
+  skipped_rows: number;
+  failed_rows: number;
+  error_summary: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  sources?: ImportSourceItem[];
+  datasets?: ImportDatasetItem[];
+}
+
+export interface ImportValidationResultItem {
+  id: string;
+  import_job_id: string;
+  row_number: number;
+  field_name: string | null;
+  original_value: string | null;
+  error_code: string;
+  message: string;
+  suggested_action: string | null;
+  severity: 'error' | 'warning';
+  is_eligible: boolean;
+}

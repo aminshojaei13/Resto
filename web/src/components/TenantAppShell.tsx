@@ -87,6 +87,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       items: [
         { path: '/app/expenses', labelFa: 'هزینه‌ها', labelEn: 'Expenses', icon: '💸' },
         { path: '/app/accounting', labelFa: 'دفتر کل و گزارش‌ها', labelEn: 'Ledger & Reports', icon: '⚖️' },
+        { path: '/app/imports', labelFa: 'مرکز درون‌ریزی داده‌ها', labelEn: 'Import Center', icon: '📥' },
         { path: '/app/settings', labelFa: 'تنظیمات کسب‌وکار', labelEn: 'Business Settings', icon: '🔧' },
         { path: '/app/staff', labelFa: 'کارمندان', labelEn: 'Staff', icon: '👤' },
         { path: '/app/profile', labelFa: 'حساب کاربری من', labelEn: 'My account', icon: '⚙️' },

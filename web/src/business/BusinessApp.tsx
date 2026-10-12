@@ -26,6 +26,7 @@ import { CustomersPage } from '../pages/CustomersPage';
 import { ExpensesPage } from '../pages/ExpensesPage';
 import { MessagesPage } from '../pages/MessagesPage';
 import { AccountingPage } from '../pages/AccountingPage';
+import { ImportCenterPage } from '../pages/ImportCenterPage';
 import { useTheme } from '../theme/ThemeContext';
 import { Language } from '../i18n/authStrings';
 
@@ -178,6 +179,8 @@ const BusinessAppRoutes: React.FC = () => {
       case '/app/accounting':
       case '/app/reports':
         return <AccountingPage language={language} />;
+      case '/app/imports':
+        return <ImportCenterPage language={language} />;
       case '/app/profile':
         return <ProfilePage language={language} />;
       case '/app/staff':

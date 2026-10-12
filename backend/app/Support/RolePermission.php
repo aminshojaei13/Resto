@@ -52,6 +52,9 @@ class RolePermission
     public const MESSAGES_VIEW = 'messages.view';
     public const MESSAGES_IMPORT = 'messages.import';
 
+    public const IMPORT_VIEW = 'import.view';
+    public const IMPORT_MANAGE = 'import.manage';
+
     public const AUDIT_VIEW = 'audit.view';
 
     public const ALL = [
@@ -65,6 +68,7 @@ class RolePermission
         self::EXPENSES_VIEW, self::EXPENSES_MANAGE,
         self::ACCOUNTING_VIEW, self::ACCOUNTING_MANAGE,
         self::MESSAGES_VIEW, self::MESSAGES_IMPORT,
+        self::IMPORT_VIEW, self::IMPORT_MANAGE,
         self::AUDIT_VIEW,
     ];
 
@@ -83,6 +87,7 @@ class RolePermission
             self::EXPENSES_VIEW, self::EXPENSES_MANAGE,
             self::ACCOUNTING_VIEW, self::ACCOUNTING_MANAGE,
             self::MESSAGES_VIEW, self::MESSAGES_IMPORT,
+            self::IMPORT_VIEW, self::IMPORT_MANAGE,
         ],
 
         OrganizationMembership::ROLE_STAFF => [
@@ -94,6 +99,7 @@ class RolePermission
             self::CUSTOMERS_VIEW, self::CUSTOMERS_MANAGE,
             self::EXPENSES_VIEW,
             self::MESSAGES_VIEW, self::MESSAGES_IMPORT,
+            self::IMPORT_VIEW,
         ],
     ];
 
