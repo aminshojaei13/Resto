@@ -457,6 +457,141 @@ class ProductsCustomersImportTest extends TestCase
         $forbiddenResp->assertStatus(404);
     }
 
+    public function test_saving_new_mapping_invalidates_stale_validation_and_preview_results(): void
+    {
+        $csvRows = [
+            ['name', 'sku', 'price'],
+            ['قهوه موکا', 'MOK-1', '45000'],
+        ];
+
+        $job = $this->createMockJob(ImportType::PRODUCTS, $csvRows);
+        $job->update([
+            'status' => ImportStatus::READY_TO_VALIDATE,
+            'mapping_config' => [
+                'sheet_index' => 0,
+                'fields' => [
+                    'name' => 'name',
+                    'sku' => 'sku',
+                    'price' => 'price',
+                ],
+            ],
+        ]);
+
+        // Run validation to produce valid_rows & preview
+        $valResp = $this->actingAs($this->userApex)
+            ->postJson("/api/v1/import/jobs/{$job->id}/validate", [], $this->apexHeaders());
+        $valResp->assertStatus(200);
+
+        $freshJob = $job->fresh();
+        $this->assertEquals(ImportStatus::PREVIEW_READY, $freshJob->status);
+        $this->assertEquals(1, $freshJob->valid_rows);
+        $this->assertNotEmpty($freshJob->metadata['preview_rows']);
+
+        // Now save a new mapping: MUST reset valid_rows, clear preview, and transition to ready_to_validate
+        $saveResp = $this->actingAs($this->userApex)
+            ->postJson("/api/v1/import/jobs/{$job->id}/mapping", [
+                'fields' => [
+                    'name' => 'name',
+                    'sku' => 'sku',
+                    'price' => 'price',
+                ],
+                'sheet_index' => 0,
+            ], $this->apexHeaders());
+        $saveResp->assertStatus(200);
+
+        $afterSaveJob = $job->fresh();
+        $this->assertEquals(ImportStatus::READY_TO_VALIDATE, $afterSaveJob->status);
+        $this->assertEquals(0, $afterSaveJob->valid_rows);
+        $this->assertArrayNotHasKey('preview_rows', $afterSaveJob->metadata ?? []);
+    }
+
+    public function test_repeated_execution_request_on_completed_job_is_rejected(): void
+    {
+        $csvRows = [
+            ['name', 'sku', 'price'],
+            ['چای سبز', 'TEA-1', '25000'],
+        ];
+
+        $job = $this->createMockJob(ImportType::PRODUCTS, $csvRows);
+        $job->update([
+            'status' => ImportStatus::PREVIEW_READY,
+            'valid_rows' => 1,
+            'mapping_config' => [
+                'sheet_index' => 0,
+                'fields' => [
+                    'name' => 'name',
+                    'sku' => 'sku',
+                    'price' => 'price',
+                ],
+            ],
+        ]);
+
+        // First execution -> success
+        $execResp1 = $this->actingAs($this->userApex)
+            ->postJson("/api/v1/import/jobs/{$job->id}/execute", [
+                'duplicate_strategy' => 'skip',
+            ], $this->apexHeaders());
+        $execResp1->assertStatus(200);
+
+        $this->assertEquals(ImportStatus::COMPLETED, $job->fresh()->status);
+
+        // Repeated execution -> must be rejected (422) because job is completed
+        $execResp2 = $this->actingAs($this->userApex)
+            ->postJson("/api/v1/import/jobs/{$job->id}/execute", [
+                'duplicate_strategy' => 'skip',
+            ], $this->apexHeaders());
+        $execResp2->assertStatus(422);
+    }
+
+    public function test_update_strategy_preserves_tenant_ownership_and_unmapped_fields(): void
+    {
+        $product = Product::create([
+            'id' => (string) Str::uuid(),
+            'organization_id' => $this->orgApexId,
+            'sku' => 'PROTECT-SKU',
+            'barcode' => 'ORIGINAL-BARCODE',
+            'category' => 'دسته‌بندی اصلی',
+            'name' => 'نام قدیمی',
+            'price' => '10000.00',
+            'cost_price' => '5000.00',
+            'unit' => 'piece',
+        ]);
+
+        $csvRows = [
+            ['name', 'sku', 'price'],
+            ['نام بروز شده', 'PROTECT-SKU', '20000'],
+        ];
+
+        $job = $this->createMockJob(ImportType::PRODUCTS, $csvRows);
+        $job->update([
+            'status' => ImportStatus::PREVIEW_READY,
+            'valid_rows' => 1,
+            'mapping_config' => [
+                'sheet_index' => 0,
+                'fields' => [
+                    'name' => 'name',
+                    'sku' => 'sku',
+                    'price' => 'price',
+                ],
+            ],
+        ]);
+
+        $execResp = $this->actingAs($this->userApex)
+            ->postJson("/api/v1/import/jobs/{$job->id}/execute", [
+                'duplicate_strategy' => 'update',
+            ], $this->apexHeaders());
+        $execResp->assertStatus(200);
+
+        $refreshed = $product->fresh();
+        // Updated mapped fields
+        $this->assertSame('نام بروز شده', $refreshed->name);
+        $this->assertEquals(20000.00, (float) $refreshed->price);
+        // Preserved tenant ownership & unmapped fields
+        $this->assertSame($this->orgApexId, $refreshed->organization_id);
+        $this->assertSame('ORIGINAL-BARCODE', $refreshed->barcode);
+        $this->assertSame('دسته‌بندی اصلی', $refreshed->category);
+    }
+
     private function createMockJob(string $importType, array $csvData): ImportJob
     {
         $jobId = (string) Str::uuid();

@@ -144,7 +144,7 @@ class SpreadsheetReaderService
         $zip->close();
 
         $reader = new XMLReader();
-        $reader->open($tempPath);
+        $reader->open($tempPath, null, LIBXML_NONET | LIBXML_NOWARNING | LIBXML_NOERROR);
 
         $headers = [];
         $inRow = false;
@@ -235,7 +235,7 @@ class SpreadsheetReaderService
         fclose($stream);
 
         $reader = new XMLReader();
-        $reader->open($tempPath);
+        $reader->open($tempPath, null, LIBXML_NONET | LIBXML_NOWARNING | LIBXML_NOERROR);
 
         $strings = [];
         $currentText = '';

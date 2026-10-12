@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Import;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportJob;
+use App\Models\ImportValidationResult;
 use App\Services\Import\Execution\ImportExecutionService;
 use App\Services\Import\ImportJobService;
 use App\Services\Import\ImportStateMachine;
@@ -350,8 +351,17 @@ class ImportJobController extends Controller
             ], 422);
         }
 
+        // Clear any previous validation results and reset progress counters when mapping changes
+        ImportValidationResult::where('import_job_id', $job->id)->delete();
+        $meta = $job->metadata ?? [];
+        unset($meta['preview_rows'], $meta['matched_existing_rows']);
+
         // Save mapping config
         $job->update([
+            'valid_rows' => 0,
+            'invalid_rows' => 0,
+            'processed_rows' => 0,
+            'metadata' => $meta,
             'mapping_config' => [
                 'sheet_index' => $sheetIndex,
                 'fields' => $fields,
@@ -359,9 +369,9 @@ class ImportJobController extends Controller
             ],
         ]);
 
-        // If status is mapping_required, advance to ready_to_validate
-        if ($job->status === ImportStatus::MAPPING_REQUIRED) {
-            $this->stateMachine->transition($job, ImportStatus::READY_TO_VALIDATE, 'Mapping configuration saved');
+        // If status is mapping_required or preview_ready, advance to ready_to_validate
+        if (in_array($job->status, [ImportStatus::MAPPING_REQUIRED, ImportStatus::PREVIEW_READY], true)) {
+            $this->stateMachine->transition($job, ImportStatus::READY_TO_VALIDATE, 'Mapping configuration saved/updated');
         }
 
         return response()->json([
