@@ -3,12 +3,15 @@
 namespace App\Services\Import\Execution;
 
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\ImportJob;
 use App\Models\ImportSource;
 use App\Models\Product;
+use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Services\ExpenseService;
 use App\Services\InventoryService;
 use App\Services\Import\ImportStateMachine;
 use App\Services\Import\Normalizer\DataNormalizer;
@@ -31,6 +34,7 @@ class ImportExecutionService
         private SpreadsheetReaderService $readerService,
         private ImportStateMachine $stateMachine,
         private InventoryService $inventoryService,
+        private ExpenseService $expenseService,
     ) {
     }
 
@@ -49,17 +53,22 @@ class ImportExecutionService
             throw new InvalidArgumentException("راهبرد رفع تکرار '{$duplicateStrategy}' نامعتبر است.");
         }
 
-        // Job must be in preview_ready or ready_to_import
-        if ($job->status === ImportStatus::PREVIEW_READY) {
-            $this->stateMachine->transition($job, ImportStatus::READY_TO_IMPORT, 'Ready to import confirmed');
-        }
+        // Atomically lock job record to prevent concurrent execution races
+        DB::transaction(function () use ($job) {
+            $lockedJob = ImportJob::where('id', $job->id)->lockForUpdate()->firstOrFail();
 
-        if ($job->status !== ImportStatus::READY_TO_IMPORT) {
-            throw new InvalidArgumentException("عملیات در وضعیت '{$job->status}' امکان اجرا ندارد.");
-        }
+            if ($lockedJob->status === ImportStatus::PREVIEW_READY) {
+                $this->stateMachine->transition($lockedJob, ImportStatus::READY_TO_IMPORT, 'Ready to import confirmed');
+            }
 
-        // Transition to importing
-        $this->stateMachine->transition($job, ImportStatus::IMPORTING, 'Import execution started');
+            if ($lockedJob->status !== ImportStatus::READY_TO_IMPORT) {
+                throw new InvalidArgumentException("عملیات در وضعیت '{$lockedJob->status}' امکان اجرا ندارد.");
+            }
+
+            $this->stateMachine->transition($lockedJob, ImportStatus::IMPORTING, 'Import execution started');
+        });
+
+        $job->refresh();
 
         try {
             $source = $job->sources()->first();
@@ -77,6 +86,7 @@ class ImportExecutionService
                 ImportType::PRODUCTS => $this->executeProducts($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
                 ImportType::CUSTOMERS => $this->executeCustomers($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
                 ImportType::INVENTORY => $this->executeInventory($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
+                ImportType::EXPENSES => $this->executeExpenses($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -625,10 +635,22 @@ class ImportExecutionService
                 }
                 $seenItemWarehouseInFile[$pairKey] = true;
 
-                // 6. Pessimistic lock on existing stock
-                $existingStock = WarehouseStock::where('organization_id', $job->organization_id)
-                    ->where('warehouse_id', $resolvedWarehouse->id)
-                    ->where('product_id', $matchedProduct->id)
+                // 6. Concurrency-safe stock resolution with pessimistic locking
+                $existingStock = WarehouseStock::firstOrCreate(
+                    [
+                        'organization_id' => $job->organization_id,
+                        'warehouse_id' => $resolvedWarehouse->id,
+                        'product_id' => $matchedProduct->id,
+                        'product_variant_id' => null,
+                    ],
+                    [
+                        'id' => (string) Str::uuid(),
+                        'quantity' => 0,
+                        'reserved_quantity' => 0,
+                    ]
+                );
+
+                $existingStock = WarehouseStock::where('id', $existingStock->id)
                     ->lockForUpdate()
                     ->first();
 
@@ -673,6 +695,238 @@ class ImportExecutionService
                     );
                     $importedRows++;
                 }
+            }
+        });
+    }
+
+    /**
+     * Execute operating expenses import.
+     */
+    private function executeExpenses(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping,
+        string $duplicateStrategy,
+        User $user
+    ): array {
+        $seenExpensesInFile = [];
+        $importedRows = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
+
+        $batch = [];
+        $batchSize = 100;
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $batch[] = $rowItem;
+            if (count($batch) >= $batchSize) {
+                $this->processExpensesBatch(
+                    $batch,
+                    $job,
+                    $mapping,
+                    $duplicateStrategy,
+                    $tenantStores,
+                    $defaultStore,
+                    $seenExpensesInFile,
+                    $importedRows,
+                    $skippedRows,
+                    $failedRows,
+                    $user
+                );
+                $batch = [];
+            }
+        }
+
+        if (!empty($batch)) {
+            $this->processExpensesBatch(
+                $batch,
+                $job,
+                $mapping,
+                $duplicateStrategy,
+                $tenantStores,
+                $defaultStore,
+                $seenExpensesInFile,
+                $importedRows,
+                $skippedRows,
+                $failedRows,
+                $user
+            );
+        }
+
+        $job->update([
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ]);
+
+        return [
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ];
+    }
+
+    private function processExpensesBatch(
+        array $batch,
+        ImportJob $job,
+        array $mapping,
+        string $duplicateStrategy,
+        $tenantStores,
+        ?Store $defaultStore,
+        array &$seenExpensesInFile,
+        int &$importedRows,
+        int &$skippedRows,
+        int &$failedRows,
+        User $user
+    ): void {
+        DB::transaction(function () use (
+            $batch,
+            $job,
+            $mapping,
+            $duplicateStrategy,
+            $tenantStores,
+            $defaultStore,
+            &$seenExpensesInFile,
+            &$importedRows,
+            &$skippedRows,
+            &$failedRows,
+            $user
+        ) {
+            foreach ($batch as $rowItem) {
+                $rowNumber = $rowItem['row_number'];
+                $titleRaw = $this->getMappedValue($rowItem, $mapping, 'title');
+                $categoryRaw = $this->getMappedValue($rowItem, $mapping, 'category');
+                $amountRaw = $this->getMappedValue($rowItem, $mapping, 'amount');
+                $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+                $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+                $paymentMethodRaw = $this->getMappedValue($rowItem, $mapping, 'payment_method');
+                $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+                $title = DataNormalizer::cleanString($titleRaw ?? '');
+                $categoryVal = DataNormalizer::cleanString($categoryRaw ?? '');
+                $storeVal = DataNormalizer::cleanString($storeRaw ?? '');
+                $notes = DataNormalizer::cleanString($notesRaw ?? '');
+                $paymentMethod = DataNormalizer::cleanString($paymentMethodRaw ?? '') ?: 'CASH';
+
+                // 1. Title validation
+                if ($title === '' || mb_strlen($title, 'UTF-8') > 191) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 2. Category validation & resolution
+                $resolvedCategory = DataNormalizer::resolveExpenseCategory($categoryVal);
+                if (!$resolvedCategory) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 3. Amount validation (exact money)
+                $parsedAmount = DataNormalizer::parseMoney($amountRaw);
+                if ($parsedAmount === null || (float) $parsedAmount <= 0) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 4. Date validation
+                $parsedDate = DataNormalizer::parseDate($dateRaw);
+                if ($parsedDate === null) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 5. Store resolution (strictly within tenant)
+                $resolvedStore = null;
+                if ($storeVal !== '') {
+                    $resolvedStore = $tenantStores->first(function ($st) use ($storeVal) {
+                        return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($storeVal, 'UTF-8')
+                            || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($storeVal, 'UTF-8')
+                            || $st->id === $storeVal;
+                    });
+                }
+                if (!$resolvedStore) {
+                    $resolvedStore = $defaultStore;
+                }
+                if (!$resolvedStore) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // 6. In-file duplicate check
+                $fileDupKey = "{$resolvedStore->id}_{$parsedDate}_{$resolvedCategory}_{$parsedAmount}_" . mb_strtolower($title, 'UTF-8');
+                if (isset($seenExpensesInFile[$fileDupKey])) {
+                    $skippedRows++;
+                    continue;
+                }
+                $seenExpensesInFile[$fileDupKey] = $rowNumber;
+
+                // 7. Stable per-row deterministic ID for idempotency & retry safety
+                $deterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_{$rowNumber}");
+
+                // Check if this row was already committed by this job (e.g. retry after partial failure)
+                $alreadyCommitted = Expense::where('organization_id', $job->organization_id)
+                    ->where('id', $deterministicId)
+                    ->first();
+
+                if ($alreadyCommitted) {
+                    $skippedRows++;
+                    continue;
+                }
+
+                // 8. Check for existing matching Expense record in database
+                $existingExpense = Expense::where('organization_id', $job->organization_id)
+                    ->where('store_id', $resolvedStore->id)
+                    ->where('date', $parsedDate)
+                    ->where('category', $resolvedCategory)
+                    ->where('amount', $parsedAmount)
+                    ->whereRaw('LOWER(title) = ?', [mb_strtolower($title, 'UTF-8')])
+                    ->first();
+
+                if ($existingExpense) {
+                    if ($duplicateStrategy === self::STRATEGY_SKIP) {
+                        $skippedRows++;
+                        continue;
+                    }
+
+                    // UPDATE strategy: update optional fields (notes, payment_method)
+                    $updatePayload = [];
+                    if ($notes !== '') {
+                        $updatePayload['notes'] = $notes;
+                    }
+                    if ($paymentMethod !== 'CASH') {
+                        $updatePayload['payment_method'] = $paymentMethod;
+                    }
+
+                    if (!empty($updatePayload)) {
+                        $this->expenseService->updateExpense($existingExpense, $updatePayload);
+                    }
+                    $importedRows++;
+                    continue;
+                }
+
+                // 9. Create fresh Expense using canonical ExpenseService
+                $this->expenseService->createExpense([
+                    'id' => $deterministicId,
+                    'organization_id' => $job->organization_id,
+                    'store_id' => $resolvedStore->id,
+                    'title' => $title,
+                    'category' => $resolvedCategory,
+                    'amount' => $parsedAmount,
+                    'payment_method' => $paymentMethod,
+                    'date' => $parsedDate,
+                    'notes' => $notes,
+                    'user_id' => $user->id,
+                ], $user);
+
+                $importedRows++;
             }
         });
     }

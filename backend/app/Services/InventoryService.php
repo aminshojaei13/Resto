@@ -27,24 +27,26 @@ class InventoryService
         return DB::transaction(function () use ($orgId, $warehouseId, $productId, $variantId, $delta, $reason, $refId, $unitCost) {
             $product = Product::findOrFail($productId);
 
-            $stock = WarehouseStock::where('organization_id', $orgId)
-                ->where('warehouse_id', $warehouseId)
-                ->where('product_id', $productId)
-                ->where('product_variant_id', $variantId)
-                ->lockForUpdate()
-                ->first();
-
-            if (!$stock) {
-                $stock = WarehouseStock::create([
-                    'id' => (string) Str::uuid(),
+            // Concurrency-safe initial stock record resolution:
+            // If the row does not yet exist, firstOrCreate under unique constraint prevents race conditions
+            $stock = WarehouseStock::firstOrCreate(
+                [
                     'organization_id' => $orgId,
                     'warehouse_id' => $warehouseId,
                     'product_id' => $productId,
                     'product_variant_id' => $variantId,
+                ],
+                [
+                    'id' => (string) Str::uuid(),
                     'quantity' => 0,
                     'reserved_quantity' => 0,
-                ]);
-            }
+                ]
+            );
+
+            // Re-fetch with pessimistic row-level lock for safe mutation
+            $stock = WarehouseStock::where('id', $stock->id)
+                ->lockForUpdate()
+                ->first();
 
             $newQty = max(0, $stock->quantity + $delta);
             $stock->quantity = $newQty;

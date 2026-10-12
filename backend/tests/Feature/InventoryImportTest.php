@@ -525,4 +525,159 @@ class InventoryImportTest extends TestCase
         $foreignStock = WarehouseStock::where('product_id', $foreignProduct->id)->count();
         $this->assertSame(0, $foreignStock);
     }
+
+    public function test_repeated_execution_of_same_inventory_job_is_rejected(): void
+    {
+        $product = Product::firstOrCreate(
+            ['id' => 'prod_repeat_test', 'organization_id' => $this->orgApexId],
+            [
+                'sku' => 'REPEAT-SKU',
+                'barcode' => 'BAR-REPEAT',
+                'name' => 'Repeat Test Product',
+                'category' => 'عمومی',
+                'price' => '100.00',
+                'cost_price' => '50.00',
+                'unit' => 'piece',
+            ]
+        );
+
+        $mainWh = Warehouse::where('organization_id', $this->orgApexId)->first();
+
+        $csvData = [
+            ['sku', 'quantity'],
+            ['REPEAT-SKU', '10'],
+        ];
+
+        $job = $this->createMockJob(ImportType::INVENTORY, $csvData);
+        $job->update([
+            'status' => ImportStatus::READY_TO_IMPORT,
+            'mapping_config' => [
+                'fields' => ['sku' => 'sku', 'quantity' => 'quantity'],
+                'warehouse_id' => $mainWh->id,
+            ],
+        ]);
+
+        $executionService = app(ImportExecutionService::class);
+        $res = $executionService->executeJob($job, $this->userApex, ImportExecutionService::STRATEGY_SKIP);
+        $this->assertSame(1, $res['imported_rows']);
+
+        // Second execution attempt must fail
+        $this->expectException(\InvalidArgumentException::class);
+        $executionService->executeJob($job, $this->userApex, ImportExecutionService::STRATEGY_SKIP);
+    }
+
+    public function test_concurrent_creation_of_initial_stock_is_safe(): void
+    {
+        $product = Product::firstOrCreate(
+            ['id' => 'prod_concurrent_init', 'organization_id' => $this->orgApexId],
+            [
+                'sku' => 'CONCUR-INIT-SKU',
+                'barcode' => 'BAR-CONCUR-INIT',
+                'name' => 'Concurrent Init Product',
+                'category' => 'عمومی',
+                'price' => '100.00',
+                'cost_price' => '50.00',
+                'unit' => 'piece',
+            ]
+        );
+
+        $mainWh = Warehouse::where('organization_id', $this->orgApexId)->first();
+        $invService = app(\App\Services\InventoryService::class);
+
+        // Call adjustStock sequentially simulating two concurrent processes resolving the initial stock row
+        $stock1 = $invService->adjustStock($this->orgApexId, $mainWh->id, $product->id, null, 15, 'Init 1');
+        $stock2 = $invService->adjustStock($this->orgApexId, $mainWh->id, $product->id, null, 10, 'Init 2');
+
+        $this->assertSame($stock1->id, $stock2->id);
+        $this->assertSame(25, (int) $stock2->quantity);
+
+        // Exactly one warehouse_stock record should exist
+        $count = WarehouseStock::where('organization_id', $this->orgApexId)
+            ->where('warehouse_id', $mainWh->id)
+            ->where('product_id', $product->id)
+            ->count();
+        $this->assertSame(1, $count);
+    }
+
+    public function test_foreign_warehouse_id_in_mapping_payload_is_rejected(): void
+    {
+        // Create foreign store & warehouse
+        \App\Models\Store::create([
+            'id' => 'store_foreign_test',
+            'organization_id' => $this->orgOtherId,
+            'name' => 'Foreign Store',
+            'code' => 'FOR-ST',
+        ]);
+
+        $foreignWh = Warehouse::create([
+            'id' => 'wh_foreign_test',
+            'store_id' => 'store_foreign_test',
+            'organization_id' => $this->orgOtherId,
+            'name' => 'Foreign Secret Warehouse',
+            'code' => 'FOR-WH',
+        ]);
+
+        $job = $this->createMockJob(ImportType::INVENTORY, [
+            ['sku', 'quantity'],
+            ['SKU-001', '50'],
+        ]);
+
+        // Attempt to pass foreign warehouse ID
+        $res = $this->actingAs($this->userApex)
+            ->withHeaders($this->apexHeaders())
+            ->postJson("/api/v1/import/jobs/{$job->id}/mapping", [
+                'fields' => ['sku' => 'sku', 'quantity' => 'quantity'],
+                'warehouse_id' => $foreignWh->id,
+            ]);
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('انبار پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد', $res->json('message'));
+    }
+
+    public function test_fractional_quantity_is_strictly_rejected(): void
+    {
+        $product = Product::firstOrCreate(
+            ['id' => 'prod_fract_test', 'organization_id' => $this->orgApexId],
+            [
+                'sku' => 'FRACT-SKU',
+                'barcode' => 'BAR-FRACT',
+                'name' => 'Fractional Test Product',
+                'category' => 'عمومی',
+                'price' => '100.00',
+                'cost_price' => '50.00',
+                'unit' => 'piece',
+            ]
+        );
+
+        $mainWh = Warehouse::where('organization_id', $this->orgApexId)->first();
+
+        $csvData = [
+            ['sku', 'quantity'],
+            ['FRACT-SKU', '12.5'],
+            ['FRACT-SKU', '0'],
+            ['FRACT-SKU', '-10'],
+        ];
+
+        $job = $this->createMockJob(ImportType::INVENTORY, $csvData);
+        $job->update([
+            'status' => ImportStatus::READY_TO_VALIDATE,
+            'mapping_config' => [
+                'fields' => ['sku' => 'sku', 'quantity' => 'quantity'],
+                'warehouse_id' => $mainWh->id,
+            ],
+        ]);
+
+        $validationService = app(ImportValidationService::class);
+        $summary = $validationService->validateJob($job);
+
+        $this->assertSame(0, $summary['valid_rows']);
+        $this->assertSame(3, $summary['invalid_rows']);
+
+        $errCodes = ImportValidationResult::where('import_job_id', $job->id)
+            ->pluck('error_code')
+            ->all();
+
+        $this->assertContains(ImportErrorCode::INVALID_QUANTITY, $errCodes);
+    }
 }
+

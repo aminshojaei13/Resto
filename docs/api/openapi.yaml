@@ -1611,6 +1611,7 @@ paths:
               properties:
                 sheet_index: { type: integer, default: 0 }
                 warehouse_id: { type: string, description: "Default warehouse ID for inventory imports if warehouse column is unmapped" }
+                store_id: { type: string, description: "Default store ID for expense imports if store column is unmapped" }
                 fields:
                   type: object
                   additionalProperties: { type: string }

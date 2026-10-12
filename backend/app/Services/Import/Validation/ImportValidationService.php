@@ -3,11 +3,13 @@
 namespace App\Services\Import\Validation;
 
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\ImportDataset;
 use App\Models\ImportJob;
 use App\Models\ImportSource;
 use App\Models\ImportValidationResult;
 use App\Models\Product;
+use App\Models\Store;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\Import\ImportStateMachine;
@@ -78,6 +80,7 @@ class ImportValidationService
                 ImportType::PRODUCTS => $this->validateProducts($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::CUSTOMERS => $this->validateCustomers($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::INVENTORY => $this->validateInventory($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::EXPENSES => $this->validateExpenses($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -845,6 +848,273 @@ class ImportValidationService
         }
 
         // Update Job state and preview metadata
+        $existingMeta = $job->metadata ?? [];
+        $existingMeta['preview_rows'] = $previewRows;
+        $existingMeta['matched_existing_rows'] = $matchedExistingRows;
+
+        $job->update([
+            'total_rows' => $totalRows,
+            'processed_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'metadata' => $existingMeta,
+        ]);
+
+        return [
+            'total_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'matched_existing_rows' => $matchedExistingRows,
+            'preview_count' => count($previewRows),
+        ];
+    }
+
+    /**
+     * Validate operating expense rows.
+     */
+    private function validateExpenses(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping
+    ): array {
+        $seenExpensesInFile = [];
+
+        $totalRows = 0;
+        $validRows = 0;
+        $invalidRows = 0;
+        $matchedExistingRows = 0;
+
+        $previewRows = [];
+        $validationResultsToInsert = [];
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $totalRows++;
+
+            $rowErrors = [];
+            $rowWarnings = [];
+
+            // Extract mapped fields
+            $titleRaw = $this->getMappedValue($rowItem, $mapping, 'title');
+            $categoryRaw = $this->getMappedValue($rowItem, $mapping, 'category');
+            $amountRaw = $this->getMappedValue($rowItem, $mapping, 'amount');
+            $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+            $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+            $paymentMethodRaw = $this->getMappedValue($rowItem, $mapping, 'payment_method');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $title = DataNormalizer::cleanString($titleRaw ?? '');
+            $categoryVal = DataNormalizer::cleanString($categoryRaw ?? '');
+            $storeVal = DataNormalizer::cleanString($storeRaw ?? '');
+            $notes = DataNormalizer::cleanString($notesRaw ?? '');
+            $paymentMethod = DataNormalizer::cleanString($paymentMethodRaw ?? '') ?: 'CASH';
+
+            // 1. Validate Title (required, max 191)
+            if ($title === '') {
+                $rowErrors[] = [
+                    'field' => 'title',
+                    'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                    'message' => 'عنوان هزینه الزامی است.',
+                    'value' => (string) $titleRaw,
+                ];
+            } elseif (mb_strlen($title, 'UTF-8') > 191) {
+                $rowErrors[] = [
+                    'field' => 'title',
+                    'code' => ImportErrorCode::STRING_TOO_LONG,
+                    'message' => 'طول عنوان هزینه بیش از حد مجاز (۱۹۱ کاراکتر) است.',
+                    'value' => $title,
+                ];
+            }
+
+            // 2. Validate Category (required, resolve to valid code)
+            $resolvedCategory = null;
+            if ($categoryVal === '') {
+                $rowErrors[] = [
+                    'field' => 'category',
+                    'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                    'message' => 'دسته‌بندی هزینه الزامی است.',
+                    'value' => (string) $categoryRaw,
+                ];
+            } else {
+                $resolvedCategory = DataNormalizer::resolveExpenseCategory($categoryVal);
+                if (!$resolvedCategory) {
+                    $rowErrors[] = [
+                        'field' => 'category',
+                        'code' => ImportErrorCode::INVALID_CATEGORY,
+                        'message' => "دسته‌بندی '{$categoryVal}' نامعتبر است. دسته‌بندی باید یکی از موارد مجاز (اجاره، اینترنت، برق، آب، حمل‌ونقل، تبلیغات، حقوق، تعمیرات، خدمات، کارمزد، سایر) باشد.",
+                        'value' => $categoryVal,
+                    ];
+                }
+            }
+
+            // 3. Validate Amount (required, numeric > 0, exact decimal)
+            $parsedAmount = DataNormalizer::parseMoney($amountRaw);
+            if ($parsedAmount === null || (float) $parsedAmount <= 0) {
+                $rowErrors[] = [
+                    'field' => 'amount',
+                    'code' => ImportErrorCode::INVALID_AMOUNT,
+                    'message' => 'مبلغ هزینه باید یک عدد مثبت بزرگتر از صفر باشد.',
+                    'value' => (string) $amountRaw,
+                ];
+            }
+
+            // 4. Validate Date (required, valid Shamsi/Gregorian/Excel format)
+            $parsedDate = DataNormalizer::parseDate($dateRaw);
+            if ($parsedDate === null) {
+                $rowErrors[] = [
+                    'field' => 'date',
+                    'code' => ImportErrorCode::INVALID_DATE,
+                    'message' => 'تاریخ هزینه نامعتبر است یا در محدوده مجاز قرار ندارد (فرمت مجاز: ۱۴۰۳/۰۷/۲۱ یا 2024-10-12).',
+                    'value' => (string) $dateRaw,
+                ];
+            }
+
+            // 5. Resolve Store (tenant isolated)
+            $resolvedStore = null;
+            if ($storeVal !== '') {
+                $resolvedStore = $tenantStores->first(function ($st) use ($storeVal) {
+                    return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($storeVal, 'UTF-8')
+                        || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($storeVal, 'UTF-8')
+                        || $st->id === $storeVal;
+                });
+            }
+
+            if (!$resolvedStore) {
+                $resolvedStore = $defaultStore;
+            }
+
+            if (!$resolvedStore) {
+                $rowErrors[] = [
+                    'field' => 'store',
+                    'code' => ImportErrorCode::STORE_NOT_FOUND,
+                    'message' => ($storeVal !== '')
+                        ? "فروشگاه با مشخصات '{$storeVal}' در سامانه یافت نشد یا به این سازمان تعلق ندارد."
+                        : 'فروشگاه مقصد مشخص نشده است و هیچ فروشگاه پیش‌فرضی نیز برای سازمان یافت نشد.',
+                    'value' => (string) $storeRaw,
+                ];
+            }
+
+            // 6. Check for duplicate row within file
+            $fileDupKey = null;
+            if ($resolvedStore && $parsedDate && $resolvedCategory && $parsedAmount && $title !== '') {
+                $fileDupKey = "{$resolvedStore->id}_{$parsedDate}_{$resolvedCategory}_{$parsedAmount}_" . mb_strtolower($title, 'UTF-8');
+                if (isset($seenExpensesInFile[$fileDupKey])) {
+                    $rowWarnings[] = [
+                        'field' => 'title',
+                        'code' => ImportErrorCode::DUPLICATE_IN_FILE,
+                        'message' => "این ردیف تکرار ردیف شماره {$seenExpensesInFile[$fileDupKey]} در همین فایل است (همان تاریخ، فروشگاه، دسته‌بندی، مبلغ و عنوان).",
+                        'value' => $title,
+                    ];
+                } else {
+                    $seenExpensesInFile[$fileDupKey] = $rowNumber;
+                }
+            }
+
+            // 7. Check for match against existing Expense record in database
+            $hasExistingMatch = false;
+            if (empty($rowErrors) && $resolvedStore && $parsedDate && $resolvedCategory && $parsedAmount && $title !== '') {
+                $existingExpense = Expense::where('organization_id', $job->organization_id)
+                    ->where('store_id', $resolvedStore->id)
+                    ->where('date', $parsedDate)
+                    ->where('category', $resolvedCategory)
+                    ->where('amount', $parsedAmount)
+                    ->whereRaw('LOWER(title) = ?', [mb_strtolower($title, 'UTF-8')])
+                    ->first();
+
+                if ($existingExpense) {
+                    $hasExistingMatch = true;
+                    $matchedExistingRows++;
+                    $rowWarnings[] = [
+                        'field' => 'title',
+                        'code' => ImportErrorCode::EXISTING_RECORD_MATCH,
+                        'message' => "هزینه مشابهی با همین تاریخ، دسته‌بندی ({$resolvedCategory})، مبلغ ({$parsedAmount}) و عنوان در فروشگاه '{$resolvedStore->name}' قبلاً ثبت شده است (شناسه: {$existingExpense->id}).",
+                        'value' => $title,
+                    ];
+                }
+            }
+
+            $isValid = empty($rowErrors);
+            if ($isValid) {
+                $validRows++;
+            } else {
+                $invalidRows++;
+            }
+
+            // Record validation findings
+            foreach ($rowErrors as $err) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'row_number' => $rowNumber,
+                    'field_name' => $err['field'],
+                    'original_value' => $err['value'] ?? null,
+                    'error_code' => $err['code'],
+                    'message' => $err['message'],
+                    'severity' => 'error',
+                    'is_eligible' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach ($rowWarnings as $warn) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'row_number' => $rowNumber,
+                    'field_name' => $warn['field'],
+                    'original_value' => $warn['value'] ?? null,
+                    'error_code' => $warn['code'],
+                    'message' => $warn['message'],
+                    'severity' => 'warning',
+                    'is_eligible' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            // Collect preview row (up to limit)
+            if (count($previewRows) < self::PREVIEW_LIMIT) {
+                $previewRows[] = [
+                    'row_number' => $rowNumber,
+                    'is_valid' => $isValid,
+                    'has_match' => $hasExistingMatch,
+                    'errors' => $rowErrors,
+                    'warnings' => $rowWarnings,
+                    'mapped_data' => [
+                        'title' => $title,
+                        'category' => $resolvedCategory ?? $categoryVal,
+                        'category_label' => $resolvedCategory ? Expense::categoryLabel($resolvedCategory) : $categoryVal,
+                        'amount' => $parsedAmount ?? $amountRaw,
+                        'date' => $parsedDate ?? $dateRaw,
+                        'store' => $resolvedStore ? $resolvedStore->name : ($storeVal ?: 'پیش‌فرض'),
+                        'payment_method' => $paymentMethod,
+                        'notes' => $notes,
+                    ],
+                ];
+            }
+
+            // Flush validation results periodically
+            if (count($validationResultsToInsert) >= 200) {
+                ImportValidationResult::insert($validationResultsToInsert);
+                $validationResultsToInsert = [];
+            }
+        }
+
+        if (!empty($validationResultsToInsert)) {
+            ImportValidationResult::insert($validationResultsToInsert);
+        }
+
         $existingMeta = $job->metadata ?? [];
         $existingMeta['preview_rows'] = $previewRows;
         $existingMeta['matched_existing_rows'] = $matchedExistingRows;

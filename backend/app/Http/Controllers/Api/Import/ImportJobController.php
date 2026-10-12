@@ -310,6 +310,19 @@ class ImportJobController extends Controller
                 ->get();
         }
 
+        $stores = [];
+        $categories = [];
+        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES) {
+            $stores = \App\Models\Store::where('organization_id', $organizationId)
+                ->select(['id', 'name', 'code'])
+                ->orderBy('name')
+                ->get();
+            $categories = array_map(
+                fn ($c) => $c + ['label' => \App\Models\Expense::categoryLabel($c['code'])],
+                \App\Models\Expense::CATEGORIES
+            );
+        }
+
         return response()->json([
             'job_id' => $job->id,
             'import_type' => $job->import_type,
@@ -317,6 +330,8 @@ class ImportJobController extends Controller
             'target_fields' => array_values($targetFields),
             'datasets' => $datasets,
             'warehouses' => $warehouses,
+            'stores' => $stores,
+            'categories' => $categories,
             'active_sheet_index' => $dataset ? $dataset->sheet_index : 0,
             'headers' => $headers,
             'sample_rows' => $dataset ? ($dataset->sample_rows ?? []) : [],
@@ -344,6 +359,7 @@ class ImportJobController extends Controller
             'fields' => 'required|array',
             'sheet_index' => 'nullable|integer',
             'warehouse_id' => 'nullable|string',
+            'store_id' => 'nullable|string',
         ], [
             'fields.required' => 'تطبیق فیلدها الزامی است.',
             'fields.array' => 'فرمت تطبیق فیلدها معتبر نیست.',
@@ -352,6 +368,7 @@ class ImportJobController extends Controller
         $fields = $request->input('fields');
         $sheetIndex = (int) $request->input('sheet_index', 0);
         $warehouseId = $request->input('warehouse_id');
+        $storeId = $request->input('store_id');
 
         // For inventory imports, verify default warehouse if provided, or ensure either warehouse column or default warehouse exists
         if ($job->import_type === \App\Support\Import\ImportType::INVENTORY) {
@@ -368,6 +385,28 @@ class ImportJobController extends Controller
                 return response()->json([
                     'message' => 'برای درون‌ریزی موجودی اولیه، باید ستون انبار را تطبیق دهید یا یک انبار پیش‌فرض انتخاب کنید.',
                 ], 422);
+            }
+        }
+
+        // For expense imports, verify store if provided, or fall back to organization store
+        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES) {
+            if ($storeId) {
+                $storeExists = \App\Models\Store::where('organization_id', $organizationId)
+                    ->where('id', $storeId)
+                    ->exists();
+                if (!$storeExists) {
+                    return response()->json([
+                        'message' => 'فروشگاه پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            } elseif (empty($fields['store'])) {
+                $defaultStore = \App\Models\Store::where('organization_id', $organizationId)->first();
+                if (!$defaultStore) {
+                    return response()->json([
+                        'message' => 'برای درون‌ریزی هزینه‌ها باید حداقل یک فروشگاه در سازمان تعریف شده باشد.',
+                    ], 422);
+                }
+                $storeId = $defaultStore->id;
             }
         }
 
@@ -395,6 +434,7 @@ class ImportJobController extends Controller
                 'sheet_index' => $sheetIndex,
                 'fields' => $fields,
                 'warehouse_id' => $warehouseId,
+                'store_id' => $storeId,
                 'saved_at' => now()->toIso8601String(),
             ],
         ]);

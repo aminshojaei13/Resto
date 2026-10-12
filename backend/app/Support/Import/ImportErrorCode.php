@@ -34,6 +34,10 @@ class ImportErrorCode
     public const WAREHOUSE_NOT_FOUND = 'ERR_WAREHOUSE_NOT_FOUND';
     public const INVALID_QUANTITY = 'ERR_INVALID_QUANTITY';
     public const EXISTING_BALANCE_CONFLICT = 'WARN_EXISTING_BALANCE_CONFLICT';
+    public const INVALID_CATEGORY = 'ERR_INVALID_CATEGORY';
+    public const INVALID_AMOUNT = 'ERR_INVALID_AMOUNT';
+    public const STORE_NOT_FOUND = 'ERR_STORE_NOT_FOUND';
+    public const INVALID_DATE = 'ERR_INVALID_DATE_FORMAT';
 
     public static function persianMessage(string $code, array $params = []): string
     {
@@ -156,6 +160,18 @@ class ImportErrorCode
             self::EXISTING_BALANCE_CONFLICT => [
                 'fa' => 'این کالا از قبل در این انبار دارای موجودی ثبت‌شده است.',
                 'en' => 'This product already has an existing stock balance in this warehouse.',
+            ],
+            self::INVALID_CATEGORY => [
+                'fa' => 'دسته‌بندی هزینه نامعتبر است. دسته‌بندی باید یکی از موارد مجاز سیستم (اجاره، اینترنت، برق، آب، حمل‌ونقل، تبلیغات، حقوق، تعمیرات، خدمات، کارمزد، سایر) باشد.',
+                'en' => 'Invalid expense category. Must be one of the recognized categories.',
+            ],
+            self::INVALID_AMOUNT => [
+                'fa' => 'مبلغ هزینه نامعتبر است. مبلغ باید عددی مثبت و بزرگتر از صفر باشد.',
+                'en' => 'Invalid expense amount. Must be a positive number greater than zero.',
+            ],
+            self::STORE_NOT_FOUND => [
+                'fa' => 'فروشگاه مشخص‌شده در سیستم یافت نشد یا به این سازمان تعلق ندارد.',
+                'en' => 'The specified store was not found or does not belong to this organization.',
             ],
         ];
 

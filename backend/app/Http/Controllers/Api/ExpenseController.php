@@ -25,9 +25,11 @@ use Illuminate\Validation\ValidationException;
  * Every entry posts through the shared AccountingService, so an expense can
  * never sit in a screen without appearing in the ledger.
  */
+use App\Services\ExpenseService;
+
 class ExpenseController extends Controller
 {
-    public function __construct(private AccountingService $accountingService)
+    public function __construct(private ExpenseService $expenseService)
     {
     }
 
@@ -185,29 +187,15 @@ class ExpenseController extends Controller
             ]);
         }
 
-        return DB::transaction(function () use ($validated, $organizationId, $storeId, $amount, $request) {
-            $expense = Expense::create([
-                'id' => (string) Str::uuid(),
+        $expense = $this->expenseService->createExpense(
+            array_merge($validated, [
                 'organization_id' => $organizationId,
                 'store_id' => $storeId,
-                'title' => $validated['title'],
-                'category' => $validated['category'],
-                'amount' => $amount,
-                'payment_method' => $validated['payment_method'] ?? 'CASH',
-                'date' => $validated['date'],
-                'notes' => $validated['notes'] ?? '',
-                'attachment_url' => $validated['attachment_url'] ?? null,
-                'is_recurring' => (bool) ($validated['is_recurring'] ?? false),
-                'recurrence_period' => $validated['recurrence_period'] ?? null,
-                'recurrence_starts_on' => $validated['recurrence_starts_on'] ?? null,
-                'recurrence_ends_on' => $validated['recurrence_ends_on'] ?? null,
-                'user_id' => $request->user()?->id,
-            ]);
+            ]),
+            $request->user()
+        );
 
-            $this->postExpenseEntry($expense);
-
-            return response()->json($expense->fresh(), 201);
-        });
+        return response()->json($expense, 201);
     }
 
     /**
@@ -228,34 +216,9 @@ class ExpenseController extends Controller
             'notes' => 'sometimes|nullable|string|max:2000',
         ]);
 
-        return DB::transaction(function () use ($expense, $validated) {
-            // Captured before the model is touched: the reversal has to undo
-            // what was actually posted, not the correction.
-            $posted = [
-                'amount' => (float) $expense->amount,
-                'category' => $expense->category,
-                'title' => $expense->title,
-            ];
+        $updated = $this->expenseService->updateExpense($expense, $validated);
 
-            $expense->fill($validated);
-
-            if (isset($validated['amount'])) {
-                $expense->amount = Money::fromMinor(Money::toMinor($validated['amount']));
-            }
-
-            $expense->save();
-
-            $changed = Money::toMinor($posted['amount']) !== Money::toMinor($expense->amount)
-                || $posted['category'] !== $expense->category
-                || $posted['title'] !== $expense->title;
-
-            if ($changed) {
-                $this->reverseExpenseEntry($expense, $posted);
-                $this->postExpenseEntry($expense);
-            }
-
-            return response()->json($expense->fresh());
-        });
+        return response()->json($updated);
     }
 
     /**
@@ -267,103 +230,8 @@ class ExpenseController extends Controller
         $organizationId = MembershipContext::activeOrganizationId($request);
         $expense = Expense::where('organization_id', $organizationId)->findOrFail($id);
 
-        DB::transaction(function () use ($expense) {
-            $this->reverseExpenseEntry($expense, [
-                'amount' => (float) $expense->amount,
-                'category' => $expense->category,
-                'title' => $expense->title,
-            ]);
-
-            $expense->delete();
-        });
+        $this->expenseService->deleteExpense($expense);
 
         return response()->json(['message' => 'هزینه حذف شد و سند حسابداری آن برگشت خورد.']);
-    }
-
-    /**
-     * Dr Operating expense, Cr Cash — the standard treatment for a paid cost.
-     */
-    private function postExpenseEntry(Expense $expense): void
-    {
-        $expenseAccount = $this->accountingService->account(
-            $expense->organization_id,
-            AccountingService::ACCOUNT_OPERATING_EXPENSE,
-            'Operating Expense',
-            'coa_expense'
-        );
-
-        $cashAccount = $this->accountingService->account(
-            $expense->organization_id,
-            AccountingService::ACCOUNT_CASH,
-            'Cash / POS Drawer',
-            'coa_asset'
-        );
-
-        $this->accountingService->postJournalEntry(
-            $expense->organization_id,
-            $expense->store_id,
-            "هزینه جاری: {$expense->title}",
-            [
-                [
-                    'account_id' => $expenseAccount->id,
-                    'type' => 'DEBIT',
-                    'amount' => $expense->amount,
-                    'description' => Expense::categoryLabel($expense->category) . " — {$expense->title}",
-                ],
-                [
-                    'account_id' => $cashAccount->id,
-                    'type' => 'CREDIT',
-                    'amount' => $expense->amount,
-                    'description' => "پرداخت هزینه «{$expense->title}»",
-                ],
-            ],
-            'Expense',
-            $expense->id
-        );
-    }
-
-    private function reverseExpenseEntry(Expense $expense, array $posted): void
-    {
-        $expenseAccount = $this->accountingService->account(
-            $expense->organization_id,
-            AccountingService::ACCOUNT_OPERATING_EXPENSE,
-            'Operating Expense',
-            'coa_expense'
-        );
-
-        $cashAccount = $this->accountingService->account(
-            $expense->organization_id,
-            AccountingService::ACCOUNT_CASH,
-            'Cash / POS Drawer',
-            'coa_asset'
-        );
-
-        $amount = (float) $posted['amount'];
-
-        if ($amount <= 0) {
-            return;
-        }
-
-        $this->accountingService->postJournalEntry(
-            $expense->organization_id,
-            $expense->store_id,
-            "برگشت هزینه جاری: {$posted['title']}",
-            [
-                [
-                    'account_id' => $cashAccount->id,
-                    'type' => 'DEBIT',
-                    'amount' => $amount,
-                    'description' => "برگشت پرداخت هزینه «{$posted['title']}»",
-                ],
-                [
-                    'account_id' => $expenseAccount->id,
-                    'type' => 'CREDIT',
-                    'amount' => $amount,
-                    'description' => "برگشت هزینه ثبت‌شده «{$posted['title']}»",
-                ],
-            ],
-            'ExpenseReversal',
-            $expense->id
-        );
     }
 }

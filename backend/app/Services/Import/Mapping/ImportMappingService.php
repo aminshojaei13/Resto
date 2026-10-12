@@ -273,6 +273,102 @@ class ImportMappingService
             ];
         }
 
+        if ($importType === ImportType::EXPENSES) {
+            return [
+                'title' => [
+                    'name' => 'title',
+                    'label_fa' => 'عنوان هزینه',
+                    'label_en' => 'Expense Title',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'عنوان یا شرح کوتاه هزینه (حداکثر ۱۹۱ کاراکتر)',
+                    'description_en' => 'Short title or description of expense (max 191 chars)',
+                    'aliases' => [
+                        'عنوان', 'شرح', 'شرح هزینه', 'عنوان هزینه', 'بابت', 'توضیح', 'نام هزینه',
+                        'title', 'description', 'expense title', 'expense_title', 'name', 'item'
+                    ],
+                ],
+                'category' => [
+                    'name' => 'category',
+                    'label_fa' => 'دسته‌بندی هزینه',
+                    'label_en' => 'Expense Category',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'دسته‌بندی هزینه (مانند اجاره، اینترنت، برق، آب، حمل‌ونقل، تبلیغات، حقوق، تعمیرات، خدمات، کارمزد، سایر)',
+                    'description_en' => 'Expense category code or name (RENT, INTERNET, ELECTRICITY, WATER, TRANSPORT, ADVERTISING, SALARIES, REPAIRS, SERVICES, FEES, OTHER)',
+                    'aliases' => [
+                        'دسته', 'دسته بندی', 'دسته‌بندی', 'نوع هزینه', 'گروه هزینه', 'سرفصل', 'کد دسته',
+                        'category', 'expense category', 'expense_category', 'type', 'group', 'cost category'
+                    ],
+                ],
+                'amount' => [
+                    'name' => 'amount',
+                    'label_fa' => 'مبلغ هزینه',
+                    'label_en' => 'Expense Amount',
+                    'type' => 'numeric',
+                    'required' => true,
+                    'description_fa' => 'مبلغ هزینه پرداخت‌شده (بزرگتر از صفر)',
+                    'description_en' => 'Total expense amount paid (greater than 0)',
+                    'aliases' => [
+                        'مبلغ', 'مبلغ هزینه', 'قیمت', 'هزینه', 'مقدار', 'میزان', 'بها',
+                        'amount', 'expense amount', 'expense_amount', 'total', 'cost', 'price', 'paid'
+                    ],
+                ],
+                'date' => [
+                    'name' => 'date',
+                    'label_fa' => 'تاریخ پرداخت / وقوع',
+                    'label_en' => 'Expense Date',
+                    'type' => 'date',
+                    'required' => true,
+                    'description_fa' => 'تاریخ هزینه به صورت شمسی (۱۴۰۳/۰۷/۲۱) یا میلادی (2024-10-12)',
+                    'description_en' => 'Expense date in Persian Jalali or Gregorian format',
+                    'aliases' => [
+                        'تاریخ', 'تاریخ پرداخت', 'تاریخ ثبت', 'تاریخ هزینه', 'زمان', 'تاریخ فاکتور',
+                        'date', 'expense date', 'expense_date', 'payment date', 'payment_date'
+                    ],
+                ],
+                'store' => [
+                    'name' => 'store',
+                    'label_fa' => 'فروشگاه / شعبه',
+                    'label_en' => 'Store / Branch',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد فروشگاه پرداخت‌کننده (در صورت خالی بودن از فروشگاه پیش‌فرض استفاده می‌شود)',
+                    'description_en' => 'Store name or code (defaults to selected default store)',
+                    'aliases' => [
+                        'فروشگاه', 'کد فروشگاه', 'نام فروشگاه', 'شعبه', 'کد شعبه', 'مرکز هزینه',
+                        'store', 'store code', 'store_code', 'branch', 'location'
+                    ],
+                ],
+                'payment_method' => [
+                    'name' => 'payment_method',
+                    'label_fa' => 'روش پرداخت',
+                    'label_en' => 'Payment Method',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'شیوه پرداخت هزینه (نقدی CASH، کارت CARD، حواله بانکی BANK_TRANSFER، چک CHEQUE)',
+                    'description_en' => 'Payment method (CASH, CARD, BANK_TRANSFER, CHEQUE)',
+                    'aliases' => [
+                        'روش پرداخت', 'نحوه پرداخت', 'نوع پرداخت', 'شیوه پرداخت', 'حساب پرداخت',
+                        'payment method', 'payment_method', 'method', 'payment type', 'paid by'
+                    ],
+                ],
+                'notes' => [
+                    'name' => 'notes',
+                    'label_fa' => 'یادداشت / توضیحات',
+                    'label_en' => 'Notes / Remarks',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'توضیحات تکمیلی یا یادداشت پیوست هزینه',
+                    'description_en' => 'Additional notes or remarks',
+                    'aliases' => [
+                        'توضیحات', 'یادداشت', 'شرح تکمیلی', 'ملاحظات', 'پی نوشت',
+                        'notes', 'remarks', 'comment', 'memo', 'note'
+                    ],
+                ],
+            ];
+        }
+
         throw new InvalidArgumentException("نوع درون‌ریزی '{$importType}' برای تطبیق ستون‌ها پشتیبانی نمی‌شود.");
     }
 

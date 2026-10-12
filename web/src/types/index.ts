@@ -390,6 +390,8 @@ export interface ImportMappingResponse {
   target_fields: ImportTargetField[];
   datasets: ImportDatasetItem[];
   warehouses?: Array<{ id: string; name: string; code?: string; address?: string }>;
+  stores?: Array<{ id: string; name: string; code?: string; address?: string }>;
+  categories?: Array<{ code: string; fa: string; en: string; label?: string }>;
   active_sheet_index: number;
   headers: string[];
   sample_rows: string[][];
@@ -397,6 +399,7 @@ export interface ImportMappingResponse {
   current_mapping: {
     sheet_index?: number;
     warehouse_id?: string | null;
+    store_id?: string | null;
     fields?: Record<string, string>;
   } | null;
 }
