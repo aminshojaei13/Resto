@@ -46,28 +46,30 @@ export const PlatformAuditPage: React.FC<PlatformAuditPageProps> = ({ language =
         ) : logs.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: theme.colors.textMuted }}>{isFa ? 'هیچ رویدادی ثبت نشده است.' : 'No audit records found.'}</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'اکشن' : 'Action'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'نوع موجودیت' : 'Entity Type'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'شناسه موجودیت' : 'Entity ID'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'جزئیات' : 'Details'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'تاریخ' : 'Timestamp'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 'bold', color: theme.colors.info }}>{log.action}</td>
-                  <td style={{ padding: '12px 16px' }}>{log.entity_type || log.entityType}</td>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{log.entity_id || log.entityId}</td>
-                  <td style={{ padding: '12px 16px' }}>{log.details}</td>
-                  <td style={{ padding: '12px 16px', color: theme.colors.textSecondary }}>{log.created_at || log.createdAt}</td>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: 600 }}>
+              <thead>
+                <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'اکشن' : 'Action'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'نوع موجودیت' : 'Entity Type'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'شناسه موجودیت' : 'Entity ID'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'جزئیات' : 'Details'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'تاریخ' : 'Timestamp'}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 'bold', color: theme.colors.info }}>{log.action}</td>
+                    <td style={{ padding: '12px 16px' }}>{log.entity_type || log.entityType}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{log.entity_id || log.entityId}</td>
+                    <td style={{ padding: '12px 16px' }}>{log.details}</td>
+                    <td style={{ padding: '12px 16px', color: theme.colors.textSecondary }}>{log.created_at || log.createdAt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

@@ -171,7 +171,7 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
 
   return (
     <div style={{ display: 'flex', gap: theme.spacing.xl, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <div style={{ flex: 2, minWidth: 280 }}>
+      <div style={{ flex: '2 1 280px', minWidth: 'min(100%, 280px)', boxSizing: 'border-box' }}>
         <TextInput
           label={isFa ? 'جستجوی کالا' : 'Search products'}
           type="search"
@@ -186,7 +186,7 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
         {isLoading ? (
           <p style={{ color: theme.colors.textSecondary, fontSize: '13px' }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: theme.spacing.md, marginTop:16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: theme.spacing.md, marginTop: 16 }}>
             {products.map((product) => (
               <button
                 key={product.id}
@@ -214,8 +214,9 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
 
       <div
         style={{
-          flex: 1,
-          minWidth: 280,
+          flex: '1 1 280px',
+          minWidth: 'min(100%, 280px)',
+          boxSizing: 'border-box',
           backgroundColor: theme.colors.surfaceElevated,
           border: `1px solid ${theme.colors.border}`,
           borderRadius: theme.borderRadius.lg,

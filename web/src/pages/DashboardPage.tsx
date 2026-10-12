@@ -137,7 +137,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))',
             gap: theme.spacing.md,
           }}
         >
@@ -254,7 +254,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: theme.spacing['2xl'],
         }}
       >
@@ -483,11 +483,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: theme.spacing.md }}>
+          <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
             <button
               onClick={() => handleNav('/app/customers')}
               style={{
-                flex: 1,
+                flex: '1 1 90px',
                 backgroundColor: theme.colors.surface,
                 color: theme.colors.textPrimary,
                 border: `1px solid ${theme.colors.border}`,
@@ -503,7 +503,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
             <button
               onClick={() => handleNav('/app/expenses')}
               style={{
-                flex: 1,
+                flex: '1 1 90px',
                 backgroundColor: theme.colors.surface,
                 color: theme.colors.textPrimary,
                 border: `1px solid ${theme.colors.border}`,
@@ -519,7 +519,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
             <button
               onClick={() => handleNav('/app/accounting')}
               style={{
-                flex: 1,
+                flex: '1 1 90px',
                 backgroundColor: theme.colors.surface,
                 color: theme.colors.textPrimary,
                 border: `1px solid ${theme.colors.border}`,
@@ -546,7 +546,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           boxShadow: theme.shadows.card,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.xl, flexWrap: 'wrap', gap: theme.spacing.sm }}>
           <div>
             <h3 style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary, margin: 0 }}>
               {isFa ? 'تراکنش‌ها و فعالیت‌های اخیر سیستم' : 'Recent Operations Stream'}
@@ -572,13 +572,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
           </button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {entries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: theme.spacing['2xl'], color: theme.colors.textSecondary, fontSize: '14px' }}>
               {isFa ? 'هنوز هیچ تراکنشی ثبت نشده است. اولین سفارش یا خرید خود را ثبت کنید.' : 'No transaction entries found. Register an order or purchase to start.'}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', minWidth: 600 }}>
               <thead>
                 <tr style={{ borderBottom: `2px solid ${theme.colors.border}`, color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
                   <th style={{ padding: `${theme.spacing.md} ${theme.spacing.lg}` }}>{isFa ? 'شماره سند' : 'Entry #'}</th>

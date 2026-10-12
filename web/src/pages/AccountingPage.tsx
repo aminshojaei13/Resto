@@ -33,7 +33,8 @@ export const AccountingPage: React.FC<AccountingPageProps> = ({ language = 'fa' 
           boxShadow: theme.shadows.card,
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 580 }}>
           <thead>
             <tr
               style={{
@@ -78,6 +79,7 @@ export const AccountingPage: React.FC<AccountingPageProps> = ({ language = 'fa' 
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

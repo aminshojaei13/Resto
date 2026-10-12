@@ -185,7 +185,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
           {isFa ? 'هیچ تامین‌کننده‌ای یافت نشد.' : 'No suppliers found.'}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
           {suppliers.map((s) => (
             <div key={s.id} style={{ backgroundColor: theme.colors.surface, border: `1px solid ${theme.colors.border}`, borderRadius: '12px', padding: '20px', boxShadow: theme.shadows.card, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
@@ -227,8 +227,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Create Supplier Modal */}
       {isCreateModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: 'min(100%, 480px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', padding: '20px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? 'ثبت تامین‌کننده جدید' : 'Create New Supplier'}
             </h3>
@@ -305,8 +305,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Edit Supplier Modal (Pre-Populated) */}
       {editingSupplier && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: 'min(100%, 480px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', padding: '20px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? `ویرایش تامین‌کننده (${editingSupplier.name})` : `Edit Supplier (${editingSupplier.name})`}
             </h3>
@@ -359,7 +359,7 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={closeModals}
@@ -383,8 +383,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
 
       {/* Supplier Detail Modal */}
       {detailSupplier && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '560px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: 'min(100%, 560px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', padding: '20px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>{detailSupplier.name}</h3>
               <button onClick={closeModals} style={{ backgroundColor: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textSecondary }}>✕</button>

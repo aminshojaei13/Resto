@@ -67,7 +67,7 @@ export const PublicRegisterPage: React.FC<PublicRegisterPageProps> = ({
   };
 
   return (
-    <div style={{ maxWidth: '640px', margin: '40px auto', padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
+    <div style={{ maxWidth: '640px', width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '32px auto', padding: '24px 16px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h1 style={{ color: theme.colors.primary, margin: '0 0 8px 0', fontSize: '28px', fontWeight: 'bold' }}>
           {isFa ? 'ثبت‌نام و راه‌اندازی کسب‌وکار در رستو (Resto)' : 'Register Your Business on Resto'}

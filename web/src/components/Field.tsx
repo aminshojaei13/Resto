@@ -171,11 +171,12 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
         inset: 0,
         backgroundColor: theme.colors.overlay,
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '12px',
         overflowY: 'auto',
         zIndex: 1000,
+        boxSizing: 'border-box',
       }}
       onClick={onClose}
     >
@@ -186,8 +187,11 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
           border: `1px solid ${theme.colors.border}`,
           borderRadius: theme.borderRadius.xl,
           width: '100%',
-          maxWidth,
-          padding: theme.spacing['2xl'],
+          maxWidth: `min(100%, ${maxWidth}px)`,
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
+          padding: '20px',
           margin: 'auto',
           boxShadow: theme.shadows.lg,
           fontFamily: theme.typography.fontFamily,
@@ -198,14 +202,15 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: theme.spacing.xl,
+            marginBottom: theme.spacing.lg,
+            gap: theme.spacing.sm,
           }}
         >
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: theme.colors.textPrimary }}>{title}</h3>
           <button
             onClick={onClose}
             aria-label="close"
-            style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textMuted }}
+            style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textMuted, padding: '4px' }}
           >
             ✕
           </button>
@@ -213,7 +218,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
 
         {children}
 
-        {footer && <div style={{ marginTop: theme.spacing.xl }}>{footer}</div>}
+        {footer && <div style={{ marginTop: theme.spacing.lg }}>{footer}</div>}
       </div>
     </div>
   );
@@ -310,7 +315,7 @@ export const InfoNote: React.FC<{ title?: string; children: React.ReactNode }> =
       {title && (
         <strong style={{ display: 'block', marginBottom: 4, fontSize: '13px' }}>{title}</strong>
       )}
-      <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.7, color: theme.colors.textSecondary }}>{children}</p>
+      <div style={{ margin: 0, fontSize: '13px', lineHeight: 1.7, color: theme.colors.textSecondary }}>{children}</div>
     </div>
   );
 };

@@ -15,13 +15,14 @@ export const ActivationPage: React.FC<ActivationPageProps> = ({
   const isDark = effectiveMode === 'warmDark';
 
   return (
-    <div style={{ maxWidth: '640px', margin: '40px auto', fontFamily: theme.typography.fontFamily }}>
+    <div style={{ maxWidth: '640px', width: 'calc(100% - 32px)', boxSizing: 'border-box', margin: '32px auto', fontFamily: theme.typography.fontFamily }}>
       <div
         style={{
           backgroundColor: theme.colors.surface,
           borderRadius: theme.borderRadius.xl,
           border: `1px solid ${theme.colors.border}`,
-          padding: theme.spacing['2xl'],
+          padding: '24px 16px',
+          boxSizing: 'border-box',
           boxShadow: theme.shadows.md,
         }}
       >

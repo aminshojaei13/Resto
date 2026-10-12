@@ -75,10 +75,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ language = 'fa' })
   };
 
   return (
-    <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
+    <div style={{ fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <h2 style={{ margin: '0 0 16px 0', color: theme.colors.textPrimary }}>{isFa ? 'مدیریت مشتریان و باشگاه مشتریان' : 'Customer Profiles & CRM'}</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
         {customers.map((c) => {
           const totalPurchases = Number(c.totalPurchases ?? (c as any).total_purchases ?? 0);
           const loyaltyPoints = Number(c.loyaltyPoints ?? (c as any).loyalty_points ?? 0);
@@ -126,8 +126,8 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ language = 'fa' })
 
       {/* Edit Customer Pre-Populated Modal */}
       {editingCustomer && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '24px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, borderRadius: '12px', width: '100%', maxWidth: 'min(100%, 480px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', padding: '20px', boxShadow: theme.shadows.lg, direction: isFa ? 'rtl' : 'ltr', color: theme.colors.textPrimary }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? `ویرایش پرونده مشتری (${editingCustomer.name})` : `Edit Customer Profile (${editingCustomer.name})`}
             </h3>
@@ -180,7 +180,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ language = 'fa' })
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={closeEditModal}

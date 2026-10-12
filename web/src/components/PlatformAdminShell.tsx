@@ -26,12 +26,16 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
   const { theme, effectiveMode } = useTheme();
   const isDark = effectiveMode === 'warmDark';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1200));
+  const isMobileScreen = windowWidth < 768;
+  const isCompactScreen = windowWidth < 640;
+  const isNarrowScreen = windowWidth < 480;
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
+      const width = window.innerWidth > 0 ? window.innerWidth : 1200;
+      setWindowWidth(width);
+      if (width >= 768) {
         setIsMobileOpen(false);
       }
     };
@@ -67,7 +71,9 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
   const sidebarContent = (
     <aside
       style={{
-        width: '260px',
+        width: isMobileScreen ? 'min(280px, 85vw)' : '260px',
+        maxWidth: '85vw',
+        boxSizing: 'border-box',
         backgroundColor: theme.colors.surface,
         color: theme.colors.textSecondary,
         display: 'flex',
@@ -78,7 +84,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
         position: isMobileScreen ? 'fixed' : 'relative',
         top: 0,
         bottom: 0,
-        [isFa ? 'right' : 'left']: isMobileScreen ? (isMobileOpen ? '0' : '-280px') : 'auto',
+        [isFa ? 'right' : 'left']: isMobileScreen ? (isMobileOpen ? '0' : '-320px') : 'auto',
         transition: 'all 0.3s ease-in-out',
       }}
     >
@@ -215,67 +221,95 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
           style={{
             backgroundColor: theme.colors.surfaceElevated,
             borderBottom: `1px solid ${theme.colors.border}`,
-            padding: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
+            padding: isNarrowScreen ? '10px 12px' : isMobileScreen ? '12px 16px' : `${theme.spacing.lg} ${theme.spacing['2xl']}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             boxShadow: theme.shadows.sm,
+            gap: theme.spacing.sm,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? theme.spacing.xs : theme.spacing.md, minWidth: 0, flexShrink: 1 }}>
             {isMobileScreen && (
               <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
+                aria-label={isFa ? 'منوی ناوبری' : 'Open Navigation'}
                 style={{
                   backgroundColor: 'transparent',
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: theme.borderRadius.md,
-                  padding: '6px 12px',
-                  fontSize: '18px',
+                  padding: isNarrowScreen ? '6px 8px' : '6px 12px',
+                  fontSize: '16px',
                   cursor: 'pointer',
                   color: theme.colors.textPrimary,
+                  flexShrink: 0,
                 }}
               >
                 🍔
               </button>
             )}
 
-            <span style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
-              {isFa ? 'کنسول مدیریت پلتفرم (Platform Admin)' : 'Platform Admin Console'}
-            </span>
             <span
               style={{
-                fontSize: '11px',
-                padding: '2px 10px',
-                borderRadius: theme.borderRadius.full,
-                backgroundColor: theme.colors.infoLight,
-                color: theme.colors.info,
+                fontSize: isNarrowScreen ? '15px' : '18px',
                 fontWeight: 700,
+                color: theme.colors.textPrimary,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
-              {isFa ? 'سطح دسترسی راهبر کل' : 'Super Admin Mode'}
+              {isFa ? 'کنسول مدیریت پلتفرم' : 'Platform Admin Console'}
             </span>
+            {!isCompactScreen && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 10px',
+                  borderRadius: theme.borderRadius.full,
+                  backgroundColor: theme.colors.infoLight,
+                  color: theme.colors.info,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isFa ? 'سطح دسترسی راهبر کل' : 'Super Admin Mode'}
+              </span>
+            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.lg }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? '6px' : theme.spacing.md, flexShrink: 0 }}>
             <ThemeToggle language={language} />
-            <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
-              👤 {currentUserName}
-            </div>
+            {!isCompactScreen && (
+              <div
+                style={{
+                  fontSize: '13px',
+                  color: theme.colors.textSecondary,
+                  maxWidth: '140px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={currentUserName}
+              >
+                👤 {currentUserName}
+              </div>
+            )}
             <button
               onClick={onLogout}
+              title={isFa ? 'خروج' : 'Logout'}
               style={{
                 backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
                 color: isDark ? theme.colors.error : '#991B1B',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
-                padding: '6px 14px',
-                fontSize: '13px',
+                padding: isCompactScreen ? '6px 8px' : '6px 14px',
+                fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
             >
-              🚪 {isFa ? 'خروج' : 'Logout'}
+              🚪 {isCompactScreen ? '' : (isFa ? 'خروج' : 'Logout')}
             </button>
           </div>
         </header>
@@ -283,7 +317,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
         <main
           style={{
             flex: 1,
-            padding: theme.spacing['2xl'],
+            padding: isNarrowScreen ? '12px' : isMobileScreen ? '16px' : theme.spacing['2xl'],
             maxWidth: '1440px',
             width: '100%',
             margin: '0 auto',

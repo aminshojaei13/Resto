@@ -98,48 +98,50 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
         ) : organizations.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: theme.colors.textMuted }}>{isFa ? 'هیچ سازمانی یافت نشد.' : 'No active organizations found.'}</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-            <thead>
-              <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'کد سازمان' : 'Tenant Code'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'نام سازمان' : 'Organization Name'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'سطح اشتراک' : 'Subscription Tier'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'واحد پول' : 'Currency'}</th>
-                <th style={{ padding: '12px 16px' }}>{isFa ? 'تعداد شعب' : 'Stores Count'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {organizations.map((org) => (
-                <tr key={org.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold', color: theme.colors.info }}>{org.code}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{org.name}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        backgroundColor: theme.colors.infoLight,
-                        color: theme.colors.info,
-                      }}
-                    >
-                      {org.subscriptionTier || 'ENTERPRISE'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>{org.currencyCode} ({org.currencySymbol})</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{(org.stores || []).length} {isFa ? 'شعبه' : 'store(s)'}</td>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: 620 }}>
+              <thead>
+                <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'کد سازمان' : 'Tenant Code'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'نام سازمان' : 'Organization Name'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'سطح اشتراک' : 'Subscription Tier'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'واحد پول' : 'Currency'}</th>
+                  <th style={{ padding: '12px 16px' }}>{isFa ? 'تعداد شعب' : 'Stores Count'}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {organizations.map((org) => (
+                  <tr key={org.id} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold', color: theme.colors.info }}>{org.code}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{org.name}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          backgroundColor: theme.colors.infoLight,
+                          color: theme.colors.info,
+                        }}
+                      >
+                        {org.subscriptionTier || 'ENTERPRISE'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>{org.currencyCode} ({org.currencySymbol})</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{(org.stores || []).length} {isFa ? 'شعبه' : 'store(s)'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* New Organization Modal */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '28px', borderRadius: '16px', width: '480px', maxWidth: '92%', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '20px', borderRadius: '16px', width: '100%', maxWidth: 'min(100%, 480px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>
               🏢 {isFa ? 'ایجاد مستقیم سازمان و شعب' : 'Create Organization'}
             </h3>

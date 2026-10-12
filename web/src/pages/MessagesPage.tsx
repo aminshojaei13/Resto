@@ -251,7 +251,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
       <ol
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
           gap: theme.spacing.sm,
           listStyle: 'none',
           margin: 0,
@@ -359,7 +359,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
               {s.customer}
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: theme.spacing.md }}>
               <input
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
@@ -450,7 +450,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
                       borderBottom: `1px solid ${theme.colors.border}`,
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 180 }}>
+                    <div style={{ flex: 1, minWidth: 'min(100%, 160px)' }}>
                       <div style={{ fontWeight: 700, fontSize: '13px', color: theme.colors.textPrimary }}>{pName}</div>
                       <div style={{ fontSize: '11px', color: theme.colors.textMuted }}>
                         {pSku ? `${pSku} · ` : ''}{formatMoney(line.price, isFa)} / {line.unitLabel ?? line.unit}

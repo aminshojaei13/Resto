@@ -39,12 +39,16 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   const { theme, effectiveMode } = useTheme();
   const isDark = effectiveMode === 'warmDark';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768);
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1200));
+  const isMobileScreen = windowWidth < 768;
+  const isCompactScreen = windowWidth < 640;
+  const isNarrowScreen = windowWidth < 480;
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth > 0 && window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
+      const width = window.innerWidth > 0 ? window.innerWidth : 1200;
+      setWindowWidth(width);
+      if (width >= 768) {
         setIsMobileOpen(false);
       }
     };
@@ -104,7 +108,9 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   const sidebarContent = (
     <aside
       style={{
-        width: '260px',
+        width: isMobileScreen ? 'min(280px, 85vw)' : '260px',
+        maxWidth: '85vw',
+        boxSizing: 'border-box',
         backgroundColor: theme.colors.sidebarBg,
         color: theme.colors.sidebarText,
         display: 'flex',
@@ -115,7 +121,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
         position: isMobileScreen ? 'fixed' : 'relative',
         top: 0,
         bottom: 0,
-        [isFa ? 'right' : 'left']: isMobileScreen ? (isMobileOpen ? '0' : '-280px') : 'auto',
+        [isFa ? 'right' : 'left']: isMobileScreen ? (isMobileOpen ? '0' : '-320px') : 'auto',
         transition: 'all 0.3s ease-in-out',
       }}
     >
@@ -313,84 +319,110 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
           style={{
             backgroundColor: theme.colors.surfaceElevated,
             borderBottom: `1px solid ${theme.colors.border}`,
-            padding: `${theme.spacing.lg} ${theme.spacing['2xl']}`,
+            padding: isNarrowScreen ? '10px 12px' : isMobileScreen ? '12px 16px' : `${theme.spacing.lg} ${theme.spacing['2xl']}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             boxShadow: theme.shadows.sm,
+            gap: theme.spacing.sm,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? theme.spacing.xs : theme.spacing.md, minWidth: 0, flexShrink: 1 }}>
             {isMobileScreen && (
               <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
+                aria-label={isFa ? 'منوی ناوبری' : 'Open Navigation'}
                 style={{
                   backgroundColor: 'transparent',
                   border: `1px solid ${theme.colors.border}`,
                   borderRadius: theme.borderRadius.md,
-                  padding: '6px 12px',
-                  fontSize: '18px',
+                  padding: isNarrowScreen ? '6px 8px' : '6px 12px',
+                  fontSize: '16px',
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
               >
                 🍔
               </button>
             )}
 
-            <span style={{ fontSize: '18px', fontWeight: 700, color: theme.colors.textPrimary }}>
+            <span
+              style={{
+                fontSize: isNarrowScreen ? '15px' : '18px',
+                fontWeight: 700,
+                color: theme.colors.textPrimary,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {currentItem ? (isFa ? currentItem.labelFa : currentItem.labelEn) : (isFa ? 'پنل کسب‌وکار' : 'Business OS')}
             </span>
-
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? '6px' : theme.spacing.md, flexShrink: 0 }}>
             <ThemeToggle language={language} />
 
-            <button
-              onClick={onOpenBusinessModal}
-              style={{
-                backgroundColor: theme.colors.surfaceHover,
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: theme.borderRadius.md,
-                padding: '6px 12px',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: theme.colors.textPrimary,
-                cursor: 'pointer',
-              }}
-            >
-              🏢 {activeOrgName}
-            </button>
+            {!isNarrowScreen && (
+              <button
+                onClick={onOpenBusinessModal}
+                title={activeOrgName}
+                style={{
+                  backgroundColor: theme.colors.surfaceHover,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.md,
+                  padding: isCompactScreen ? '6px 8px' : '6px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: theme.colors.textPrimary,
+                  cursor: 'pointer',
+                  maxWidth: isCompactScreen ? '110px' : '220px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🏢 {activeOrgName}
+              </button>
+            )}
 
-            <button
-              onClick={() => navigate('/app/profile')}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: theme.colors.textSecondary,
-                cursor: 'pointer',
-                padding: '6px 4px',
-              }}
-            >
-              👤 {currentUserName}
-            </button>
+            {!isCompactScreen && (
+              <button
+                onClick={() => navigate('/app/profile')}
+                title={currentUserName}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: theme.colors.textSecondary,
+                  cursor: 'pointer',
+                  padding: '6px 4px',
+                  maxWidth: '140px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                👤 {currentUserName}
+              </button>
+            )}
 
             <button
               onClick={onLogout}
+              title={isFa ? 'خروج' : 'Logout'}
               style={{
                 backgroundColor: isDark ? theme.colors.errorLight : '#FEE2E2',
                 color: isDark ? theme.colors.error : '#991B1B',
                 border: 'none',
                 borderRadius: theme.borderRadius.md,
-                padding: '6px 12px',
+                padding: isCompactScreen ? '6px 8px' : '6px 12px',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
             >
-              🚪 {isFa ? 'خروج' : 'Logout'}
+              🚪 {isCompactScreen ? '' : (isFa ? 'خروج' : 'Logout')}
             </button>
           </div>
         </header>
@@ -399,7 +431,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
         <main
           style={{
             flex: 1,
-            padding: theme.spacing['2xl'],
+            padding: isNarrowScreen ? '12px' : isMobileScreen ? '16px' : theme.spacing['2xl'],
             maxWidth: '1440px',
             width: '100%',
             margin: '0 auto',

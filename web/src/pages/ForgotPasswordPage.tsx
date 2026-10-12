@@ -56,8 +56,10 @@ export const ForgotPasswordPage: React.FC<{
     <div
       style={{
         maxWidth: '440px',
-        margin: '40px auto',
-        padding: '32px',
+        width: 'calc(100% - 32px)',
+        boxSizing: 'border-box',
+        margin: '32px auto',
+        padding: '28px 20px',
         backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
         border: `1px solid ${isDark ? theme.colors.borderStrong : '#E2E8F0'}`,
         borderRadius: '16px',

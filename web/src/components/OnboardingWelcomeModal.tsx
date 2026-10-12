@@ -54,11 +54,11 @@ export const OnboardingWelcomeModal: React.FC<OnboardingWelcomeModalProps> = ({
   ];
 
   const footer = (
-    <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'flex-end', width: '100%' }}>
-      <SecondaryButton onClick={onClose}>
+    <div style={{ display: 'flex', gap: theme.spacing.sm, justifyContent: 'flex-end', width: '100%', flexWrap: 'wrap' }}>
+      <SecondaryButton onClick={onClose} style={{ flex: '1 1 140px' }}>
         {isFa ? 'بعداً یادآوری کن' : 'Remind Later'}
       </SecondaryButton>
-      <PrimaryButton onClick={onStart}>
+      <PrimaryButton onClick={onStart} style={{ flex: '1 1 140px' }}>
         {isFa ? 'شروع مراحل راه‌اندازی' : 'Get Started'}
       </PrimaryButton>
     </div>

@@ -288,11 +288,11 @@ export const OnboardingChecklistCard: React.FC<OnboardingChecklistCardProps> = (
 
               {!step.isDone && (
                 <>
-                  <div style={{ fontSize: '13px', color: theme.colors.textSecondary, marginRight: '32px', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: '13px', color: theme.colors.textSecondary, marginInlineStart: '32px', lineHeight: 1.6 }}>
                     {step.desc}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginRight: '32px', marginTop: theme.spacing.xs }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm, marginInlineStart: '32px', marginTop: theme.spacing.xs, flexWrap: 'wrap' }}>
                     <button
                       onClick={step.primaryAction.onClick}
                       style={{

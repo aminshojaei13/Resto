@@ -65,6 +65,8 @@ export const TenantModal: React.FC<BusinessModalProps> = ({ language, onClose, o
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: '12px',
+        boxSizing: 'border-box',
         zIndex: 1000,
         direction: isFa ? 'rtl' : 'ltr',
         fontFamily: theme.typography.fontFamily,
@@ -74,9 +76,12 @@ export const TenantModal: React.FC<BusinessModalProps> = ({ language, onClose, o
         style={{
           backgroundColor: theme.colors.surfaceElevated,
           borderRadius: theme.borderRadius.xl,
-          padding: theme.spacing['2xl'],
-          width: '480px',
-          maxWidth: '92%',
+          padding: '20px',
+          width: '100%',
+          maxWidth: '480px',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box',
           boxShadow: theme.shadows.lg,
           border: `1px solid ${theme.colors.border}`,
         }}
@@ -189,13 +194,13 @@ export const TenantModal: React.FC<BusinessModalProps> = ({ language, onClose, o
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: theme.spacing.xl }}>
+        <div style={{ display: 'flex', gap: '10px', marginTop: theme.spacing.xl, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={choose}
             disabled={!selection}
             style={{
-              flex: 1,
+              flex: '1 1 140px',
               padding: theme.spacing.md,
               borderRadius: theme.borderRadius.md,
               border: 'none',
@@ -213,7 +218,7 @@ export const TenantModal: React.FC<BusinessModalProps> = ({ language, onClose, o
             type="button"
             onClick={onClose}
             style={{
-              flex: 1,
+              flex: '1 1 140px',
               padding: theme.spacing.md,
               borderRadius: theme.borderRadius.md,
               border: `1px solid ${theme.colors.border}`,

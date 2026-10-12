@@ -99,7 +99,7 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
       )}
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['PENDING', 'APPROVED', 'REJECTED'].map((status) => (
           <button
             key={status}
@@ -127,7 +127,8 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
         ) : applications.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: theme.colors.textMuted }}>{isFa ? 'هیچ درخواستی در این وضعیت یافت نشد.' : 'No applications found.'}</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: 700 }}>
             <thead>
               <tr style={{ backgroundColor: theme.colors.backgroundSecondary, textAlign: isFa ? 'right' : 'left', color: theme.colors.textSecondary, fontSize: '12px', fontWeight: 700 }}>
                 <th style={{ padding: '12px 16px' }}>{isFa ? 'نام کسب‌وکار' : 'Business Name'}</th>
@@ -186,13 +187,14 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {/* Approve & Password Provisioning Modal */}
       {isApproveModalOpen && selectedApp && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '24px', borderRadius: '12px', width: '480px', maxWidth: '90%', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '12px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: theme.colors.surfaceElevated, padding: '20px', borderRadius: '12px', width: '100%', maxWidth: 'min(100%, 480px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', color: theme.colors.textPrimary, border: `1px solid ${theme.colors.border}` }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '18px', fontWeight: 'bold' }}>
               {isFa ? 'تایید درخواست و راه‌اندازی کسب‌وکار' : 'Approve and set up the business'}
             </h3>
@@ -203,7 +205,7 @@ export const PlatformAdminPage: React.FC<PlatformAdminPageProps> = ({ language =
             </p>
 
             <form onSubmit={handleApproveSubmit}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setIsApproveModalOpen(false)}

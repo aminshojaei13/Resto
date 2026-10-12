@@ -99,37 +99,39 @@ export const ReceivingPage: React.FC<ReceivingPageProps> = ({ language = 'fa' })
                 <PrimaryButton onClick={() => setActive(purchase)}>{isFa ? 'ثبت دریافت' : 'Receive'}</PrimaryButton>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <tbody>
-                  {purchase.items.map((item) => {
-                    const outstanding = item.quantity - item.receivedQuantity;
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: 480 }}>
+                  <tbody>
+                    {purchase.items.map((item) => {
+                      const outstanding = item.quantity - item.receivedQuantity;
 
-                    return (
-                      <tr key={item.id} style={{ borderTop: `1px solid ${theme.colors.border}` }}>
-                        <td style={{ padding: '8px 0', color: theme.colors.textPrimary, fontWeight: 600 }}>
-                          {item.productName}
-                        </td>
-                        <td style={{ padding: '8px 0', color: theme.colors.textSecondary }}>
-                          {s.orderedQty}: {quantityWithUnit(item.quantity, item.unit, language)}
-                        </td>
-                        <td style={{ padding: '8px 0', color: theme.colors.textSecondary }}>
-                          {s.receivedQty}: {quantityWithUnit(item.receivedQuantity, item.unit, language)}
-                        </td>
-                        <td
-                          style={{
-                            padding: '8px 0',
-                            textAlign: isFa ? 'left' : 'right',
-                            fontWeight: 700,
-                            color: outstanding > 0 ? theme.colors.warning : theme.colors.success,
-                          }}
-                        >
-                          {outstanding > 0 ? quantityWithUnit(outstanding, item.unit, language) : s.received}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={item.id} style={{ borderTop: `1px solid ${theme.colors.border}` }}>
+                          <td style={{ padding: '8px 0', color: theme.colors.textPrimary, fontWeight: 600 }}>
+                            {item.productName}
+                          </td>
+                          <td style={{ padding: '8px 0', color: theme.colors.textSecondary }}>
+                            {s.orderedQty}: {quantityWithUnit(item.quantity, item.unit, language)}
+                          </td>
+                          <td style={{ padding: '8px 0', color: theme.colors.textSecondary }}>
+                            {s.receivedQty}: {quantityWithUnit(item.receivedQuantity, item.unit, language)}
+                          </td>
+                          <td
+                            style={{
+                              padding: '8px 0',
+                              textAlign: isFa ? 'left' : 'right',
+                              fontWeight: 700,
+                              color: outstanding > 0 ? theme.colors.warning : theme.colors.success,
+                            }}
+                          >
+                            {outstanding > 0 ? quantityWithUnit(outstanding, item.unit, language) : s.received}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
         </div>

@@ -90,10 +90,11 @@ export const PlatformLoginPage: React.FC<PlatformLoginPageProps> = ({
       <div
         style={{
           width: '440px',
-          maxWidth: '92%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           backgroundColor: theme.colors.surfaceElevated,
           borderRadius: theme.borderRadius.xl,
-          padding: theme.spacing['2xl'],
+          padding: '28px 20px',
           boxShadow: theme.shadows.lg,
           border: `1px solid ${theme.colors.border}`,
           direction: isFa ? 'rtl' : 'ltr',

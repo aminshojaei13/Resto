@@ -98,7 +98,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
         <>
           {summary && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: theme.spacing.md }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: theme.spacing.md }}>
                 <Tile label={s.monthTotal} value={formatMoney(summary.monthTotal, isFa)} />
                 <Tile label={s.todayTotal} value={formatMoney(summary.todayTotal, isFa)} />
                 <Tile
@@ -107,7 +107,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: theme.spacing.lg }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: theme.spacing.lg }}>
                 <section
                   style={{
                     backgroundColor: theme.colors.surface,
