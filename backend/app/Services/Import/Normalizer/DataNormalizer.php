@@ -223,14 +223,17 @@ class DataNormalizer
             return null;
         }
 
-        // Try standard PHP strtotime / Carbon for other standard date formats
-        try {
-            $parsed = \Illuminate\Support\Carbon::parse($raw);
-            if ($parsed && $parsed->year >= 1900 && $parsed->year <= 2100) {
-                return $parsed->format('Y-m-d');
+        // Try standard PHP strtotime / Carbon for other standard date formats,
+        // but strictly reject pure numeric, negative or nonsensical strings.
+        if (preg_match('/^[a-zA-Z0-9\s,\.\-\/]+$/', $raw) && !is_numeric($raw) && !str_starts_with($raw, '-')) {
+            try {
+                $parsed = \Illuminate\Support\Carbon::parse($raw);
+                if ($parsed && $parsed->year >= 1900 && $parsed->year <= 2100) {
+                    return $parsed->format('Y-m-d');
+                }
+            } catch (\Throwable) {
+                // Unparseable date
             }
-        } catch (\Throwable) {
-            // Unparseable date
         }
 
         return null;

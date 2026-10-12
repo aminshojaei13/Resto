@@ -369,6 +369,180 @@ class ImportMappingService
             ];
         }
 
+        if ($importType === ImportType::ORDERS) {
+            return [
+                'order_id' => [
+                    'name' => 'order_id',
+                    'label_fa' => 'شناسه سفارش / شماره فاکتور خارجی',
+                    'label_en' => 'Order ID / External Invoice #',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'شناسه یکتا یا شماره فاکتور سفارش در سیستم قبلی (جهت گروه‌بندی اقلام)',
+                    'description_en' => 'Unique order ID or invoice number in legacy system (for grouping items)',
+                    'aliases' => [
+                        'شماره سفارش', 'شماره فاکتور', 'کد سفارش', 'کد فاکتور', 'شناسه سفارش', 'شماره قبض', 'فاکتور',
+                        'order_id', 'order id', 'order_number', 'invoice_no', 'invoice', 'invoice_number', 'bill_no'
+                    ],
+                ],
+                'sku' => [
+                    'name' => 'sku',
+                    'label_fa' => 'کد کالا / SKU',
+                    'label_en' => 'Product SKU',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'کد یا شناسه کالا در سیستم Resto',
+                    'description_en' => 'Product SKU or code in Resto catalog',
+                    'aliases' => [
+                        'کد کالا', 'کد محصول', 'کد', 'شناسه کالا', 'شناسه محصول', 'بارکد',
+                        'sku', 'product_sku', 'item_code', 'code', 'product_code', 'barcode'
+                    ],
+                ],
+                'quantity' => [
+                    'name' => 'quantity',
+                    'label_fa' => 'تعداد / مقدار',
+                    'label_en' => 'Quantity',
+                    'type' => 'integer',
+                    'required' => true,
+                    'description_fa' => 'تعداد کالای خریداری شده در این ردیف (عدد صحیح مثبت)',
+                    'description_en' => 'Quantity purchased in this line item (positive integer)',
+                    'aliases' => [
+                        'تعداد', 'مقدار', 'میزان', 'حجم',
+                        'quantity', 'qty', 'count', 'amount'
+                    ],
+                ],
+                'unit_price' => [
+                    'name' => 'unit_price',
+                    'label_fa' => 'قیمت واحد',
+                    'label_en' => 'Unit Price',
+                    'type' => 'numeric',
+                    'required' => true,
+                    'description_fa' => 'قیمت واحد تاریخی کالا در زمان ثبت سفارش',
+                    'description_en' => 'Historical unit price at the time of sale',
+                    'aliases' => [
+                        'قیمت واحد', 'فی', 'نرخ', 'قیمت تک', 'مبلغ واحد', 'قیمت فروش',
+                        'unit_price', 'price', 'unit price', 'rate', 'item_price'
+                    ],
+                ],
+                'date' => [
+                    'name' => 'date',
+                    'label_fa' => 'تاریخ و زمان سفارش',
+                    'label_en' => 'Order Date & Time',
+                    'type' => 'datetime',
+                    'required' => true,
+                    'description_fa' => 'تاریخ و زمان وقوع سفارش (شمسی یا میلادی)',
+                    'description_en' => 'Date and time when the order occurred (Jalali or Gregorian)',
+                    'aliases' => [
+                        'تاریخ سفارش', 'تاریخ فاکتور', 'تاریخ', 'زمان', 'تاریخ و ساعت', 'زمان ثبت',
+                        'order_date', 'date', 'created_at', 'invoice_date', 'datetime', 'time'
+                    ],
+                ],
+                'discount_amount' => [
+                    'name' => 'discount_amount',
+                    'label_fa' => 'تخفیف',
+                    'label_en' => 'Discount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ تخفیف این ردیف یا سفارش',
+                    'description_en' => 'Discount amount for this line item or order',
+                    'aliases' => [
+                        'تخفیف', 'مبلغ تخفیف', 'درصد تخفیف', 'کسورات',
+                        'discount', 'discount_amount', 'discount_percent', 'disc'
+                    ],
+                ],
+                'tax_amount' => [
+                    'name' => 'tax_amount',
+                    'label_fa' => 'مالیات / عوارض',
+                    'label_en' => 'Tax Amount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ مالیات بر ارزش افزوده تاریخی',
+                    'description_en' => 'Historical tax or VAT amount',
+                    'aliases' => [
+                        'مالیات', 'ارزش افزوده', 'عوارض', 'مالیات و عوارض',
+                        'tax', 'tax_amount', 'vat', 'tax_rate'
+                    ],
+                ],
+                'total_amount' => [
+                    'name' => 'total_amount',
+                    'label_fa' => 'مبلغ کل سفارش',
+                    'label_en' => 'Total Amount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ نهایی پرداخت‌شده فاکتور (جهت اعتبارسنجی جمع اقلام)',
+                    'description_en' => 'Total paid invoice amount (for validating sum of items)',
+                    'aliases' => [
+                        'مبلغ کل', 'جمع کل', 'مبلغ نهایی', 'مبلغ فاکتور', 'قابل پرداخت', 'کل',
+                        'total', 'total_amount', 'final_amount', 'grand_total', 'net_amount'
+                    ],
+                ],
+                'customer' => [
+                    'name' => 'customer',
+                    'label_fa' => 'مشتری (نام / تلفن / شناسه)',
+                    'label_en' => 'Customer (Name / Phone / ID)',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام، شماره تلفن یا شناسه مشتری در سیستم',
+                    'description_en' => 'Customer name, phone number, or ID',
+                    'aliases' => [
+                        'مشتری', 'نام مشتری', 'خریدار', 'تلفن مشتری', 'موبایل مشتری', 'شماره مشتری',
+                        'customer', 'customer_name', 'client', 'buyer', 'phone', 'customer_phone'
+                    ],
+                ],
+                'store' => [
+                    'name' => 'store',
+                    'label_fa' => 'فروشگاه / شعبه',
+                    'label_en' => 'Store / Branch',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد فروشگاه ثبات سفارش (در صورت خالی بودن از فروشگاه پیش‌فرض استفاده می‌شود)',
+                    'description_en' => 'Store name or code (defaults to selected default store)',
+                    'aliases' => [
+                        'فروشگاه', 'شعبه', 'کد شعبه', 'کد فروشگاه',
+                        'store', 'branch', 'store_code', 'location'
+                    ],
+                ],
+                'payment_method' => [
+                    'name' => 'payment_method',
+                    'label_fa' => 'روش پرداخت',
+                    'label_en' => 'Payment Method',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'شیوه پرداخت (CASH, CARD, BANK_TRANSFER, ONLINE)',
+                    'description_en' => 'Payment method (CASH, CARD, BANK_TRANSFER, ONLINE)',
+                    'aliases' => [
+                        'روش پرداخت', 'نحوه پرداخت', 'نوع پرداخت',
+                        'payment_method', 'method', 'paid_by'
+                    ],
+                ],
+                'status' => [
+                    'name' => 'status',
+                    'label_fa' => 'وضعیت سفارش',
+                    'label_en' => 'Order Status',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'وضعیت سفارش (COMPLETED, NEW, PREPARING, CANCELLED)',
+                    'description_en' => 'Order status (COMPLETED, NEW, PREPARING, CANCELLED)',
+                    'aliases' => [
+                        'وضعیت', 'وضعیت سفارش', 'حالت',
+                        'status', 'order_status', 'state'
+                    ],
+                ],
+                'notes' => [
+                    'name' => 'notes',
+                    'label_fa' => 'یادداشت / توضیحات',
+                    'label_en' => 'Notes',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'توضیحات تکمیلی یا یادداشت فاکتور',
+                    'description_en' => 'Additional notes or remarks',
+                    'aliases' => [
+                        'یادداشت', 'توضیحات', 'شرح', 'ملاحظات',
+                        'notes', 'description', 'remarks', 'comment'
+                    ],
+                ],
+            ];
+        }
+
         throw new InvalidArgumentException("نوع درون‌ریزی '{$importType}' برای تطبیق ستون‌ها پشتیبانی نمی‌شود.");
     }
 

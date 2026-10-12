@@ -6,6 +6,8 @@ use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\ImportJob;
 use App\Models\ImportSource;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
@@ -18,6 +20,7 @@ use App\Services\Import\Normalizer\DataNormalizer;
 use App\Services\Import\Reader\SpreadsheetReaderService;
 use App\Support\Import\ImportStatus;
 use App\Support\Import\ImportType;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -87,6 +90,7 @@ class ImportExecutionService
                 ImportType::CUSTOMERS => $this->executeCustomers($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
                 ImportType::INVENTORY => $this->executeInventory($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
                 ImportType::EXPENSES => $this->executeExpenses($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
+                ImportType::ORDERS => $this->executeOrders($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -816,6 +820,11 @@ class ImportExecutionService
                 $notes = DataNormalizer::cleanString($notesRaw ?? '');
                 $paymentMethod = DataNormalizer::cleanString($paymentMethodRaw ?? '') ?: 'CASH';
 
+                // Seamless fallback: If title was not provided or empty, but notes was provided, use notes as title
+                if ($title === '' && $notes !== '') {
+                    $title = mb_substr($notes, 0, 191, 'UTF-8');
+                }
+
                 // 1. Title validation
                 if ($title === '' || mb_strlen($title, 'UTF-8') > 191) {
                     $failedRows++;
@@ -928,6 +937,378 @@ class ImportExecutionService
 
                 $importedRows++;
             }
+        });
+    }
+
+    /**
+     * Execute historical orders import adhering strictly to HISTORICAL_RECORD_ONLY domain contract.
+     * ZERO mutations to WarehouseStock, ZERO stock movements, ZERO live general ledger journal entries.
+     */
+    private function executeOrders(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping,
+        string $duplicateStrategy,
+        User $user
+    ): array {
+        $importedRows = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : $tenantWarehouses->first();
+
+        $tenantProducts = Product::where('organization_id', $job->organization_id)->get();
+        $tenantCustomers = Customer::where('organization_id', $job->organization_id)->get();
+
+        // 1. Group rows by external order_id
+        $groupedOrders = [];
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $orderIdRaw = $this->getMappedValue($rowItem, $mapping, 'order_id');
+            $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+            $qtyRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+            $priceRaw = $this->getMappedValue($rowItem, $mapping, 'unit_price');
+            $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+            $discRaw = $this->getMappedValue($rowItem, $mapping, 'discount_amount');
+            $taxRaw = $this->getMappedValue($rowItem, $mapping, 'tax_amount');
+            $totalRaw = $this->getMappedValue($rowItem, $mapping, 'total_amount');
+            $custRaw = $this->getMappedValue($rowItem, $mapping, 'customer');
+            $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+            $payRaw = $this->getMappedValue($rowItem, $mapping, 'payment_method');
+            $statusRaw = $this->getMappedValue($rowItem, $mapping, 'status');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $orderId = DataNormalizer::cleanString($orderIdRaw ?? '');
+            $groupKey = ($orderId !== '') ? $orderId : ("__MISSING_ROW_{$rowNumber}");
+
+            $groupedOrders[$groupKey][] = [
+                'row_number' => $rowNumber,
+                'order_id' => $orderId,
+                'sku_raw' => $skuRaw,
+                'qty_raw' => $qtyRaw,
+                'price_raw' => $priceRaw,
+                'date_raw' => $dateRaw,
+                'disc_raw' => $discRaw,
+                'tax_raw' => $taxRaw,
+                'total_raw' => $totalRaw,
+                'cust_raw' => $custRaw,
+                'store_raw' => $storeRaw,
+                'pay_raw' => $payRaw,
+                'status_raw' => $statusRaw,
+                'notes_raw' => $notesRaw,
+            ];
+        }
+
+        // 2. Process each order group inside its own database transaction
+        foreach ($groupedOrders as $groupKey => $orderRows) {
+            $this->processOrderGroup(
+                $orderRows,
+                $job,
+                $duplicateStrategy,
+                $tenantStores,
+                $defaultStore,
+                $tenantWarehouses,
+                $defaultWarehouse,
+                $tenantProducts,
+                $tenantCustomers,
+                $user,
+                $importedRows,
+                $skippedRows,
+                $failedRows
+            );
+        }
+
+        $job->update([
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ]);
+
+        return [
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ];
+    }
+
+    private function processOrderGroup(
+        array $orderRows,
+        ImportJob $job,
+        string $duplicateStrategy,
+        $tenantStores,
+        ?Store $defaultStore,
+        $tenantWarehouses,
+        ?Warehouse $defaultWarehouse,
+        $tenantProducts,
+        $tenantCustomers,
+        User $user,
+        int &$importedRows,
+        int &$skippedRows,
+        int &$failedRows
+    ): void {
+        DB::transaction(function () use (
+            $orderRows,
+            $job,
+            $duplicateStrategy,
+            $tenantStores,
+            $defaultStore,
+            $tenantWarehouses,
+            $defaultWarehouse,
+            $tenantProducts,
+            $tenantCustomers,
+            $user,
+            &$importedRows,
+            &$skippedRows,
+            &$failedRows
+        ) {
+            $firstRow = $orderRows[0];
+            $externalOrderId = $firstRow['order_id'];
+
+            if ($externalOrderId === '') {
+                $failedRows += count($orderRows);
+                return;
+            }
+
+            // Parse Date
+            $parsedDate = DataNormalizer::parseDate($firstRow['date_raw']);
+            if (!$parsedDate) {
+                $failedRows += count($orderRows);
+                return;
+            }
+
+            // Resolve Store
+            $storeRaw = DataNormalizer::cleanString($firstRow['store_raw'] ?? '');
+            $resolvedStore = null;
+            if ($storeRaw !== '') {
+                $resolvedStore = $tenantStores->first(function ($st) use ($storeRaw) {
+                    return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || $st->id === $storeRaw;
+                });
+            }
+            if (!$resolvedStore) {
+                $resolvedStore = $defaultStore;
+            }
+            if (!$resolvedStore) {
+                $failedRows += count($orderRows);
+                return;
+            }
+
+            // Resolve Warehouse
+            $resolvedWarehouse = $defaultWarehouse;
+
+            // Resolve Customer
+            $customerRaw = DataNormalizer::cleanString($firstRow['cust_raw'] ?? '');
+            $resolvedCustomer = null;
+            if ($customerRaw !== '') {
+                $resolvedCustomer = $tenantCustomers->first(function ($c) use ($customerRaw) {
+                    return $c->id === $customerRaw
+                        || mb_strtolower($c->name ?? '', 'UTF-8') === mb_strtolower($customerRaw, 'UTF-8')
+                        || ($c->phone && $c->phone === DataNormalizer::normalizePhone($customerRaw));
+                });
+            }
+
+            $customerName = $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: 'مشتری حضوری');
+            $customerId = $resolvedCustomer?->id;
+
+            // Payment and Status
+            $paymentMethod = DataNormalizer::cleanString($firstRow['pay_raw'] ?? '') ?: 'CASH';
+            $statusRaw = strtoupper(DataNormalizer::cleanString($firstRow['status_raw'] ?? '') ?: 'COMPLETED');
+            $paymentStatus = in_array($statusRaw, ['COMPLETED', 'PAID'], true) ? 'PAID' : 'PENDING';
+            $fulfillmentStatus = in_array($statusRaw, ['COMPLETED'], true) ? 'COMPLETED' : ($statusRaw === 'CANCELLED' ? 'CANCELLED' : 'NEW');
+            $notes = DataNormalizer::cleanString($firstRow['notes_raw'] ?? '');
+
+            // Deterministic Order UUID based on tenant, job and external order id
+            $orderDeterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_ord_{$externalOrderId}");
+
+            // Check if this order was already committed by this job (retry idempotency)
+            $alreadyCommittedByJob = Order::where('organization_id', $job->organization_id)
+                ->where('id', $orderDeterministicId)
+                ->first();
+
+            if ($alreadyCommittedByJob) {
+                $skippedRows += count($orderRows);
+                return;
+            }
+
+            // Check for existing matching Order in database (by external_order_id or order_number)
+            $existingOrder = Order::where('organization_id', $job->organization_id)
+                ->where(function ($q) use ($externalOrderId) {
+                    $q->where('external_order_id', $externalOrderId)
+                      ->orWhere('order_number', $externalOrderId);
+                })
+                ->first();
+
+            if ($existingOrder) {
+                if ($duplicateStrategy === self::STRATEGY_SKIP) {
+                    $skippedRows += count($orderRows);
+                    return;
+                }
+
+                // UPDATE Strategy: only update descriptive non-financial attributes on historical order
+                $updatePayload = [];
+                if ($notes !== '') {
+                    $updatePayload['notes'] = $notes;
+                }
+                if ($paymentMethod !== 'CASH') {
+                    $updatePayload['payment_method'] = $paymentMethod;
+                }
+                if (!empty($updatePayload)) {
+                    $existingOrder->update($updatePayload);
+                }
+                $importedRows += count($orderRows);
+                return;
+            }
+
+            // Validate and prepare line items
+            $preparedLines = [];
+            $subtotalMinor = 0;
+            $discountMinor = 0;
+            $taxMinor = 0;
+
+            foreach ($orderRows as $rowItem) {
+                $skuNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['sku_raw'] ?? ''));
+                $matchedProduct = $tenantProducts->first(function ($p) use ($skuNorm) {
+                    return (string) $p->sku === $skuNorm
+                        || (string) $p->barcode === $skuNorm
+                        || (string) $p->id === $skuNorm;
+                });
+
+                if (!$matchedProduct) {
+                    $failedRows += count($orderRows);
+                    return;
+                }
+
+                $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['qty_raw'] ?? ''));
+                if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                    $failedRows += count($orderRows);
+                    return;
+                }
+                $qty = (int) $qtyNorm;
+
+                $priceNorm = DataNormalizer::parseMoney($rowItem['price_raw']);
+                if ($priceNorm === null || (float) $priceNorm < 0) {
+                    $failedRows += count($orderRows);
+                    return;
+                }
+
+                $unitPriceMinor = Money::toMinor($priceNorm);
+                $lineSubtotalMinor = Money::multiply($unitPriceMinor, $qty);
+
+                $lineDiscMinor = 0;
+                if ($rowItem['disc_raw'] !== null && trim((string) $rowItem['disc_raw']) !== '') {
+                    $discNorm = DataNormalizer::parseMoney($rowItem['disc_raw']);
+                    if ($discNorm !== null) {
+                        $lineDiscMinor = Money::toMinor($discNorm);
+                    }
+                }
+
+                $lineTaxMinor = 0;
+                if ($rowItem['tax_raw'] !== null && trim((string) $rowItem['tax_raw']) !== '') {
+                    $taxNorm = DataNormalizer::parseMoney($rowItem['tax_raw']);
+                    if ($taxNorm !== null) {
+                        $lineTaxMinor = Money::toMinor($taxNorm);
+                    }
+                }
+
+                $lineTotalMinor = $lineSubtotalMinor - $lineDiscMinor + $lineTaxMinor;
+
+                $subtotalMinor += $lineSubtotalMinor;
+                $discountMinor += $lineDiscMinor;
+                $taxMinor += $lineTaxMinor;
+
+                $lineDeterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_item_{$externalOrderId}_{$rowItem['row_number']}");
+
+                $preparedLines[] = [
+                    'id' => $lineDeterministicId,
+                    'order_id' => $orderDeterministicId,
+                    'product_id' => $matchedProduct->id,
+                    'product_variant_id' => null,
+                    'product_name' => $matchedProduct->name,
+                    'sku' => (string) $matchedProduct->sku,
+                    'unit' => $matchedProduct->unit ?? 'piece',
+                    'unit_price' => Money::fromMinor($unitPriceMinor),
+                    'quantity' => $qty,
+                    'discount_percent' => ($lineSubtotalMinor > 0) ? round(($lineDiscMinor / $lineSubtotalMinor) * 100, 2) : 0,
+                    'subtotal' => Money::fromMinor($lineSubtotalMinor),
+                    'discount_amount' => Money::fromMinor($lineDiscMinor),
+                    'tax_amount' => Money::fromMinor($lineTaxMinor),
+                    'total_price' => Money::fromMinor($lineTotalMinor),
+                    'created_at' => $parsedDate . ' 12:00:00',
+                    'updated_at' => $parsedDate . ' 12:00:00',
+                ];
+            }
+
+            // Total Amount calculation
+            $totalAmountMinor = $subtotalMinor - $discountMinor + $taxMinor;
+            if ($firstRow['total_raw'] !== null && trim((string) $firstRow['total_raw']) !== '') {
+                $parsedTotal = DataNormalizer::parseMoney($firstRow['total_raw']);
+                if ($parsedTotal !== null) {
+                    $fileTotalMinor = Money::toMinor($parsedTotal);
+                    if ($fileTotalMinor > 0) {
+                        $totalAmountMinor = $fileTotalMinor;
+                    }
+                }
+            }
+
+            // Generate order_number
+            $orderNumber = "HIST-{$externalOrderId}";
+            if (Order::where('order_number', $orderNumber)->exists()) {
+                $orderNumber = "HIST-{$externalOrderId}-" . substr(md5($orderDeterministicId), 0, 6);
+            }
+
+            // Persist Order: HISTORICAL_RECORD_ONLY
+            $order = new Order();
+            $order->timestamps = false;
+            $order->fill([
+                'id' => $orderDeterministicId,
+                'order_number' => $orderNumber,
+                'external_order_id' => $externalOrderId,
+                'organization_id' => $job->organization_id,
+                'store_id' => $resolvedStore->id,
+                'warehouse_id' => $resolvedWarehouse ? $resolvedWarehouse->id : 'default',
+                'order_date' => $parsedDate . ' 12:00:00',
+                'customer_id' => $customerId,
+                'customer_name' => $customerName,
+                'subtotal' => Money::fromMinor($subtotalMinor),
+                'discount_amount' => Money::fromMinor($discountMinor),
+                'tax_amount' => Money::fromMinor($taxMinor),
+                'tax_rate' => ($subtotalMinor > 0) ? round(($taxMinor / $subtotalMinor) * 100, 2) : 0,
+                'total_amount' => Money::fromMinor($totalAmountMinor),
+                'payment_method' => $paymentMethod,
+                'payment_status' => $paymentStatus,
+                'fulfillment_status' => $fulfillmentStatus,
+                'notes' => $notes,
+                'source' => 'IMPORT_HISTORICAL',
+                'is_historical' => true,
+                'import_job_id' => $job->id,
+                'created_by_user_id' => $user->id,
+            ]);
+            $order->created_at = $parsedDate . ' 12:00:00';
+            $order->updated_at = $parsedDate . ' 12:00:00';
+            $order->save();
+
+            // Insert line items (NO stock movements, NO accounting entries)
+            foreach ($preparedLines as $lineData) {
+                $item = new OrderItem();
+                $item->timestamps = false;
+                $item->fill($lineData);
+                $item->created_at = $lineData['created_at'];
+                $item->updated_at = $lineData['updated_at'];
+                $item->save();
+            }
+
+            $importedRows += count($orderRows);
         });
     }
 

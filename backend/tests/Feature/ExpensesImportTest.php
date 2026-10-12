@@ -619,4 +619,93 @@ class ExpensesImportTest extends TestCase
         $this->assertSame(ImportStatus::READY_TO_VALIDATE, $job->status);
         $this->assertArrayNotHasKey('preview_rows', $job->metadata);
     }
+
+    public function test_deterministic_uuid_conforms_to_rfc_4122_v4(): void
+    {
+        $seed = "resto_imp_test_seed_123";
+        $uuid1 = ExpenseService::deterministicUuid($seed);
+        $uuid2 = ExpenseService::deterministicUuid($seed);
+
+        // Strict determinism
+        $this->assertSame($uuid1, $uuid2);
+
+        // Regex check for standard UUID v4 format: xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $uuid1
+        );
+    }
+
+    public function test_date_and_amount_boundary_validation(): void
+    {
+        $this->assertNull(DataNormalizer::parseDate('-5'));
+        $this->assertNull(DataNormalizer::parseDate('0'));
+        $this->assertNull(DataNormalizer::parseDate('1403/07/31')); // Mehr only has 30 days
+        $this->assertNull(DataNormalizer::parseDate('2023-02-29')); // Not a leap year
+        $this->assertSame('2024-02-29', DataNormalizer::parseDate('2024-02-29')); // 2024 is leap year
+        $this->assertSame('2024-10-12', DataNormalizer::parseDate('45577')); // Excel serial
+        $this->assertSame('2024-04-03', DataNormalizer::parseDate('03/04/2024')); // Normalized separator
+
+        // Money boundaries
+        $this->assertSame('0.00', DataNormalizer::parseMoney('0'));
+        $this->assertNull(DataNormalizer::parseMoney('-10'));
+        $this->assertSame('100.50', DataNormalizer::parseMoney('100.50'));
+        $this->assertSame('1200000.00', DataNormalizer::parseMoney('1,200,000 ریال'));
+    }
+
+    public function test_fallback_notes_to_title_when_title_is_empty(): void
+    {
+        $mainStore = Store::where('organization_id', $this->orgApexId)->first();
+
+        $job = $this->createMockJob(ImportType::EXPENSES, [
+            ['title', 'category', 'amount', 'date', 'notes'],
+            ['', 'INTERNET', '50000', '2024-10-01', 'هزینه اینترنت فیبر نوری ماهانه'],
+        ]);
+
+        $job->update([
+            'mapping_config' => [
+                'fields' => [
+                    'title' => 'title',
+                    'category' => 'category',
+                    'amount' => 'amount',
+                    'date' => 'date',
+                    'notes' => 'notes',
+                ],
+                'store_id' => $mainStore->id,
+            ],
+            'status' => ImportStatus::READY_TO_VALIDATE,
+        ]);
+
+        $valResult = app(ImportValidationService::class)->validateJob($job);
+        $this->assertSame(1, $valResult['valid_rows']);
+        $this->assertSame(0, $valResult['invalid_rows']);
+
+        $execResult = app(ImportExecutionService::class)->executeJob($job, $this->userApex);
+        $this->assertSame(1, $execResult['imported_rows']);
+
+        $created = Expense::where('organization_id', $this->orgApexId)
+            ->where('category', 'INTERNET')
+            ->first();
+
+        $this->assertNotNull($created);
+        $this->assertSame('هزینه اینترنت فیبر نوری ماهانه', $created->title);
+    }
+
+    public function test_expense_creation_and_accounting_rollback_atomicity(): void
+    {
+        $mainStore = Store::where('organization_id', $this->orgApexId)->first();
+        $expenseService = app(ExpenseService::class);
+
+        // Intentionally cause failure with invalid category
+        $this->expectException(\InvalidArgumentException::class);
+
+        $expenseService->createExpense([
+            'organization_id' => $this->orgApexId,
+            'store_id' => $mainStore->id,
+            'title' => 'هزینه نامعتبر',
+            'category' => 'NON_EXISTENT_CATEGORY',
+            'amount' => '1000.00',
+            'date' => '2024-10-01',
+        ], $this->userApex);
+    }
 }

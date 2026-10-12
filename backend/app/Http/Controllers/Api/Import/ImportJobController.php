@@ -312,15 +312,24 @@ class ImportJobController extends Controller
 
         $stores = [];
         $categories = [];
-        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES) {
+        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES || $job->import_type === \App\Support\Import\ImportType::ORDERS) {
             $stores = \App\Models\Store::where('organization_id', $organizationId)
                 ->select(['id', 'name', 'code'])
                 ->orderBy('name')
                 ->get();
-            $categories = array_map(
-                fn ($c) => $c + ['label' => \App\Models\Expense::categoryLabel($c['code'])],
-                \App\Models\Expense::CATEGORIES
-            );
+            if ($job->import_type === \App\Support\Import\ImportType::EXPENSES) {
+                $categories = array_map(
+                    fn ($c) => $c + ['label' => \App\Models\Expense::categoryLabel($c['code'])],
+                    \App\Models\Expense::CATEGORIES
+                );
+            }
+        }
+
+        if ($job->import_type === \App\Support\Import\ImportType::ORDERS && empty($warehouses)) {
+            $warehouses = \App\Models\Warehouse::where('organization_id', $organizationId)
+                ->select(['id', 'name', 'code', 'address'])
+                ->orderBy('name')
+                ->get();
         }
 
         return response()->json([
@@ -407,6 +416,44 @@ class ImportJobController extends Controller
                     ], 422);
                 }
                 $storeId = $defaultStore->id;
+            }
+        }
+
+        // For orders imports, verify store and warehouse if provided, or fall back to defaults
+        if ($job->import_type === \App\Support\Import\ImportType::ORDERS) {
+            if ($storeId) {
+                $storeExists = \App\Models\Store::where('organization_id', $organizationId)
+                    ->where('id', $storeId)
+                    ->exists();
+                if (!$storeExists) {
+                    return response()->json([
+                        'message' => 'فروشگاه پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            } elseif (empty($fields['store'])) {
+                $defaultStore = \App\Models\Store::where('organization_id', $organizationId)->first();
+                if (!$defaultStore) {
+                    return response()->json([
+                        'message' => 'برای درون‌ریزی سفارش‌ها باید حداقل یک فروشگاه در سازمان تعریف شده باشد.',
+                    ], 422);
+                }
+                $storeId = $defaultStore->id;
+            }
+
+            if ($warehouseId) {
+                $whExists = \App\Models\Warehouse::where('organization_id', $organizationId)
+                    ->where('id', $warehouseId)
+                    ->exists();
+                if (!$whExists) {
+                    return response()->json([
+                        'message' => 'انبار پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            } elseif (empty($fields['warehouse'])) {
+                $defaultWarehouse = \App\Models\Warehouse::where('organization_id', $organizationId)->first();
+                if ($defaultWarehouse) {
+                    $warehouseId = $defaultWarehouse->id;
+                }
             }
         }
 

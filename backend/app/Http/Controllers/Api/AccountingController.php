@@ -87,15 +87,21 @@ class AccountingController extends Controller
     {
         $orgId = MembershipContext::activeOrganizationId($request);
 
-        $totalRevenue = Order::where('organization_id', $orgId)->sum('total_amount');
+        $totalRevenue = Order::where('organization_id', $orgId)
+            ->where('is_historical', false)
+            ->sum('total_amount');
         $todayRevenue = Order::where('organization_id', $orgId)
+            ->where('is_historical', false)
             ->whereDate('created_at', date('Y-m-d'))
             ->sum('total_amount');
 
         $totalExpenses = Expense::where('organization_id', $orgId)->sum('amount');
 
-        $totalSalesCount = Order::where('organization_id', $orgId)->count();
+        $totalSalesCount = Order::where('organization_id', $orgId)
+            ->where('is_historical', false)
+            ->count();
         $todaySalesCount = Order::where('organization_id', $orgId)
+            ->where('is_historical', false)
             ->whereDate('created_at', date('Y-m-d'))
             ->count();
 
@@ -116,7 +122,10 @@ class AccountingController extends Controller
     {
         $orgId = MembershipContext::activeOrganizationId($request);
 
-        $totalRevenue = Order::where('organization_id', $orgId)->where('payment_status', 'PAID')->sum('total_amount');
+        $totalRevenue = Order::where('organization_id', $orgId)
+            ->where('is_historical', false)
+            ->where('payment_status', 'PAID')
+            ->sum('total_amount');
         $totalExpenses = Expense::where('organization_id', $orgId)->sum('amount');
         $netResult = $totalRevenue - $totalExpenses;
 

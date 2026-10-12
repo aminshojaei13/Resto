@@ -8,6 +8,8 @@ use App\Models\ImportDataset;
 use App\Models\ImportJob;
 use App\Models\ImportSource;
 use App\Models\ImportValidationResult;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\Warehouse;
@@ -19,6 +21,7 @@ use App\Services\Import\Reader\SpreadsheetReaderService;
 use App\Support\Import\ImportErrorCode;
 use App\Support\Import\ImportStatus;
 use App\Support\Import\ImportType;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -81,6 +84,7 @@ class ImportValidationService
                 ImportType::CUSTOMERS => $this->validateCustomers($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::INVENTORY => $this->validateInventory($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::EXPENSES => $this->validateExpenses($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::ORDERS => $this->validateOrders($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -917,6 +921,11 @@ class ImportValidationService
             $notes = DataNormalizer::cleanString($notesRaw ?? '');
             $paymentMethod = DataNormalizer::cleanString($paymentMethodRaw ?? '') ?: 'CASH';
 
+            // Seamless fallback: If title was not provided or empty, but notes/description was provided, use notes as title
+            if ($title === '' && $notes !== '') {
+                $title = mb_substr($notes, 0, 191, 'UTF-8');
+            }
+
             // 1. Validate Title (required, max 191)
             if ($title === '') {
                 $rowErrors[] = [
@@ -1108,6 +1117,398 @@ class ImportValidationService
             if (count($validationResultsToInsert) >= 200) {
                 ImportValidationResult::insert($validationResultsToInsert);
                 $validationResultsToInsert = [];
+            }
+        }
+
+        if (!empty($validationResultsToInsert)) {
+            ImportValidationResult::insert($validationResultsToInsert);
+        }
+
+        $existingMeta = $job->metadata ?? [];
+        $existingMeta['preview_rows'] = $previewRows;
+        $existingMeta['matched_existing_rows'] = $matchedExistingRows;
+
+        $job->update([
+            'total_rows' => $totalRows,
+            'processed_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'metadata' => $existingMeta,
+        ]);
+
+        return [
+            'total_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'matched_existing_rows' => $matchedExistingRows,
+        ];
+    }
+
+    /**
+     * Validate historical order rows with multi-line grouping.
+     */
+    private function validateOrders(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping
+    ): array {
+        $totalRows = 0;
+        $validRows = 0;
+        $invalidRows = 0;
+        $matchedExistingRows = 0;
+
+        $previewRows = [];
+        $validationResultsToInsert = [];
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : $tenantWarehouses->first();
+
+        $tenantProducts = Product::where('organization_id', $job->organization_id)->get();
+        $tenantCustomers = Customer::where('organization_id', $job->organization_id)->get();
+
+        // 1. Group rows by order_id
+        $groupedOrders = [];
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $totalRows++;
+
+            $orderIdRaw = $this->getMappedValue($rowItem, $mapping, 'order_id');
+            $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+            $qtyRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+            $priceRaw = $this->getMappedValue($rowItem, $mapping, 'unit_price');
+            $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+            $discRaw = $this->getMappedValue($rowItem, $mapping, 'discount_amount');
+            $taxRaw = $this->getMappedValue($rowItem, $mapping, 'tax_amount');
+            $totalRaw = $this->getMappedValue($rowItem, $mapping, 'total_amount');
+            $custRaw = $this->getMappedValue($rowItem, $mapping, 'customer');
+            $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+            $payRaw = $this->getMappedValue($rowItem, $mapping, 'payment_method');
+            $statusRaw = $this->getMappedValue($rowItem, $mapping, 'status');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $orderId = DataNormalizer::cleanString($orderIdRaw ?? '');
+
+            // Fallback for missing order_id: if empty, create row-specific ID so it can be evaluated
+            $groupKey = ($orderId !== '') ? $orderId : ("__MISSING_ROW_{$rowNumber}");
+
+            $groupedOrders[$groupKey][] = [
+                'row_number' => $rowNumber,
+                'order_id' => $orderId,
+                'sku_raw' => $skuRaw,
+                'qty_raw' => $qtyRaw,
+                'price_raw' => $priceRaw,
+                'date_raw' => $dateRaw,
+                'disc_raw' => $discRaw,
+                'tax_raw' => $taxRaw,
+                'total_raw' => $totalRaw,
+                'cust_raw' => $custRaw,
+                'store_raw' => $storeRaw,
+                'pay_raw' => $payRaw,
+                'status_raw' => $statusRaw,
+                'notes_raw' => $notesRaw,
+            ];
+        }
+
+        // 2. Validate grouped orders
+        foreach ($groupedOrders as $groupKey => $orderRows) {
+            $isOrderLevelValid = true;
+            $firstRow = $orderRows[0];
+            $orderId = $firstRow['order_id'];
+
+            // Header attributes from first row
+            $dateParsed = DataNormalizer::parseDate($firstRow['date_raw']);
+            $customerRaw = DataNormalizer::cleanString($firstRow['cust_raw'] ?? '');
+            $storeRaw = DataNormalizer::cleanString($firstRow['store_raw'] ?? '');
+            $paymentMethod = DataNormalizer::cleanString($firstRow['pay_raw'] ?? '') ?: 'CASH';
+            $statusRaw = DataNormalizer::cleanString($firstRow['status_raw'] ?? '') ?: 'COMPLETED';
+            $status = strtoupper($statusRaw);
+            $notes = DataNormalizer::cleanString($firstRow['notes_raw'] ?? '');
+
+            // Resolve Store
+            $resolvedStore = null;
+            if ($storeRaw !== '') {
+                $resolvedStore = $tenantStores->first(function ($st) use ($storeRaw) {
+                    return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || $st->id === $storeRaw;
+                });
+            }
+            if (!$resolvedStore) {
+                $resolvedStore = $defaultStore;
+            }
+
+            // Resolve Customer (optional)
+            $resolvedCustomer = null;
+            if ($customerRaw !== '') {
+                $resolvedCustomer = $tenantCustomers->first(function ($c) use ($customerRaw) {
+                    return $c->id === $customerRaw
+                        || mb_strtolower($c->name ?? '', 'UTF-8') === mb_strtolower($customerRaw, 'UTF-8')
+                        || ($c->phone && $c->phone === DataNormalizer::normalizePhone($customerRaw));
+                });
+            }
+
+            // Check if order already exists in database (by external_order_id or order_number)
+            $existingOrder = null;
+            if ($orderId !== '') {
+                $existingOrder = Order::where('organization_id', $job->organization_id)
+                    ->where(function ($q) use ($orderId) {
+                        $q->where('external_order_id', $orderId)
+                          ->orWhere('order_number', $orderId);
+                    })
+                    ->first();
+            }
+
+            $orderCalculatedSubtotalMinor = 0;
+            $orderCalculatedDiscountMinor = 0;
+            $orderCalculatedTaxMinor = 0;
+
+            // Validate each row of the order
+            foreach ($orderRows as $rowItem) {
+                $rowNumber = $rowItem['row_number'];
+                $rowErrors = [];
+                $rowWarnings = [];
+
+                // 2.1 Order ID check
+                if ($rowItem['order_id'] === '') {
+                    $rowErrors[] = [
+                        'field' => 'order_id',
+                        'code' => ImportErrorCode::ORDER_ID_REQUIRED,
+                        'message' => 'شناسه سفارش خارجی برای این ردیف مشخص نشده است.',
+                        'value' => (string) $rowItem['order_id'],
+                    ];
+                }
+
+                // 2.2 Date check
+                $rowDateParsed = DataNormalizer::parseDate($rowItem['date_raw']);
+                if ($rowDateParsed === null) {
+                    $rowErrors[] = [
+                        'field' => 'date',
+                        'code' => ImportErrorCode::INVALID_DATE,
+                        'message' => 'تاریخ سفارش نامعتبر است (فرمت معتبر: ۱۴۰۲/۰۵/۱۵ یا 2023-08-06).',
+                        'value' => (string) $rowItem['date_raw'],
+                    ];
+                } elseif ($dateParsed && $rowDateParsed !== $dateParsed) {
+                    $rowErrors[] = [
+                        'field' => 'date',
+                        'code' => ImportErrorCode::ORDER_LINE_INCONSISTENCY,
+                        'message' => "تاریخ این قلم ({$rowDateParsed}) با تاریخ سایر اقلام سفارش ({$dateParsed}) تناقض دارد.",
+                        'value' => (string) $rowItem['date_raw'],
+                    ];
+                }
+
+                // 2.3 Store check
+                if (!$resolvedStore) {
+                    $rowErrors[] = [
+                        'field' => 'store',
+                        'code' => ImportErrorCode::STORE_NOT_FOUND,
+                        'message' => 'فروشگاه معتبری برای این سفارش مشخص نشده است.',
+                        'value' => (string) $rowItem['store_raw'],
+                    ];
+                }
+
+                // 2.4 Status check
+                if (!in_array($status, ['COMPLETED', 'NEW', 'PREPARING', 'CANCELLED'], true)) {
+                    $rowErrors[] = [
+                        'field' => 'status',
+                        'code' => ImportErrorCode::INVALID_ORDER_STATUS,
+                        'message' => "وضعیت سفارش '{$status}' نامعتبر است.",
+                        'value' => (string) $rowItem['status_raw'],
+                    ];
+                }
+
+                // 2.5 SKU / Product check
+                $skuNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['sku_raw'] ?? ''));
+                $matchedProduct = null;
+                if ($skuNorm === '') {
+                    $rowErrors[] = [
+                        'field' => 'sku',
+                        'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                        'message' => 'کد یا بارکد کالا الزامی است.',
+                        'value' => (string) $rowItem['sku_raw'],
+                    ];
+                } else {
+                    $matchedProduct = $tenantProducts->first(function ($p) use ($skuNorm) {
+                        return (string) $p->sku === $skuNorm
+                            || (string) $p->barcode === $skuNorm
+                            || (string) $p->id === $skuNorm;
+                    });
+
+                    if (!$matchedProduct) {
+                        $rowErrors[] = [
+                            'field' => 'sku',
+                            'code' => ImportErrorCode::PRODUCT_NOT_FOUND,
+                            'message' => "کالایی با شناسه یا بارکد '{$skuNorm}' در سامانه یافت نشد.",
+                            'value' => $skuNorm,
+                        ];
+                    }
+                }
+
+                // 2.6 Quantity check (positive integer)
+                $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['qty_raw'] ?? ''));
+                $qty = 0;
+                if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                    $rowErrors[] = [
+                        'field' => 'quantity',
+                        'code' => ImportErrorCode::INVALID_QUANTITY,
+                        'message' => 'تعداد کالا باید عدد صحیح مثبت (بزرگتر از صفر) باشد.',
+                        'value' => (string) $rowItem['qty_raw'],
+                    ];
+                } else {
+                    $qty = (int) $qtyNorm;
+                }
+
+                // 2.7 Unit price check (exact money >= 0)
+                $priceNorm = DataNormalizer::parseMoney($rowItem['price_raw']);
+                if ($priceNorm === null || (float) $priceNorm < 0) {
+                    $rowErrors[] = [
+                        'field' => 'unit_price',
+                        'code' => ImportErrorCode::NUMERIC_INVALID,
+                        'message' => 'قیمت واحد کالا نامعتبر است.',
+                        'value' => (string) $rowItem['price_raw'],
+                    ];
+                }
+
+                // Accumulate line totals for mathematical consistency check
+                if ($qty > 0 && $priceNorm !== null) {
+                    $lineSubtotalMinor = Money::multiply(Money::toMinor($priceNorm), $qty);
+                    $lineDiscMinor = 0;
+                    if ($rowItem['disc_raw'] !== null && trim((string) $rowItem['disc_raw']) !== '') {
+                        $discNorm = DataNormalizer::parseMoney($rowItem['disc_raw']);
+                        if ($discNorm !== null) {
+                            $lineDiscMinor = Money::toMinor($discNorm);
+                        }
+                    }
+                    $lineTaxMinor = 0;
+                    if ($rowItem['tax_raw'] !== null && trim((string) $rowItem['tax_raw']) !== '') {
+                        $taxNorm = DataNormalizer::parseMoney($rowItem['tax_raw']);
+                        if ($taxNorm !== null) {
+                            $lineTaxMinor = Money::toMinor($taxNorm);
+                        }
+                    }
+
+                    $orderCalculatedSubtotalMinor += $lineSubtotalMinor;
+                    $orderCalculatedDiscountMinor += $lineDiscMinor;
+                    $orderCalculatedTaxMinor += $lineTaxMinor;
+                }
+
+                // 2.8 Existing Order Match warning
+                if ($existingOrder) {
+                    $rowWarnings[] = [
+                        'field' => 'order_id',
+                        'code' => ImportErrorCode::EXISTING_RECORD_MATCH,
+                        'message' => "سفارشی با شناسه '{$orderId}' از قبل در سامانه ثبت شده است (#{$existingOrder->order_number}).",
+                        'value' => $orderId,
+                    ];
+                }
+
+                $isRowValid = empty($rowErrors);
+                if ($isRowValid) {
+                    $validRows++;
+                } else {
+                    $invalidRows++;
+                    $isOrderLevelValid = false;
+                }
+
+                if ($existingOrder) {
+                    $matchedExistingRows++;
+                }
+
+                // Record DB validation results
+                foreach ($rowErrors as $err) {
+                    $validationResultsToInsert[] = [
+                        'id' => (string) Str::uuid(),
+                        'import_job_id' => $job->id,
+                        'organization_id' => $job->organization_id,
+                        'row_number' => $rowNumber,
+                        'field_name' => $err['field'],
+                        'original_value' => $err['value'] ?? null,
+                        'error_code' => $err['code'],
+                        'message' => $err['message'],
+                        'severity' => 'error',
+                        'is_eligible' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                foreach ($rowWarnings as $warn) {
+                    $validationResultsToInsert[] = [
+                        'id' => (string) Str::uuid(),
+                        'import_job_id' => $job->id,
+                        'organization_id' => $job->organization_id,
+                        'row_number' => $rowNumber,
+                        'field_name' => $warn['field'],
+                        'original_value' => $warn['value'] ?? null,
+                        'error_code' => $warn['code'],
+                        'message' => $warn['message'],
+                        'severity' => 'warning',
+                        'is_eligible' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                // Collect preview row up to limit
+                if (count($previewRows) < self::PREVIEW_LIMIT) {
+                    $previewRows[] = [
+                        'row_number' => $rowNumber,
+                        'is_valid' => $isRowValid,
+                        'has_match' => !empty($existingOrder),
+                        'errors' => $rowErrors,
+                        'warnings' => $rowWarnings,
+                        'mapped_data' => [
+                            'order_id' => $orderId,
+                            'sku' => $skuNorm,
+                            'product_name' => $matchedProduct ? $matchedProduct->name : null,
+                            'quantity' => $qty,
+                            'unit_price' => $priceNorm,
+                            'date' => $rowDateParsed ?? $rowItem['date_raw'],
+                            'customer' => $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: 'مشتری حضوری'),
+                            'store' => $resolvedStore ? $resolvedStore->name : ($storeRaw ?: 'پیش‌فرض'),
+                            'payment_method' => $paymentMethod,
+                            'status' => $status,
+                            'total_amount' => $firstRow['total_raw'] ? DataNormalizer::parseMoney($firstRow['total_raw']) : null,
+                        ],
+                    ];
+                }
+
+                if (count($validationResultsToInsert) >= 200) {
+                    ImportValidationResult::insert($validationResultsToInsert);
+                    $validationResultsToInsert = [];
+                }
+            }
+
+            // 2.9 Order total mathematical check (if total was provided in file)
+            if ($firstRow['total_raw'] !== null && trim((string) $firstRow['total_raw']) !== '') {
+                $expectedTotalMinor = Money::toMinor(DataNormalizer::parseMoney($firstRow['total_raw']) ?? '0');
+                $calculatedTotalMinor = $orderCalculatedSubtotalMinor - $orderCalculatedDiscountMinor + $orderCalculatedTaxMinor;
+
+                if ($expectedTotalMinor > 0 && abs($expectedTotalMinor - $calculatedTotalMinor) > 5) {
+                    // Difference > 0.05 currency units -> flag mismatch
+                    $validationResultsToInsert[] = [
+                        'id' => (string) Str::uuid(),
+                        'import_job_id' => $job->id,
+                        'organization_id' => $job->organization_id,
+                        'row_number' => $firstRow['row_number'],
+                        'field_name' => 'total_amount',
+                        'original_value' => (string) $firstRow['total_raw'],
+                        'error_code' => ImportErrorCode::ORDER_TOTAL_MISMATCH,
+                        'message' => "جمع مبالغ اقلام (" . Money::fromMinor($calculatedTotalMinor) . ") با مبلغ کل فاکتور (" . Money::fromMinor($expectedTotalMinor) . ") همخوانی ندارد.",
+                        'severity' => 'warning',
+                        'is_eligible' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
             }
         }
 

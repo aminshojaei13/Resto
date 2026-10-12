@@ -20,7 +20,7 @@ const IMPORT_TYPES = [
   { value: 'customers', fa: 'مشتریان', en: 'Customers' },
   { value: 'inventory', fa: 'موجودی اولیه انبار', en: 'Opening Inventory Stock' },
   { value: 'expenses', fa: 'هزینه‌های جاری', en: 'Operating Expenses' },
-  { value: 'orders', fa: 'سوابق سفارش‌ها (فازهای بعد)', en: 'Historical Orders (Future Phase)' },
+  { value: 'orders', fa: 'سوابق سفارش‌ها (تاریخی)', en: 'Historical Orders' },
   { value: 'suppliers', fa: 'تأمین‌کنندگان (فازهای بعد)', en: 'Suppliers (Future Phase)' },
   { value: 'purchases', fa: 'سفارش‌های خرید (فازهای بعد)', en: 'Purchases (Future Phase)' },
 ];
@@ -642,8 +642,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   </div>
                 )}
 
-                {/* Default Store Selector for expenses imports */}
-                {mappingData.import_type === 'expenses' && mappingData.stores && mappingData.stores.length > 0 && (
+                {/* Default Store Selector for expenses and orders imports */}
+                {(mappingData.import_type === 'expenses' || mappingData.import_type === 'orders') && mappingData.stores && mappingData.stores.length > 0 && (
                   <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
                       {isFa ? 'فروشگاه پیش‌فرض (در صورت عدم تطبیق ستون فروشگاه):' : 'Default Store (if store column is not mapped):'}

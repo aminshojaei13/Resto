@@ -38,6 +38,10 @@ class ImportErrorCode
     public const INVALID_AMOUNT = 'ERR_INVALID_AMOUNT';
     public const STORE_NOT_FOUND = 'ERR_STORE_NOT_FOUND';
     public const INVALID_DATE = 'ERR_INVALID_DATE_FORMAT';
+    public const ORDER_ID_REQUIRED = 'ERR_ORDER_ID_REQUIRED';
+    public const ORDER_TOTAL_MISMATCH = 'ERR_ORDER_TOTAL_MISMATCH';
+    public const ORDER_LINE_INCONSISTENCY = 'ERR_ORDER_LINE_INCONSISTENCY';
+    public const INVALID_ORDER_STATUS = 'ERR_INVALID_ORDER_STATUS';
 
     public static function persianMessage(string $code, array $params = []): string
     {
@@ -172,6 +176,22 @@ class ImportErrorCode
             self::STORE_NOT_FOUND => [
                 'fa' => 'فروشگاه مشخص‌شده در سیستم یافت نشد یا به این سازمان تعلق ندارد.',
                 'en' => 'The specified store was not found or does not belong to this organization.',
+            ],
+            self::ORDER_ID_REQUIRED => [
+                'fa' => 'شناسه سفارش خارجی برای گروه‌بندی اقلام سفارش الزامی است.',
+                'en' => 'External order identifier is required to group order line items.',
+            ],
+            self::ORDER_TOTAL_MISMATCH => [
+                'fa' => 'مجموع مبالغ اقلام، تخفیف و مالیات با مبلغ کل سفارش همخوانی ندارد.',
+                'en' => 'The sum of line items, discounts, and taxes does not match total amount.',
+            ],
+            self::ORDER_LINE_INCONSISTENCY => [
+                'fa' => 'اقلام این سفارش دارای تاریخ، مشتری یا فروشگاه متناقض هستند.',
+                'en' => 'Line items for this order have conflicting dates, customers, or stores.',
+            ],
+            self::INVALID_ORDER_STATUS => [
+                'fa' => 'وضعیت سفارش نامعتبر است (وضعیت‌های مجاز: COMPLETED, NEW, PREPARING, CANCELLED).',
+                'en' => 'Invalid order status (allowed: COMPLETED, NEW, PREPARING, CANCELLED).',
             ],
         ];
 
