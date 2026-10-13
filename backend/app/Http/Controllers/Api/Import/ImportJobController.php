@@ -11,7 +11,9 @@ use App\Services\Import\ImportStateMachine;
 use App\Services\Import\ImportStorageService;
 use App\Services\Import\Mapping\ImportMappingService;
 use App\Services\Import\Validation\ImportValidationService;
+use App\Services\Import\Template\ImportTemplateService;
 use App\Support\Import\ImportStatus;
+use App\Support\Import\ImportType;
 use App\Support\MembershipContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +28,7 @@ class ImportJobController extends Controller
         private ImportValidationService $validationService,
         private ImportExecutionService $executionService,
         private ImportStateMachine $stateMachine,
+        private ImportTemplateService $templateService,
     ) {
     }
 
@@ -274,6 +277,50 @@ class ImportJobController extends Controller
             return response()->json([
                 'message' => 'خطا در بارگیری فایل: ' . $e->getMessage(),
             ], 404);
+        }
+    }
+
+    /**
+     * Get catalog of ready-made import templates with metadata.
+     */
+    public function templates(): JsonResponse
+    {
+        return response()->json([
+            'templates' => array_values($this->templateService->getAllTemplates()),
+        ]);
+    }
+
+    /**
+     * Download ready-made CSV template for specified import type.
+     */
+    public function downloadTemplate(string $type): StreamedResponse|JsonResponse
+    {
+        if (!ImportType::isValid($type)) {
+            return response()->json([
+                'message' => "نوع داده '{$type}' برای قالب پشتیبانی نمی‌شود.",
+            ], 404);
+        }
+
+        try {
+            $template = $this->templateService->getTemplate($type);
+            $csvContent = $this->templateService->generateCsv($type);
+            $filename = $template['filename'];
+
+            return response()->stream(
+                function () use ($csvContent) {
+                    echo $csvContent;
+                },
+                200,
+                [
+                    'Content-Type' => 'text/csv; charset=UTF-8',
+                    'Content-Disposition' => 'attachment; filename="' . rawurlencode($filename) . '"',
+                    'Content-Length' => (string) strlen($csvContent),
+                ]
+            );
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'خطا در تولید قالب: ' . $e->getMessage(),
+            ], 500);
         }
     }
 

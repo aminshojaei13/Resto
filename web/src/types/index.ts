@@ -439,4 +439,20 @@ export interface ImportValidationResultItem {
   is_eligible: boolean;
 }
 
+export interface ImportTemplateInfo {
+  type: string;
+  filename: string;
+  title_fa: string;
+  title_en: string;
+  description_fa: string;
+  description_en: string;
+  is_multiline: boolean;
+  headers: string[];
+  field_keys: string[];
+  required: boolean[];
+  sample_rows: string[][];
+  domain_notes_fa: string[];
+  domain_notes_en: string[];
+}
+
 

@@ -9,6 +9,7 @@ import {
   ImportMappingResponse,
   ImportPreviewResponse,
   ImportValidationResultItem,
+  ImportTemplateInfo,
 } from '../types';
 
 interface ImportCenterPageProps {
@@ -73,6 +74,46 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   const [wizardError, setWizardError] = useState('');
   const [jobErrorsList, setJobErrorsList] = useState<ImportValidationResultItem[]>([]);
   const [executionResult, setExecutionResult] = useState<any>(null);
+
+  // Template catalog and UX Guide state
+  const [templates, setTemplates] = useState<ImportTemplateInfo[]>([]);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [activeTemplateType, setActiveTemplateType] = useState('products');
+  const [isGuideExpanded, setIsGuideExpanded] = useState(false);
+  const [downloadingTemplateType, setDownloadingTemplateType] = useState<string | null>(null);
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const list = await apiClient.getImportTemplates();
+      setTemplates(list ?? []);
+    } catch {
+      // Non-blocking for templates catalog
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadTemplates();
+  }, [loadTemplates]);
+
+  const handleDownloadTemplate = async (type: string, filename?: string) => {
+    setDownloadingTemplateType(type);
+    try {
+      await apiClient.downloadImportTemplate(type, filename);
+      setActionNotice(
+        isFa
+          ? `قالب استاندارد CSV با انکودینگ UTF-8 BOM برای "${type}" با موفقیت دانلود شد.`
+          : `Standard CSV template with UTF-8 BOM for "${type}" was downloaded.`
+      );
+    } catch (err: any) {
+      setErrorMessage(
+        isFa
+          ? `خطا در دریافت فایل قالب CSV: ${err.message || 'خطای شبکه'}`
+          : `Failed to download CSV template: ${err.message || 'Network error'}`
+      );
+    } finally {
+      setDownloadingTemplateType(null);
+    }
+  };
 
   const loadJobs = useCallback(async () => {
     setIsLoading(true);
@@ -163,6 +204,12 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
         // Load preview directly
         const prev = await apiClient.getImportPreview(jobId);
         setPreviewData(prev);
+        try {
+          const errs = await apiClient.getImportJobErrors(jobId, 1);
+          setJobErrorsList(errs.data ?? []);
+        } catch {
+          setJobErrorsList([]);
+        }
         setWizardStep('preview');
       } else {
         // Load mapping step
@@ -304,13 +351,18 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
         title={isFa ? 'مرکز درون‌ریزی داده‌ها' : 'Import Center'}
         description={
           isFa
-            ? 'مهاجرت مستقیم و تطبیق ستون‌های فایل‌های اکسل و CSV برای کالاها و مشتریان با اعتبارسنجی دقیق و حفظ یکپارچگی'
-            : 'Migrate products and customers from Excel and CSV files with deterministic column mapping, row-by-row validation, and auditability'
+            ? 'مهاجرت امن داده‌ها (کالاها، مشتریان، موجودی اولیه، هزینه‌ها، سفارش‌های گذشته، تأمین‌کنندگان و خریدها) با تطبیق دقیق، اعتبارسنجی ردیفی و قالب‌های استاندارد'
+            : 'Secure data migration (products, customers, opening stock, expenses, historical orders, suppliers, and purchases) with deterministic mapping and standard templates'
         }
         actions={
-          <PrimaryButton onClick={() => setIsUploadModalOpen(true)}>
-            {isFa ? '+ درون‌ریزی فایل جدید' : '+ New Import'}
-          </PrimaryButton>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <SecondaryButton onClick={() => setIsTemplatesModalOpen(true)}>
+              {isFa ? '📥 قالب‌های آماده اکسل / CSV' : '📥 Download Templates'}
+            </SecondaryButton>
+            <PrimaryButton onClick={() => setIsUploadModalOpen(true)}>
+              {isFa ? '+ درون‌ریزی فایل جدید' : '+ New Import'}
+            </PrimaryButton>
+          </div>
         }
       />
 
@@ -331,6 +383,206 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
           {actionNotice}
         </div>
       )}
+
+      {/* Collapsible 6-Step Guide and Domain Integrity Notice */}
+      <div
+        style={{
+          marginTop: '16px',
+          borderRadius: '12px',
+          border: `1px solid ${theme.colors.border}`,
+          backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+          overflow: 'hidden',
+          boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div
+          onClick={() => setIsGuideExpanded(!isGuideExpanded)}
+          style={{
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB',
+            borderBottom: isGuideExpanded ? `1px solid ${theme.colors.border}` : 'none',
+            userSelect: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px' }}>📖</span>
+            <div>
+              <span style={{ fontWeight: 600, fontSize: '14px' }}>
+                {isFa ? 'راهنمای گام‌به‌گام و قواعد سلامت درون‌ریزی داده‌ها' : 'Step-by-Step Guide & Data Integrity Rules'}
+              </span>
+              <span
+                style={{
+                  fontSize: '12px',
+                  color: theme.colors.textSecondary,
+                  marginRight: isFa ? '8px' : 0,
+                  marginLeft: !isFa ? '8px' : 0,
+                }}
+              >
+                {isFa ? '(۶ گام استاندارد + هشدارهای یکپارچگی)' : '(6 Standard Steps + Invariants)'}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#2563EB',
+              fontSize: '13px',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {isGuideExpanded ? (isFa ? '▲ بستن راهنما' : '▲ Collapse') : (isFa ? '▼ مشاهده راهنما' : '▼ Expand Guide')}
+          </button>
+        </div>
+
+        {isGuideExpanded && (
+          <div style={{ padding: '20px' }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+              {isFa ? 'مراحل ۶گانه آماده‌سازی و درون‌ریزی اطلاعات:' : '6-Step Import Migration Process:'}
+            </h4>
+
+            {/* 6 Step Cards */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '12px',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۱. دانلود قالب آماده CSV' : '1. Download Ready Template'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'قالب نمونه با انکودینگ UTF-8 BOM دانلود کنید تا حروف فارسی در اکسل بدون نقص نمایش داده شوند.'
+                    : 'Download blank CSV templates with UTF-8 BOM so Excel opens Persian text without encoding issues.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۲. پر کردن داده‌ها و اقلام چندسطری' : '2. Fill Data & Group Items'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'برای سفارش‌ها و خریدهای گذشته، ردیف‌های یک فاکتور باید شناسه، تاریخ، مشتری و فروشگاه یکسان داشته باشند.'
+                    : 'For multi-item orders or purchases, items in the same invoice must share identical ID, date, customer, and store.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۳. بارگذاری فایل (اکسل یا CSV)' : '3. Upload Spreadsheet'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'فایل تکمیل‌شده با پسوند .xlsx یا .csv تا سقف ۲۰ مگابایت را بارگذاری کنید. ساختار فایل خودکار بررسی می‌شود.'
+                    : 'Upload your completed .xlsx or .csv spreadsheet (up to 20MB). File structure is inspected automatically.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۴. تطبیق ستون‌ها و مقادیر پیش‌فرض' : '4. Map Columns & Fallbacks'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'ستون‌های فایل با فیلدهای مقصد تطبیق می‌یابند. در صورت نبود ستون انبار یا فروشگاه، انبار/فروشگاه پیش‌فرض تعیین می‌شود.'
+                    : 'Spreadsheet columns map to destination fields. Default warehouse or store handles rows without explicit targets.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۵. اعتبارسنجی و استراتژی تکراری‌ها' : '5. Validate & Choose Strategy'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'خطاها ردیف‌به‌ردیف نمایش داده می‌شوند. برای رکوردهای موجود، استراتژی صرف‌نظر (Skip) یا بروزرسانی (Update) را انتخاب کنید.'
+                    : 'Preview validation flags invalid rows. Choose Skip or Update strategy for existing catalog records.'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#2563EB', marginBottom: '4px' }}>
+                  {isFa ? '۶. اجرای قطعی و نهایی' : '6. Transactional Execution'}
+                </div>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, lineHeight: '1.6' }}>
+                  {isFa
+                    ? 'درون‌ریزی به صورت تراکنشی انجام شده و عملیات قفل می‌شود تا هیچ داده تکراری با اجرای مجدد ایجاد نشود.'
+                    : 'Execution runs within atomic transactions and locks the job to prevent duplicate records upon retry.'}
+                </div>
+              </div>
+            </div>
+
+            {/* Domain Invariants Alerts */}
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: 600, color: theme.colors.textSecondary }}>
+              {isFa ? '🔒 هشدارهای سلامت و قواعد دامنه‌ای سیستم:' : '🔒 Domain Invariants & Audit Safeguards:'}
+            </h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF',
+                  border: `1px solid ${isDark ? '#3730A3' : '#C7D2FE'}`,
+                  fontSize: '12px',
+                  lineHeight: '1.5',
+                  color: isDark ? '#E0E7FF' : '#312E81',
+                }}
+              >
+                <strong>{isFa ? 'سفارش‌ها و خریدهای تاریخی (HISTORICAL_RECORD_ONLY):' : 'Historical Orders & Purchases:'}</strong>{' '}
+                {isFa
+                  ? 'این سوابق فقط برای تاریخچه مشتریان و تحلیل سود/زیان وارد می‌شوند. هیچ اثری بر موجودی انبار فعلی یا صندوق زنده ندارند.'
+                  : 'Imported purely for customer history and CRM analytics; zero live stock deductions and zero GL cash pollution.'}
+              </div>
+
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? '#14532D' : '#F0FDF4',
+                  border: `1px solid ${isDark ? '#166534' : '#BBF7D0'}`,
+                  fontSize: '12px',
+                  lineHeight: '1.5',
+                  color: isDark ? '#DCFCE7' : '#14532D',
+                }}
+              >
+                <strong>{isFa ? 'موجودی اولیه انبار (Opening Inventory):' : 'Opening Inventory:'}</strong>{' '}
+                {isFa
+                  ? 'صرفاً برای ثبت سند شمارش اولیه اول دوره استفاده می‌شود. کالاها باید از قبل در کاتالوگ سازمان تعریف شده باشند.'
+                  : 'Creates opening stock ledger movements. Products must already exist in tenant catalog.'}
+              </div>
+
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: isDark ? '#431407' : '#FFF7ED',
+                  border: `1px solid ${isDark ? '#7C2D12' : '#FFEDD5'}`,
+                  fontSize: '12px',
+                  lineHeight: '1.5',
+                  color: isDark ? '#FFEDD5' : '#7C2D12',
+                }}
+              >
+                <strong>{isFa ? 'هزینه‌های جاری (Operating Expenses):' : 'Operating Expenses:'}</strong>{' '}
+                {isFa
+                  ? 'هزینه‌ها پس از ورود مستقیماً سند مالی دوبل بدهکار هزینه و بستانکار وجه نقد/بانک را در دفتر کل ثبت می‌کنند.'
+                  : 'Operating expenses immediately generate balanced double-entry ledger transactions.'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Main Content Area */}
       <div style={{ marginTop: '24px' }}>
@@ -807,6 +1059,87 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   </div>
                 </div>
 
+                {/* Invalid Rows Warning Banner */}
+                {previewData.invalid_rows > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? '#450A0A' : '#FEF2F2',
+                      border: `1px solid ${isDark ? '#7F1D1D' : '#FCA5A5'}`,
+                      color: isDark ? '#FECACA' : '#991B1B',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>⚠️</span>
+                    <div>
+                      <strong>{isFa ? 'توجه در اعتبارسنجی:' : 'Validation Alert:'}</strong>{' '}
+                      {isFa
+                        ? `تعداد ${previewData.invalid_rows} ردیف از این فایل دارای خطای ساختاری یا اعتبارسنجی هستند و در هنگام اجرای درون‌ریزی رد خواهند شد. جزئیات کامل خطاها و اقدام پیشنهادی در زیر درج شده است.`
+                        : `${previewData.invalid_rows} rows have errors and will be skipped upon execution. See the detailed error list and suggested actions below.`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Detailed Row-Level Validation Errors Table if any */}
+                {jobErrorsList.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#DC2626' }}>
+                        {isFa ? `لیست خطاهای اعتبارسنجی ردیف‌ها (${jobErrorsList.length} مورد):` : `Row Validation Errors (${jobErrorsList.length} items):`}
+                      </h4>
+                      <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
+                        {isFa ? 'ردیف‌های نامعتبر وارد سامانه نخواهند شد' : 'Invalid rows will be skipped'}
+                      </span>
+                    </div>
+
+                    <div style={{ border: `1px solid ${isDark ? '#7F1D1D' : '#FCA5A5'}`, borderRadius: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', fontSize: '12px' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: isDark ? '#450A0A' : '#FEF2F2', borderBottom: `1px solid ${isDark ? '#7F1D1D' : '#FCA5A5'}` }}>
+                            <th style={{ padding: '8px 10px', width: '65px' }}>{isFa ? 'ردیف' : 'Row'}</th>
+                            <th style={{ padding: '8px 10px', width: '120px' }}>{isFa ? 'فیلد مربوطه' : 'Field'}</th>
+                            <th style={{ padding: '8px 10px', width: '130px' }}>{isFa ? 'کد خطا' : 'Error Code'}</th>
+                            <th style={{ padding: '8px 10px' }}>{isFa ? 'شرح خطا' : 'Error Message'}</th>
+                            <th style={{ padding: '8px 10px' }}>{isFa ? 'راهکار رفع خطا' : 'Suggested Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {jobErrorsList.map((err, idx) => (
+                            <tr key={err.id || idx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                              <td style={{ padding: '8px 10px', fontWeight: 600 }}>{err.row_number}</td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6', fontFamily: 'monospace' }}>
+                                  {err.field_name || (isFa ? 'عمومی' : 'general')}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px', color: '#DC2626', fontFamily: 'monospace', fontSize: '11px' }}>
+                                {err.error_code}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: theme.colors.textPrimary }}>
+                                {err.message}
+                                {err.original_value && (
+                                  <div style={{ fontSize: '11px', color: theme.colors.textSecondary, marginTop: '2px' }}>
+                                    {isFa ? 'مقدار: ' : 'Value: '}
+                                    <code>{err.original_value}</code>
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: '#0369A1', fontSize: '11px' }}>
+                                {err.suggested_action || (isFa ? 'اصلاح مقدار در فایل اصلی اکسل/CSV' : 'Fix value in original spreadsheet')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {/* Duplicate Handling Strategy */}
                 <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '10px', border: `1px solid ${theme.colors.border}`, backgroundColor: isDark ? theme.colors.surfaceElevated : '#FAFAFA' }}>
                   <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600 }}>
@@ -840,7 +1173,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                 <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>
                   {isFa ? 'نمونه ردیف‌های پردازش‌شده (پیش‌نمایش ۵۰ ردیف اول):' : 'Preview Sample Rows (First 50 Rows):'}
                 </h4>
-                <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', maxHeight: '260px', overflowY: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
                     <thead>
                       <tr style={{ backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB', borderBottom: `1px solid ${theme.colors.border}`, fontSize: '12px' }}>
@@ -885,6 +1218,30 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Pre-Execution Confirmation & Finality Notice */}
+                <div
+                  style={{
+                    marginTop: '20px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: isDark ? '#422006' : '#FFFBEB',
+                    border: `1px solid ${isDark ? '#B45309' : '#FCD34D'}`,
+                    color: isDark ? '#FDE68A' : '#92400E',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <span style={{ fontSize: '20px' }}>🔒</span>
+                  <div>
+                    <strong>{isFa ? 'هشدار قطعی بودن و عدم تکرار (Finality):' : 'Finality Notice:'}</strong>{' '}
+                    {isFa
+                      ? `با تایید شما، تعداد ${previewData.valid_rows} رکورد معتبر درون‌ریزی خواهند شد و ردیف‌های دارای خطا رد می‌شوند. این عملیات در پایگاه داده قطعی بوده و امکان بازگشت خودکار یا اجرای مجدد آن وجود ندارد.`
+                      : `Upon confirmation, ${previewData.valid_rows} valid records will be imported and invalid rows will be skipped. This action is atomic, final, and cannot be re-executed.`}
+                  </div>
                 </div>
 
                 <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1011,6 +1368,49 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                     </option>
                   ))}
                 </select>
+
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleDownloadTemplate(selectedType)}
+                    disabled={downloadingTemplateType === selectedType}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: '#2563EB',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {downloadingTemplateType === selectedType
+                      ? (isFa ? 'در حال دریافت فایل...' : 'Downloading...')
+                      : (isFa ? '📥 دریافت فایل نمونه خام (CSV سازگار با اکسل)' : '📥 Download Blank CSV Template')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTemplateType(selectedType);
+                      setIsTemplatesModalOpen(true);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: theme.colors.textSecondary,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    {isFa ? 'راهنمای ستون‌ها' : 'Column specs'}
+                  </button>
+                </div>
               </div>
 
               <div style={{ marginBottom: '20px' }}>
@@ -1132,6 +1532,283 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                 {isFa ? 'بستن' : 'Close'}
               </SecondaryButton>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Templates Catalog Modal */}
+      {isTemplatesModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+          onClick={() => setIsTemplatesModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '920px',
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              border: `1px solid ${theme.colors.border}`,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                  {isFa ? 'قالب‌های آماده و استاندارد اکسل و CSV' : 'Standard Data Migration Templates'}
+                </h3>
+                <div style={{ fontSize: '12px', color: theme.colors.textSecondary, marginTop: '4px' }}>
+                  {isFa
+                    ? 'دانلود قالب‌های خام همراه با انکودینگ UTF-8 BOM جهت نمایش بدون نقص حروف فارسی در اکسل ویندوز و مک'
+                    : 'Download blank CSV templates with UTF-8 BOM for perfect Persian encoding in Microsoft Excel'}
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTemplatesModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '22px',
+                  cursor: 'pointer',
+                  color: theme.colors.textSecondary,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Type Selector Tabs */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                overflowX: 'auto',
+                paddingBottom: '8px',
+                marginBottom: '16px',
+                borderBottom: `1px solid ${theme.colors.border}`,
+              }}
+            >
+              {IMPORT_TYPES.map((t) => {
+                const isSelected = activeTemplateType === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setActiveTemplateType(t.value)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      border: `1px solid ${isSelected ? '#3B82F6' : theme.colors.border}`,
+                      backgroundColor: isSelected ? (isDark ? '#1E3A8A' : '#EFF6FF') : (isDark ? theme.colors.surfaceElevated : '#F9FAFB'),
+                      color: isSelected ? (isDark ? '#93C5FD' : '#1D4ED8') : theme.colors.textPrimary,
+                      fontWeight: isSelected ? 600 : 500,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {isFa ? t.fa : t.en}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Template Details */}
+            {(() => {
+              const activeTpl = templates.find((t) => t.type === activeTemplateType);
+              if (!activeTpl) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '32px', color: theme.colors.textSecondary }}>
+                    {isFa ? 'در حال بارگذاری مشخصات قالب...' : 'Loading template specifications...'}
+                  </div>
+                );
+              }
+
+              return (
+                <div>
+                  {/* Top Bar with Title, Badges, and Download Button */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px',
+                      borderRadius: '10px',
+                      backgroundColor: isDark ? theme.colors.surfaceElevated : '#F8FAFC',
+                      border: `1px solid ${theme.colors.border}`,
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '16px', fontWeight: 700 }}>
+                          {isFa ? activeTpl.title_fa : activeTpl.title_en}
+                        </span>
+                        <code
+                          style={{
+                            fontSize: '11px',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: isDark ? '#374151' : '#E2E8F0',
+                            color: theme.colors.textPrimary,
+                          }}
+                        >
+                          {activeTpl.filename}
+                        </code>
+                        {activeTpl.is_multiline && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              backgroundColor: '#FEF3C7',
+                              color: '#92400E',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {isFa ? 'چندسطری (چند قلم در فاکتور)' : 'Multi-Line Grouping'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '13px', color: theme.colors.textSecondary }}>
+                        {isFa ? activeTpl.description_fa : activeTpl.description_en}
+                      </div>
+                    </div>
+
+                    <PrimaryButton
+                      onClick={() => void handleDownloadTemplate(activeTpl.type, activeTpl.filename)}
+                      disabled={downloadingTemplateType === activeTpl.type}
+                    >
+                      {downloadingTemplateType === activeTpl.type
+                        ? (isFa ? 'در حال دانلود...' : 'Downloading...')
+                        : (isFa ? '📥 دریافت فایل قالب CSV (UTF-8 BOM)' : '📥 Download CSV Template')}
+                    </PrimaryButton>
+                  </div>
+
+                  {/* Domain Notes / Important Guidelines */}
+                  {((isFa ? activeTpl.domain_notes_fa : activeTpl.domain_notes_en)?.length ?? 0) > 0 && (
+                    <div
+                      style={{
+                        marginBottom: '16px',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                        border: `1px solid ${isDark ? '#334155' : '#CBD5E1'}`,
+                      }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: isDark ? '#93C5FD' : '#1E40AF' }}>
+                        💡 {isFa ? 'نکات کلیدی برای تکمیل این قالب:' : 'Key Guidelines for this Template:'}
+                      </div>
+                      <ul style={{ margin: 0, paddingRight: isFa ? '20px' : 0, paddingLeft: !isFa ? '20px' : 0, fontSize: '12px', lineHeight: '1.7', color: theme.colors.textPrimary }}>
+                        {(isFa ? activeTpl.domain_notes_fa : activeTpl.domain_notes_en).map((note, idx) => (
+                          <li key={idx}>{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Columns Definition Table */}
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>
+                    {isFa ? 'ساختار ستون‌های فایل و مقادیر مجاز:' : 'Column Specifications & Allowed Values:'}
+                  </h4>
+                  <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflowX: 'auto', marginBottom: '16px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB', borderBottom: `1px solid ${theme.colors.border}` }}>
+                          <th style={{ padding: '8px 12px' }}>{isFa ? 'نام ستون در فایل (Header)' : 'Spreadsheet Column'}</th>
+                          <th style={{ padding: '8px 12px' }}>{isFa ? 'فیلد متناظر در سامانه' : 'Resto Field'}</th>
+                          <th style={{ padding: '8px 12px' }}>{isFa ? 'وضعیت الزامی' : 'Requirement'}</th>
+                          <th style={{ padding: '8px 12px' }}>{isFa ? 'نمونه مقدار معتبر' : 'Sample Value'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeTpl.headers.map((header, idx) => {
+                          const isReq = activeTpl.required?.[idx] ?? false;
+                          const fieldKey = activeTpl.field_keys?.[idx] ?? '';
+                          const sampleVal = activeTpl.sample_rows?.[0]?.[idx] ?? '—';
+                          return (
+                            <tr key={idx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 600 }}>{header}</td>
+                              <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#2563EB' }}>{fieldKey}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                {isReq ? (
+                                  <span style={{ color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, fontSize: '11px' }}>
+                                    {isFa ? 'الزامی' : 'Required'}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#4B5563', backgroundColor: '#F3F4F6', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>
+                                    {isFa ? 'اختیاری' : 'Optional'}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px 12px', color: theme.colors.textSecondary }}>
+                                <code>{sampleVal}</code>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Sample Rows Preview */}
+                  {activeTpl.sample_rows.length > 0 && (
+                    <div>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600 }}>
+                        {isFa ? 'پیش‌نمایش داده‌های نمونه موجود در فایل:' : 'Sample Data Preview:'}
+                      </h4>
+                      <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflowX: 'auto', maxHeight: '180px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left', fontSize: '12px' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: isDark ? theme.colors.surfaceElevated : '#F9FAFB', borderBottom: `1px solid ${theme.colors.border}` }}>
+                              {activeTpl.headers.map((h, i) => (
+                                <th key={i} style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeTpl.sample_rows.map((row, rIdx) => (
+                              <tr key={rIdx} style={{ borderBottom: `1px solid ${theme.colors.border}` }}>
+                                {row.map((cell, cIdx) => (
+                                  <td key={cIdx} style={{ padding: '6px 10px', whiteSpace: 'nowrap', color: theme.colors.textPrimary }}>
+                                    {cell || '—'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <SecondaryButton onClick={() => setIsTemplatesModalOpen(false)}>
+                      {isFa ? 'بستن' : 'Close'}
+                    </SecondaryButton>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

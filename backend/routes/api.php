@@ -281,6 +281,10 @@ Route::prefix('v1')->middleware([IdempotencyMiddleware::class])->group(function 
             ->middleware('permission:' . RolePermission::IMPORT_VIEW);
         Route::post('/import/jobs/{id}/execute', [ImportJobController::class, 'executeImport'])
             ->middleware('permission:' . RolePermission::IMPORT_MANAGE);
+        Route::get('/import/templates', [ImportJobController::class, 'templates'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
+        Route::get('/import/templates/{type}', [ImportJobController::class, 'downloadTemplate'])
+            ->middleware('permission:' . RolePermission::IMPORT_VIEW);
     });
 
     /* ------------------------------------------------------------------

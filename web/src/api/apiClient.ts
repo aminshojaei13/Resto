@@ -26,6 +26,7 @@ import {
   ImportValidationResultItem,
   ImportMappingResponse,
   ImportPreviewResponse,
+  ImportTemplateInfo,
 } from '../types';
 import {
   BusinessContext,
@@ -1175,6 +1176,51 @@ export const apiClient = {
       method: 'POST',
       body: { duplicate_strategy: duplicateStrategy },
     });
+  },
+
+  getImportTemplates: async (): Promise<ImportTemplateInfo[]> => {
+    const res = await request<{ templates: ImportTemplateInfo[] }>('/import/templates');
+    return res.templates;
+  },
+
+  getImportTemplateDownloadUrl: (type: string): string => {
+    return `${BASE_URL}import/templates/${type}`;
+  },
+
+  downloadImportTemplate: async (type: string, suggestedFilename?: string): Promise<void> => {
+    const token = getAccessToken();
+    const context = getBusinessContext();
+    const headers: Record<string, string> = {
+      Accept: 'text/csv, application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (context.organizationId) {
+      headers['X-Tenant-ID'] = context.organizationId;
+    }
+    if (context.storeId) {
+      headers['X-Store-ID'] = context.storeId;
+    }
+
+    const response = await fetch(`${BASE_URL}import/templates/${type}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new ApiError('Failed to download template', response.status);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = suggestedFilename || `resto_template_${type}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   },
 };
 
