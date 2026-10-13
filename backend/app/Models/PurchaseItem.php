@@ -10,7 +10,8 @@ class PurchaseItem extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'purchase_id', 'product_id', 'unit', 'quantity', 'received_quantity', 'unit_cost', 'total_cost'
+        'id', 'purchase_id', 'product_id', 'unit', 'quantity', 'received_quantity',
+        'unit_cost', 'total_cost', 'subtotal', 'discount_amount', 'tax_amount'
     ];
 
     public function product()

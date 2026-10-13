@@ -543,6 +543,289 @@ class ImportMappingService
             ];
         }
 
+        if ($importType === ImportType::SUPPLIERS) {
+            return [
+                'name' => [
+                    'name' => 'name',
+                    'label_fa' => 'نام تأمین‌کننده',
+                    'label_en' => 'Supplier Name',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'نام کامل تأمین‌کننده یا فروشنده (حداکثر ۱۹۱ کاراکتر)',
+                    'description_en' => 'Full name or company name of supplier (max 191 chars)',
+                    'aliases' => [
+                        'نام', 'نام تامین کننده', 'تامین کننده', 'نام فروشنده', 'فروشنده', 'نام شرکت',
+                        'name', 'supplier', 'supplier name', 'supplier_name', 'vendor', 'vendor name', 'vendor_name', 'company'
+                    ],
+                ],
+                'code' => [
+                    'name' => 'code',
+                    'label_fa' => 'کد تأمین‌کننده',
+                    'label_en' => 'Supplier Code',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'کد یا شناسه اختصاصی تأمین‌کننده در سیستم قبلی',
+                    'description_en' => 'Unique code or identifier of supplier in legacy system',
+                    'aliases' => [
+                        'کد', 'کد تامین کننده', 'شناسه تامین کننده', 'کد فروشنده', 'شناسه فروشنده',
+                        'code', 'supplier code', 'supplier_code', 'vendor code', 'vendor_code', 'id'
+                    ],
+                ],
+                'phone' => [
+                    'name' => 'phone',
+                    'label_fa' => 'شماره تماس',
+                    'label_en' => 'Phone',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'شماره تلفن یا موبایل تماس با تأمین‌کننده',
+                    'description_en' => 'Contact phone or mobile number',
+                    'aliases' => [
+                        'تلفن', 'موبایل', 'شماره تماس', 'شماره تلفن', 'تماس', 'تلفن ثابت',
+                        'phone', 'mobile', 'tel', 'cell', 'phone number', 'phone_number', 'contact'
+                    ],
+                ],
+                'email' => [
+                    'name' => 'email',
+                    'label_fa' => 'ایمیل',
+                    'label_en' => 'Email',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'آدرس پست الکترونیکی معتبر',
+                    'description_en' => 'Valid email address',
+                    'aliases' => [
+                        'ایمیل', 'پست الکترونیک', 'رایانامه',
+                        'email', 'mail', 'e-mail', 'email address'
+                    ],
+                ],
+                'address' => [
+                    'name' => 'address',
+                    'label_fa' => 'آدرس / نشانی',
+                    'label_en' => 'Address',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نشانی یا آدرس دفتر یا کارخانه تأمین‌کننده',
+                    'description_en' => 'Physical or billing address of supplier',
+                    'aliases' => [
+                        'آدرس', 'نشانی', 'محل', 'محل شرکت', 'نشانی کامل',
+                        'address', 'location', 'street', 'city'
+                    ],
+                ],
+                'tax_id' => [
+                    'name' => 'tax_id',
+                    'label_fa' => 'شناسه ملی / کد اقتصادی',
+                    'label_en' => 'Tax / National ID',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'شناسه ملی، شماره اقتصادی یا کد مالیاتی شرکت',
+                    'description_en' => 'National business registry or tax ID',
+                    'aliases' => [
+                        'شناسه ملی', 'کد اقتصادی', 'شماره اقتصادی', 'کد مالیاتی', 'شماره مالیاتی', 'کد ملی',
+                        'tax id', 'tax_id', 'vat id', 'economic code', 'economic_code', 'national id', 'tax number'
+                    ],
+                ],
+                'notes' => [
+                    'name' => 'notes',
+                    'label_fa' => 'یادداشت / توضیحات',
+                    'label_en' => 'Notes',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'توضیحات یا یادداشت‌های تکمیلی درباره تأمین‌کننده',
+                    'description_en' => 'Additional notes or remarks regarding supplier',
+                    'aliases' => [
+                        'یادداشت', 'توضیحات', 'شرح', 'ملاحظات',
+                        'notes', 'description', 'remarks', 'comment'
+                    ],
+                ],
+            ];
+        }
+
+        if ($importType === ImportType::PURCHASES) {
+            return [
+                'purchase_id' => [
+                    'name' => 'purchase_id',
+                    'label_fa' => 'شناسه خرید / شماره فاکتور',
+                    'label_en' => 'Purchase / Invoice ID',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'شناسه فاکتور خرید در سیستم قبلی (جهت گروه‌بندی اقلام چندسطری)',
+                    'description_en' => 'Invoice or purchase identifier in legacy system (groups multi-line items)',
+                    'aliases' => [
+                        'شماره فاکتور', 'شماره خرید', 'شناسه خرید', 'شماره فاکتور خرید', 'کد خرید', 'شماره سفارش خرید',
+                        'purchase_id', 'purchase id', 'invoice_number', 'invoice', 'invoice id', 'po_number', 'po number', 'order_id'
+                    ],
+                ],
+                'sku' => [
+                    'name' => 'sku',
+                    'label_fa' => 'کد کالا / SKU / بارکد',
+                    'label_en' => 'Product SKU / Barcode',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'کد، شناسه یا بارکد کالا در کاتالوگ سازمان',
+                    'description_en' => 'Product code, SKU or barcode matching tenant catalog',
+                    'aliases' => [
+                        'کد کالا', 'بارکد', 'کد محصول', 'شناسه کالا', 'کد فنی', 'کد انبار',
+                        'sku', 'barcode', 'code', 'product_code', 'product code', 'item_code'
+                    ],
+                ],
+                'quantity' => [
+                    'name' => 'quantity',
+                    'label_fa' => 'تعداد خرید',
+                    'label_en' => 'Quantity',
+                    'type' => 'numeric',
+                    'required' => true,
+                    'description_fa' => 'تعداد یا مقدار کالای خریداری‌شده (عدد صحیح مثبت)',
+                    'description_en' => 'Quantity purchased per item (positive integer)',
+                    'aliases' => [
+                        'تعداد', 'مقدار', 'حجم', 'تعداد خرید', 'تعداد اقلام',
+                        'quantity', 'qty', 'count', 'amount'
+                    ],
+                ],
+                'unit_cost' => [
+                    'name' => 'unit_cost',
+                    'label_fa' => 'قیمت واحد خرید',
+                    'label_en' => 'Unit Cost',
+                    'type' => 'numeric',
+                    'required' => true,
+                    'description_fa' => 'قیمت خرید هر واحد کالا در فاکتور',
+                    'description_en' => 'Purchase price per single unit in invoice',
+                    'aliases' => [
+                        'قیمت خرید', 'فی خرید', 'قیمت واحد', 'فی', 'نرخ خرید', 'بهای خرید',
+                        'unit_cost', 'unit cost', 'cost', 'cost_price', 'cost price', 'unit_price', 'unit price', 'price', 'buy_price'
+                    ],
+                ],
+                'date' => [
+                    'name' => 'date',
+                    'label_fa' => 'تاریخ خرید',
+                    'label_en' => 'Purchase Date',
+                    'type' => 'string',
+                    'required' => true,
+                    'description_fa' => 'تاریخ وقوع خرید (شمسی مانند 1402/05/15 یا میلادی YYYY-MM-DD)',
+                    'description_en' => 'Purchase date in solar Jalali or Gregorian ISO format',
+                    'aliases' => [
+                        'تاریخ', 'تاریخ خرید', 'تاریخ فاکتور', 'زمان خرید', 'تاریخ سند',
+                        'date', 'purchase_date', 'purchase date', 'invoice_date', 'invoice date'
+                    ],
+                ],
+                'supplier' => [
+                    'name' => 'supplier',
+                    'label_fa' => 'تأمین‌کننده',
+                    'label_en' => 'Supplier',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد تأمین‌کننده / فروشنده طرف حساب',
+                    'description_en' => 'Supplier name or code',
+                    'aliases' => [
+                        'تامین کننده', 'نام تامین کننده', 'کد تامین کننده', 'فروشنده', 'طرف حساب',
+                        'supplier', 'vendor', 'supplier_name', 'supplier name', 'supplier_code', 'vendor_name'
+                    ],
+                ],
+                'warehouse' => [
+                    'name' => 'warehouse',
+                    'label_fa' => 'انبار مقصد',
+                    'label_en' => 'Destination Warehouse',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد انبار مقصد دریافت کالا',
+                    'description_en' => 'Warehouse name or code receiving the goods',
+                    'aliases' => [
+                        'انبار', 'انبار مقصد', 'کد انبار', 'نام انبار',
+                        'warehouse', 'warehouse_name', 'warehouse_code', 'depot'
+                    ],
+                ],
+                'store' => [
+                    'name' => 'store',
+                    'label_fa' => 'فروشگاه / شعبه',
+                    'label_en' => 'Store / Branch',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'نام یا کد شعبه یا فروشگاه مرتبط با خرید',
+                    'description_en' => 'Store or branch name or code',
+                    'aliases' => [
+                        'فروشگاه', 'شعبه', 'کد شعبه', 'کد فروشگاه',
+                        'store', 'branch', 'store_code', 'location'
+                    ],
+                ],
+                'discount_amount' => [
+                    'name' => 'discount_amount',
+                    'label_fa' => 'مبلغ تخفیف',
+                    'label_en' => 'Discount Amount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ تخفیف ردیف یا فاکتور خرید',
+                    'description_en' => 'Discount amount on item line or invoice',
+                    'aliases' => [
+                        'تخفیف', 'مبلغ تخفیف', 'تخفیف فاکتور',
+                        'discount', 'discount_amount', 'discount amount', 'disc'
+                    ],
+                ],
+                'tax_amount' => [
+                    'name' => 'tax_amount',
+                    'label_fa' => 'مبلغ مالیات / ارزش افزوده',
+                    'label_en' => 'Tax Amount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ مالیات یا ارزش افزوده خرید',
+                    'description_en' => 'Tax or VAT amount on item or invoice',
+                    'aliases' => [
+                        'مالیات', 'ارزش افزوده', 'مبلغ مالیات', 'مالیات بر ارزش افزوده',
+                        'tax', 'tax_amount', 'tax amount', 'vat'
+                    ],
+                ],
+                'total_amount' => [
+                    'name' => 'total_amount',
+                    'label_fa' => 'مبلغ کل فاکتور',
+                    'label_en' => 'Total Amount',
+                    'type' => 'numeric',
+                    'required' => false,
+                    'description_fa' => 'مبلغ کل نهایی فاکتور خرید',
+                    'description_en' => 'Total payable amount for the invoice',
+                    'aliases' => [
+                        'مبلغ کل', 'جمع کل', 'مبلغ نهایی', 'کل فاکتور', 'جمع نهایی',
+                        'total', 'total_amount', 'total amount', 'grand_total', 'final_amount'
+                    ],
+                ],
+                'status' => [
+                    'name' => 'status',
+                    'label_fa' => 'وضعیت خرید',
+                    'label_en' => 'Purchase Status',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'وضعیت خرید (RECEIVED, ORDERED, PARTIALLY_RECEIVED, CANCELLED)',
+                    'description_en' => 'Purchase status (RECEIVED, ORDERED, PARTIALLY_RECEIVED, CANCELLED)',
+                    'aliases' => [
+                        'وضعیت', 'وضعیت خرید', 'حالت خرید',
+                        'status', 'purchase_status', 'state'
+                    ],
+                ],
+                'payment_status' => [
+                    'name' => 'payment_status',
+                    'label_fa' => 'وضعیت پرداخت / تسویه',
+                    'label_en' => 'Payment Status',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'وضعیت تسویه فاکتور (PAID, UNPAID, PARTIAL)',
+                    'description_en' => 'Payment settlement status (PAID, UNPAID, PARTIAL)',
+                    'aliases' => [
+                        'وضعیت پرداخت', 'نحوه تسویه', 'تسویه', 'وضعیت تسویه',
+                        'payment_status', 'paid_status', 'settlement'
+                    ],
+                ],
+                'notes' => [
+                    'name' => 'notes',
+                    'label_fa' => 'یادداشت / توضیحات',
+                    'label_en' => 'Notes',
+                    'type' => 'string',
+                    'required' => false,
+                    'description_fa' => 'توضیحات تکمیلی یا یادداشت فاکتور خرید',
+                    'description_en' => 'Additional notes or remarks for purchase',
+                    'aliases' => [
+                        'یادداشت', 'توضیحات', 'شرح', 'ملاحظات',
+                        'notes', 'description', 'remarks', 'comment'
+                    ],
+                ],
+            ];
+        }
+
         throw new InvalidArgumentException("نوع درون‌ریزی '{$importType}' برای تطبیق ستون‌ها پشتیبانی نمی‌شود.");
     }
 

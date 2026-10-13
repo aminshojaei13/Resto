@@ -11,7 +11,10 @@ use App\Models\ImportValidationResult;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\Store;
+use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Services\Import\ImportStateMachine;
@@ -85,6 +88,8 @@ class ImportValidationService
                 ImportType::INVENTORY => $this->validateInventory($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::EXPENSES => $this->validateExpenses($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 ImportType::ORDERS => $this->validateOrders($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::SUPPLIERS => $this->validateSuppliers($job, $source, $absolutePath, $targetSheetIndex, $mapping),
+                ImportType::PURCHASES => $this->validatePurchases($job, $source, $absolutePath, $targetSheetIndex, $mapping),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -1508,6 +1513,705 @@ class ImportValidationService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
+                }
+            }
+        }
+
+        if (!empty($validationResultsToInsert)) {
+            ImportValidationResult::insert($validationResultsToInsert);
+        }
+
+        $existingMeta = $job->metadata ?? [];
+        $existingMeta['preview_rows'] = $previewRows;
+        $existingMeta['matched_existing_rows'] = $matchedExistingRows;
+
+        $job->update([
+            'total_rows' => $totalRows,
+            'processed_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'metadata' => $existingMeta,
+        ]);
+
+        return [
+            'total_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'matched_existing_rows' => $matchedExistingRows,
+            'preview_count' => count($previewRows),
+        ];
+    }
+
+    /**
+     * Validate suppliers rows.
+     */
+    private function validateSuppliers(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping
+    ): array {
+        $seenCodesInFile = [];
+        $seenPhonesInFile = [];
+        $seenEmailsInFile = [];
+
+        $totalRows = 0;
+        $validRows = 0;
+        $invalidRows = 0;
+        $matchedExistingRows = 0;
+
+        $previewRows = [];
+        $validationResultsToInsert = [];
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $totalRows++;
+
+            $rowErrors = [];
+            $rowWarnings = [];
+
+            // Extract mapped fields
+            $nameRaw = $this->getMappedValue($rowItem, $mapping, 'name');
+            $codeRaw = $this->getMappedValue($rowItem, $mapping, 'code');
+            $phoneRaw = $this->getMappedValue($rowItem, $mapping, 'phone');
+            $emailRaw = $this->getMappedValue($rowItem, $mapping, 'email');
+            $addressRaw = $this->getMappedValue($rowItem, $mapping, 'address');
+            $taxIdRaw = $this->getMappedValue($rowItem, $mapping, 'tax_id');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $name = DataNormalizer::cleanString($nameRaw ?? '');
+            $code = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits((string) ($codeRaw ?? '')));
+            $phone = DataNormalizer::normalizePhone($phoneRaw);
+            $email = DataNormalizer::normalizeEmail($emailRaw);
+            $address = DataNormalizer::cleanString($addressRaw ?? '');
+            $taxId = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits((string) ($taxIdRaw ?? '')));
+            $notes = DataNormalizer::cleanString($notesRaw ?? '');
+
+            // 1. Required: Name
+            if ($name === '') {
+                $rowErrors[] = [
+                    'field' => 'name',
+                    'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                    'message' => ImportErrorCode::persianMessage(ImportErrorCode::REQUIRED_FIELD_MISSING, ['field' => 'نام تأمین‌کننده']),
+                    'value' => (string) $nameRaw,
+                ];
+            } elseif (mb_strlen($name) > 191) {
+                $rowErrors[] = [
+                    'field' => 'name',
+                    'code' => ImportErrorCode::STRING_TOO_LONG,
+                    'message' => 'طول نام تأمین‌کننده نباید بیش از ۱۹۱ کاراکتر باشد.',
+                    'value' => $name,
+                ];
+            }
+
+            // 2. Optional: Code
+            if ($code !== '') {
+                if (mb_strlen($code) > 100) {
+                    $rowErrors[] = [
+                        'field' => 'code',
+                        'code' => ImportErrorCode::STRING_TOO_LONG,
+                        'message' => 'طول کد تأمین‌کننده نباید بیش از ۱۰۰ کاراکتر باشد.',
+                        'value' => $code,
+                    ];
+                } elseif (isset($seenCodesInFile[$code])) {
+                    $rowErrors[] = [
+                        'field' => 'code',
+                        'code' => ImportErrorCode::DUPLICATE_IN_FILE,
+                        'message' => "کد تأمین‌کننده '{$code}' در ردیف {$seenCodesInFile[$code]} نیز تکرار شده است.",
+                        'value' => $code,
+                    ];
+                } else {
+                    $seenCodesInFile[$code] = $rowNumber;
+                }
+            }
+
+            // 3. Optional: Phone
+            if ($phoneRaw !== null && trim($phoneRaw) !== '') {
+                if ($phone === null) {
+                    $rowErrors[] = [
+                        'field' => 'phone',
+                        'code' => ImportErrorCode::INVALID_PHONE,
+                        'message' => "شماره تماس '{$phoneRaw}' نامعتبر است.",
+                        'value' => (string) $phoneRaw,
+                    ];
+                } else {
+                    if (isset($seenPhonesInFile[$phone])) {
+                        $rowErrors[] = [
+                            'field' => 'phone',
+                            'code' => ImportErrorCode::DUPLICATE_IN_FILE,
+                            'message' => "شماره تماس '{$phone}' در ردیف {$seenPhonesInFile[$phone]} نیز تکرار شده است.",
+                            'value' => $phone,
+                        ];
+                    } else {
+                        $seenPhonesInFile[$phone] = $rowNumber;
+                    }
+                }
+            }
+
+            // 4. Optional: Email
+            if ($emailRaw !== null && trim($emailRaw) !== '') {
+                if ($email === null) {
+                    $rowErrors[] = [
+                        'field' => 'email',
+                        'code' => ImportErrorCode::INVALID_EMAIL,
+                        'message' => "آدرس ایمیل '{$emailRaw}' نامعتبر است.",
+                        'value' => (string) $emailRaw,
+                    ];
+                } else {
+                    if (isset($seenEmailsInFile[$email])) {
+                        $rowErrors[] = [
+                            'field' => 'email',
+                            'code' => ImportErrorCode::DUPLICATE_IN_FILE,
+                            'message' => "آدرس ایمیل '{$email}' در ردیف {$seenEmailsInFile[$email]} نیز تکرار شده است.",
+                            'value' => $email,
+                        ];
+                    } else {
+                        $seenEmailsInFile[$email] = $rowNumber;
+                    }
+                }
+            }
+
+            // 5. Existing match check in database (Tenant-scoped)
+            // Rule: Never match solely on name! Match only by code, phone, or email.
+            $existingSupplier = null;
+            if ($code !== '') {
+                $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                    ->where('code', $code)
+                    ->first();
+            }
+
+            if (!$existingSupplier && $phone !== null) {
+                $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                    ->where('phone', $phone)
+                    ->first();
+            }
+
+            if (!$existingSupplier && $email !== null) {
+                $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                    ->where('email', $email)
+                    ->first();
+            }
+
+            if ($existingSupplier) {
+                $matchedExistingRows++;
+                $matchKey = $code ?: ($phone ?: $email);
+                $rowWarnings[] = [
+                    'field' => $code ? 'code' : ($phone ? 'phone' : 'email'),
+                    'code' => ImportErrorCode::EXISTING_RECORD_MATCH,
+                    'message' => "تأمین‌کننده با نام '{$existingSupplier->name}' و شناسه/شماره مشابه قبلاً در سامانه ثبت شده است.",
+                    'value' => $matchKey,
+                ];
+            }
+
+            $isRowValid = empty($rowErrors);
+            if ($isRowValid) {
+                $validRows++;
+            } else {
+                $invalidRows++;
+            }
+
+            foreach ($rowErrors as $err) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'row_number' => $rowNumber,
+                    'field_name' => $err['field'],
+                    'original_value' => $err['value'] ?? null,
+                    'error_code' => $err['code'],
+                    'message' => $err['message'],
+                    'severity' => 'error',
+                    'is_eligible' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach ($rowWarnings as $warn) {
+                $validationResultsToInsert[] = [
+                    'id' => (string) Str::uuid(),
+                    'import_job_id' => $job->id,
+                    'organization_id' => $job->organization_id,
+                    'row_number' => $rowNumber,
+                    'field_name' => $warn['field'],
+                    'original_value' => $warn['value'] ?? null,
+                    'error_code' => $warn['code'],
+                    'message' => $warn['message'],
+                    'severity' => 'warning',
+                    'is_eligible' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if (count($previewRows) < self::PREVIEW_LIMIT) {
+                $previewRows[] = [
+                    'row_number' => $rowNumber,
+                    'is_valid' => $isRowValid,
+                    'has_match' => $existingSupplier !== null,
+                    'errors' => $rowErrors,
+                    'warnings' => $rowWarnings,
+                    'mapped_data' => [
+                        'name' => $name ?: $nameRaw,
+                        'code' => $code ?: $codeRaw,
+                        'phone' => $phone ?: $phoneRaw,
+                        'email' => $email ?: $emailRaw,
+                        'address' => $address,
+                        'tax_id' => $taxId,
+                        'notes' => $notes,
+                    ],
+                ];
+            }
+        }
+
+        if (!empty($validationResultsToInsert)) {
+            ImportValidationResult::insert($validationResultsToInsert);
+        }
+
+        $existingMeta = $job->metadata ?? [];
+        $existingMeta['preview_rows'] = $previewRows;
+        $existingMeta['matched_existing_rows'] = $matchedExistingRows;
+
+        $job->update([
+            'total_rows' => $totalRows,
+            'processed_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'metadata' => $existingMeta,
+        ]);
+
+        return [
+            'total_rows' => $totalRows,
+            'valid_rows' => $validRows,
+            'invalid_rows' => $invalidRows,
+            'matched_existing_rows' => $matchedExistingRows,
+            'preview_count' => count($previewRows),
+        ];
+    }
+
+    /**
+     * Validate historical purchase rows with multi-line grouping.
+     */
+    private function validatePurchases(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping
+    ): array {
+        $totalRows = 0;
+        $validRows = 0;
+        $invalidRows = 0;
+        $matchedExistingRows = 0;
+
+        $previewRows = [];
+        $validationResultsToInsert = [];
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : $tenantWarehouses->first();
+
+        $defaultSupplierId = $job->mapping_config['supplier_id'] ?? null;
+        $tenantSuppliers = Supplier::where('organization_id', $job->organization_id)->get();
+        $defaultSupplier = $defaultSupplierId ? $tenantSuppliers->firstWhere('id', $defaultSupplierId) : $tenantSuppliers->first();
+
+        $tenantProducts = Product::where('organization_id', $job->organization_id)->get();
+
+        // 1. Group rows by purchase_id
+        $groupedPurchases = [];
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $totalRows++;
+
+            $purchaseIdRaw = $this->getMappedValue($rowItem, $mapping, 'purchase_id');
+            $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+            $qtyRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+            $costRaw = $this->getMappedValue($rowItem, $mapping, 'unit_cost');
+            $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+            $discRaw = $this->getMappedValue($rowItem, $mapping, 'discount_amount');
+            $taxRaw = $this->getMappedValue($rowItem, $mapping, 'tax_amount');
+            $totalRaw = $this->getMappedValue($rowItem, $mapping, 'total_amount');
+            $supRaw = $this->getMappedValue($rowItem, $mapping, 'supplier');
+            $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+            $whRaw = $this->getMappedValue($rowItem, $mapping, 'warehouse');
+            $statusRaw = $this->getMappedValue($rowItem, $mapping, 'status');
+            $payStatusRaw = $this->getMappedValue($rowItem, $mapping, 'payment_status');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $purchaseId = DataNormalizer::cleanString($purchaseIdRaw ?? '');
+            $groupKey = ($purchaseId !== '') ? $purchaseId : ("__MISSING_PO_ROW_{$rowNumber}");
+
+            $groupedPurchases[$groupKey][] = [
+                'row_number' => $rowNumber,
+                'purchase_id' => $purchaseId,
+                'sku_raw' => $skuRaw,
+                'qty_raw' => $qtyRaw,
+                'cost_raw' => $costRaw,
+                'date_raw' => $dateRaw,
+                'disc_raw' => $discRaw,
+                'tax_raw' => $taxRaw,
+                'total_raw' => $totalRaw,
+                'sup_raw' => $supRaw,
+                'store_raw' => $storeRaw,
+                'wh_raw' => $whRaw,
+                'status_raw' => $statusRaw,
+                'pay_status_raw' => $payStatusRaw,
+                'notes_raw' => $notesRaw,
+            ];
+        }
+
+        // 2. Validate grouped purchases
+        foreach ($groupedPurchases as $groupKey => $purchaseRows) {
+            $isPurchaseLevelValid = true;
+            $firstRow = $purchaseRows[0];
+            $purchaseId = $firstRow['purchase_id'];
+
+            // Header attributes from first row
+            $dateParsed = DataNormalizer::parseDate($firstRow['date_raw']);
+            $supRaw = DataNormalizer::cleanString($firstRow['sup_raw'] ?? '');
+            $storeRaw = DataNormalizer::cleanString($firstRow['store_raw'] ?? '');
+            $whRaw = DataNormalizer::cleanString($firstRow['wh_raw'] ?? '');
+            $statusRaw = strtoupper(DataNormalizer::cleanString($firstRow['status_raw'] ?? ''));
+
+            // Check if purchase already exists in database
+            $existingPurchase = null;
+            if ($purchaseId !== '') {
+                $existingPurchase = Purchase::where('organization_id', $job->organization_id)
+                    ->where(function ($q) use ($purchaseId) {
+                        $q->where('external_purchase_id', $purchaseId)
+                          ->orWhere('purchase_number', $purchaseId);
+                    })
+                    ->first();
+            }
+
+            // Check intra-purchase consistency across lines
+            $dateConflict = false;
+            $supConflict = false;
+            $storeConflict = false;
+            $whConflict = false;
+            $statusConflict = false;
+
+            foreach ($purchaseRows as $pRow) {
+                if ($firstRow['date_raw'] !== null && $pRow['date_raw'] !== null) {
+                    if (DataNormalizer::parseDate($pRow['date_raw']) !== $dateParsed) {
+                        $dateConflict = true;
+                    }
+                }
+                if ($supRaw !== '' && DataNormalizer::cleanString($pRow['sup_raw'] ?? '') !== '') {
+                    if (DataNormalizer::cleanString($pRow['sup_raw'] ?? '') !== $supRaw) {
+                        $supConflict = true;
+                    }
+                }
+                if ($storeRaw !== '' && DataNormalizer::cleanString($pRow['store_raw'] ?? '') !== '') {
+                    if (DataNormalizer::cleanString($pRow['store_raw'] ?? '') !== $storeRaw) {
+                        $storeConflict = true;
+                    }
+                }
+                if ($whRaw !== '' && DataNormalizer::cleanString($pRow['wh_raw'] ?? '') !== '') {
+                    if (DataNormalizer::cleanString($pRow['wh_raw'] ?? '') !== $whRaw) {
+                        $whConflict = true;
+                    }
+                }
+                if ($statusRaw !== '' && strtoupper(DataNormalizer::cleanString($pRow['status_raw'] ?? '')) !== '') {
+                    if (strtoupper(DataNormalizer::cleanString($pRow['status_raw'] ?? '')) !== $statusRaw) {
+                        $statusConflict = true;
+                    }
+                }
+            }
+
+            $purchaseCalculatedSubtotalMinor = 0;
+            $purchaseCalculatedDiscountMinor = 0;
+            $purchaseCalculatedTaxMinor = 0;
+
+            // Validate each line row in this purchase
+            foreach ($purchaseRows as $rowItem) {
+                $rowNumber = $rowItem['row_number'];
+                $rowErrors = [];
+                $rowWarnings = [];
+
+                // 2.1 Purchase ID check
+                if ($rowItem['purchase_id'] === '') {
+                    $rowErrors[] = [
+                        'field' => 'purchase_id',
+                        'code' => ImportErrorCode::PURCHASE_ID_REQUIRED,
+                        'message' => 'شناسه خرید یا شماره فاکتور برای گروه‌بندی اقلام خرید الزامی است.',
+                        'value' => '',
+                    ];
+                }
+
+                // 2.2 Intra-purchase consistency error
+                if ($dateConflict || $supConflict || $storeConflict || $whConflict || $statusConflict) {
+                    $rowErrors[] = [
+                        'field' => 'purchase_id',
+                        'code' => ImportErrorCode::PURCHASE_LINE_INCONSISTENCY,
+                        'message' => 'اقلام این فاکتور خرید دارای تاریخ، تأمین‌کننده، انبار یا وضعیت متناقض هستند.',
+                        'value' => $purchaseId,
+                    ];
+                }
+
+                // 2.3 Date check
+                if ($rowItem['date_raw'] === null || trim((string) $rowItem['date_raw']) === '') {
+                    $rowErrors[] = [
+                        'field' => 'date',
+                        'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                        'message' => 'تاریخ خرید الزامی است.',
+                        'value' => '',
+                    ];
+                } elseif (!$dateParsed) {
+                    $rowErrors[] = [
+                        'field' => 'date',
+                        'code' => ImportErrorCode::INVALID_DATE_FORMAT,
+                        'message' => "فرمت تاریخ خرید '{$rowItem['date_raw']}' نامعتبر است.",
+                        'value' => (string) $rowItem['date_raw'],
+                    ];
+                }
+
+                // 2.4 Store check
+                $resolvedStore = null;
+                $rowStoreRaw = DataNormalizer::cleanString($rowItem['store_raw'] ?? '');
+                if ($rowStoreRaw !== '') {
+                    $resolvedStore = $tenantStores->first(function ($st) use ($rowStoreRaw) {
+                        return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($rowStoreRaw, 'UTF-8')
+                            || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($rowStoreRaw, 'UTF-8')
+                            || $st->id === $rowStoreRaw;
+                    });
+                    if (!$resolvedStore) {
+                        $rowErrors[] = [
+                            'field' => 'store',
+                            'code' => ImportErrorCode::STORE_NOT_FOUND,
+                            'message' => "فروشگاه با شناسه یا نام '{$rowStoreRaw}' در این سازمان یافت نشد.",
+                            'value' => $rowStoreRaw,
+                        ];
+                    }
+                } else {
+                    $resolvedStore = $defaultStore;
+                }
+
+                // 2.5 Warehouse check
+                $resolvedWh = null;
+                $rowWhRaw = DataNormalizer::cleanString($rowItem['wh_raw'] ?? '');
+                if ($rowWhRaw !== '') {
+                    $resolvedWh = $tenantWarehouses->first(function ($wh) use ($rowWhRaw) {
+                        return mb_strtolower($wh->code ?? '', 'UTF-8') === mb_strtolower($rowWhRaw, 'UTF-8')
+                            || mb_strtolower($wh->name ?? '', 'UTF-8') === mb_strtolower($rowWhRaw, 'UTF-8')
+                            || $wh->id === $rowWhRaw;
+                    });
+                    if (!$resolvedWh) {
+                        $rowErrors[] = [
+                            'field' => 'warehouse',
+                            'code' => ImportErrorCode::WAREHOUSE_NOT_FOUND,
+                            'message' => "انبار با شناسه یا نام '{$rowWhRaw}' در این سازمان یافت نشد.",
+                            'value' => $rowWhRaw,
+                        ];
+                    }
+                } else {
+                    $resolvedWh = $defaultWarehouse;
+                }
+
+                // 2.6 Status check
+                $status = strtoupper(DataNormalizer::cleanString($rowItem['status_raw'] ?? 'RECEIVED'));
+                if ($status === '') {
+                    $status = 'RECEIVED';
+                }
+                $validStatuses = ['RECEIVED', 'ORDERED', 'PARTIALLY_RECEIVED', 'CANCELLED'];
+                if (!in_array($status, $validStatuses, true)) {
+                    $rowErrors[] = [
+                        'field' => 'status',
+                        'code' => ImportErrorCode::INVALID_PURCHASE_STATUS,
+                        'message' => "وضعیت خرید '{$status}' نامعتبر است.",
+                        'value' => (string) $rowItem['status_raw'],
+                    ];
+                }
+
+                // 2.7 SKU / Product check
+                $skuNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['sku_raw'] ?? ''));
+                $matchedProduct = null;
+                if ($skuNorm === '') {
+                    $rowErrors[] = [
+                        'field' => 'sku',
+                        'code' => ImportErrorCode::REQUIRED_FIELD_MISSING,
+                        'message' => 'کد یا بارکد کالا الزامی است.',
+                        'value' => (string) $rowItem['sku_raw'],
+                    ];
+                } else {
+                    $matchedProduct = $tenantProducts->first(function ($p) use ($skuNorm) {
+                        return (string) $p->sku === $skuNorm
+                            || (string) $p->barcode === $skuNorm
+                            || (string) $p->id === $skuNorm;
+                    });
+
+                    if (!$matchedProduct) {
+                        $rowErrors[] = [
+                            'field' => 'sku',
+                            'code' => ImportErrorCode::PRODUCT_NOT_FOUND,
+                            'message' => "کالایی با شناسه یا بارکد '{$skuNorm}' در سامانه یافت نشد.",
+                            'value' => $skuNorm,
+                        ];
+                    }
+                }
+
+                // 2.8 Quantity check (positive integer)
+                $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['qty_raw'] ?? ''));
+                $qty = 0;
+                if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                    $rowErrors[] = [
+                        'field' => 'quantity',
+                        'code' => ImportErrorCode::INVALID_QUANTITY,
+                        'message' => 'تعداد کالا باید عدد صحیح مثبت (بزرگتر از صفر) باشد.',
+                        'value' => (string) $rowItem['qty_raw'],
+                    ];
+                } else {
+                    $qty = (int) $qtyNorm;
+                }
+
+                // 2.9 Unit cost check (exact money >= 0)
+                $costNorm = DataNormalizer::parseMoney($rowItem['cost_raw']);
+                if ($costNorm === null || (float) $costNorm < 0) {
+                    $rowErrors[] = [
+                        'field' => 'unit_cost',
+                        'code' => ImportErrorCode::NUMERIC_INVALID,
+                        'message' => 'قیمت خرید کالا نامعتبر است.',
+                        'value' => (string) $rowItem['cost_raw'],
+                    ];
+                }
+
+                // Accumulate line totals for mathematical consistency check
+                if ($qty > 0 && $costNorm !== null) {
+                    $lineSubtotalMinor = Money::multiply(Money::toMinor($costNorm), $qty);
+                    $lineDiscMinor = 0;
+                    if ($rowItem['disc_raw'] !== null && trim((string) $rowItem['disc_raw']) !== '') {
+                        $discNorm = DataNormalizer::parseMoney($rowItem['disc_raw']);
+                        if ($discNorm !== null) {
+                            $lineDiscMinor = Money::toMinor($discNorm);
+                        }
+                    }
+                    $lineTaxMinor = 0;
+                    if ($rowItem['tax_raw'] !== null && trim((string) $rowItem['tax_raw']) !== '') {
+                        $taxNorm = DataNormalizer::parseMoney($rowItem['tax_raw']);
+                        if ($taxNorm !== null) {
+                            $lineTaxMinor = Money::toMinor($taxNorm);
+                        }
+                    }
+
+                    $purchaseCalculatedSubtotalMinor += $lineSubtotalMinor;
+                    $purchaseCalculatedDiscountMinor += $lineDiscMinor;
+                    $purchaseCalculatedTaxMinor += $lineTaxMinor;
+                }
+
+                // 2.10 Existing Purchase Match warning
+                if ($existingPurchase) {
+                    $rowWarnings[] = [
+                        'field' => 'purchase_id',
+                        'code' => ImportErrorCode::EXISTING_RECORD_MATCH,
+                        'message' => "خریدی با شناسه '{$purchaseId}' از قبل در سامانه ثبت شده است (#{$existingPurchase->purchase_number}).",
+                        'value' => $purchaseId,
+                    ];
+                }
+
+                $isRowValid = empty($rowErrors);
+                if ($isRowValid) {
+                    $validRows++;
+                } else {
+                    $invalidRows++;
+                    $isPurchaseLevelValid = false;
+                }
+
+                if ($existingPurchase) {
+                    $matchedExistingRows++;
+                }
+
+                // Record DB validation results
+                foreach ($rowErrors as $err) {
+                    $validationResultsToInsert[] = [
+                        'id' => (string) Str::uuid(),
+                        'import_job_id' => $job->id,
+                        'organization_id' => $job->organization_id,
+                        'row_number' => $rowNumber,
+                        'field_name' => $err['field'],
+                        'original_value' => $err['value'] ?? null,
+                        'error_code' => $err['code'],
+                        'message' => $err['message'],
+                        'severity' => 'error',
+                        'is_eligible' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                foreach ($rowWarnings as $warn) {
+                    $validationResultsToInsert[] = [
+                        'id' => (string) Str::uuid(),
+                        'import_job_id' => $job->id,
+                        'organization_id' => $job->organization_id,
+                        'row_number' => $rowNumber,
+                        'field_name' => $warn['field'],
+                        'original_value' => $warn['value'] ?? null,
+                        'error_code' => $warn['code'],
+                        'message' => $warn['message'],
+                        'severity' => 'warning',
+                        'is_eligible' => true,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                // Preview rows up to limit
+                if (count($previewRows) < self::PREVIEW_LIMIT) {
+                    $previewRows[] = [
+                        'row_number' => $rowNumber,
+                        'is_valid' => $isRowValid,
+                        'has_match' => $existingPurchase !== null,
+                        'errors' => $rowErrors,
+                        'warnings' => $rowWarnings,
+                        'mapped_data' => [
+                            'purchase_id' => $rowItem['purchase_id'],
+                            'sku' => $skuNorm ?: $rowItem['sku_raw'],
+                            'product_name' => $matchedProduct ? $matchedProduct->name : null,
+                            'quantity' => $qty ?: $rowItem['qty_raw'],
+                            'unit_cost' => $costNorm ?: $rowItem['cost_raw'],
+                            'date' => $dateParsed ?: $rowItem['date_raw'],
+                            'supplier' => $supRaw,
+                            'warehouse' => $resolvedWh ? $resolvedWh->name : $rowWhRaw,
+                            'store' => $resolvedStore ? $resolvedStore->name : $rowStoreRaw,
+                            'status' => $status,
+                        ],
+                    ];
+                }
+            }
+
+            // 3. Mathematical check: verify declared total_amount against calculated total
+            $declaredTotalRaw = $firstRow['total_raw'];
+            if ($declaredTotalRaw !== null && trim((string) $declaredTotalRaw) !== '') {
+                $declaredTotalNorm = DataNormalizer::parseMoney($declaredTotalRaw);
+                if ($declaredTotalNorm !== null) {
+                    $declaredTotalMinor = Money::toMinor($declaredTotalNorm);
+                    $calculatedTotalMinor = $purchaseCalculatedSubtotalMinor - $purchaseCalculatedDiscountMinor + $purchaseCalculatedTaxMinor;
+
+                    if ($declaredTotalMinor !== $calculatedTotalMinor && $purchaseCalculatedSubtotalMinor > 0) {
+                        $validationResultsToInsert[] = [
+                            'id' => (string) Str::uuid(),
+                            'import_job_id' => $job->id,
+                            'organization_id' => $job->organization_id,
+                            'row_number' => $firstRow['row_number'],
+                            'field_name' => 'total_amount',
+                            'original_value' => (string) $declaredTotalRaw,
+                            'error_code' => ImportErrorCode::PURCHASE_TOTAL_MISMATCH,
+                            'message' => "مبلغ کل فاکتور (" . Money::fromMinor($declaredTotalMinor) . ") با مجموع اقلام و تخفیف/مالیات (" . Money::fromMinor($calculatedTotalMinor) . ") مطابقت ندارد.",
+                            'severity' => 'error',
+                            'is_eligible' => false,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
                 }
             }
         }

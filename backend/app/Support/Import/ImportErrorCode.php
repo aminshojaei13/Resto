@@ -42,6 +42,11 @@ class ImportErrorCode
     public const ORDER_TOTAL_MISMATCH = 'ERR_ORDER_TOTAL_MISMATCH';
     public const ORDER_LINE_INCONSISTENCY = 'ERR_ORDER_LINE_INCONSISTENCY';
     public const INVALID_ORDER_STATUS = 'ERR_INVALID_ORDER_STATUS';
+    public const SUPPLIER_NOT_FOUND = 'ERR_SUPPLIER_NOT_FOUND';
+    public const PURCHASE_ID_REQUIRED = 'ERR_PURCHASE_ID_REQUIRED';
+    public const PURCHASE_TOTAL_MISMATCH = 'ERR_PURCHASE_TOTAL_MISMATCH';
+    public const PURCHASE_LINE_INCONSISTENCY = 'ERR_PURCHASE_LINE_INCONSISTENCY';
+    public const INVALID_PURCHASE_STATUS = 'ERR_INVALID_PURCHASE_STATUS';
 
     public static function persianMessage(string $code, array $params = []): string
     {
@@ -192,6 +197,26 @@ class ImportErrorCode
             self::INVALID_ORDER_STATUS => [
                 'fa' => 'وضعیت سفارش نامعتبر است (وضعیت‌های مجاز: COMPLETED, NEW, PREPARING, CANCELLED).',
                 'en' => 'Invalid order status (allowed: COMPLETED, NEW, PREPARING, CANCELLED).',
+            ],
+            self::SUPPLIER_NOT_FOUND => [
+                'fa' => 'تأمین‌کننده در سیستم یافت نشد یا به این سازمان تعلق ندارد.',
+                'en' => 'Supplier was not found or does not belong to this organization.',
+            ],
+            self::PURCHASE_ID_REQUIRED => [
+                'fa' => 'شناسه خرید یا شماره فاکتور برای گروه‌بندی اقلام خرید الزامی است.',
+                'en' => 'Purchase identifier or invoice number is required to group purchase line items.',
+            ],
+            self::PURCHASE_TOTAL_MISMATCH => [
+                'fa' => 'مجموع مبالغ اقلام، تخفیف و مالیات با مبلغ کل خرید همخوانی ندارد.',
+                'en' => 'The sum of line items, discounts, and taxes does not match total purchase amount.',
+            ],
+            self::PURCHASE_LINE_INCONSISTENCY => [
+                'fa' => 'اقلام این خرید دارای تاریخ، تأمین‌کننده، انبار یا وضعیت متناقض هستند.',
+                'en' => 'Line items for this purchase have conflicting dates, suppliers, warehouses, or statuses.',
+            ],
+            self::INVALID_PURCHASE_STATUS => [
+                'fa' => 'وضعیت خرید نامعتبر است (وضعیت‌های مجاز: RECEIVED, ORDERED, PARTIALLY_RECEIVED, CANCELLED).',
+                'en' => 'Invalid purchase status (allowed: RECEIVED, ORDERED, PARTIALLY_RECEIVED, CANCELLED).',
             ],
         ];
 

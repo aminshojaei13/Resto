@@ -76,6 +76,7 @@ class PurchaseController extends Controller
         $organizationId = MembershipContext::activeOrganizationId($request);
 
         $purchases = Purchase::where('organization_id', $organizationId)
+            ->where('is_historical', false)
             ->whereIn('status', [self::STATUS_ORDERED, self::STATUS_PARTIALLY_RECEIVED])
             ->with(['supplier', 'items.product'])
             ->orderBy('created_at')
@@ -192,6 +193,12 @@ class PurchaseController extends Controller
         $purchase = Purchase::where('organization_id', $organizationId)
             ->with('items')
             ->findOrFail($id);
+
+        if ($purchase->is_historical) {
+            throw ValidationException::withMessages([
+                'status' => ['سفارش‌های خرید تاریخی قابل دریافت مجدد در انبار نیستند.'],
+            ]);
+        }
 
         if ($purchase->status === self::STATUS_RECEIVED) {
             throw ValidationException::withMessages([
@@ -367,6 +374,12 @@ class PurchaseController extends Controller
     {
         $organizationId = MembershipContext::activeOrganizationId($request);
         $purchase = Purchase::where('organization_id', $organizationId)->findOrFail($id);
+
+        if ($purchase->is_historical) {
+            throw ValidationException::withMessages([
+                'status' => ['سفارش‌های خرید تاریخی شامل پرداخت نقدی عملیاتی جاری نمی‌شوند.'],
+            ]);
+        }
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',

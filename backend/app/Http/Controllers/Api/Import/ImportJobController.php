@@ -303,7 +303,7 @@ class ImportJobController extends Controller
         $suggestions = $this->mappingService->suggestMappings($headers, $job->import_type);
 
         $warehouses = [];
-        if ($job->import_type === \App\Support\Import\ImportType::INVENTORY) {
+        if ($job->import_type === \App\Support\Import\ImportType::INVENTORY || $job->import_type === \App\Support\Import\ImportType::ORDERS || $job->import_type === \App\Support\Import\ImportType::PURCHASES) {
             $warehouses = \App\Models\Warehouse::where('organization_id', $organizationId)
                 ->select(['id', 'name', 'code', 'address'])
                 ->orderBy('name')
@@ -312,7 +312,7 @@ class ImportJobController extends Controller
 
         $stores = [];
         $categories = [];
-        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES || $job->import_type === \App\Support\Import\ImportType::ORDERS) {
+        if ($job->import_type === \App\Support\Import\ImportType::EXPENSES || $job->import_type === \App\Support\Import\ImportType::ORDERS || $job->import_type === \App\Support\Import\ImportType::PURCHASES) {
             $stores = \App\Models\Store::where('organization_id', $organizationId)
                 ->select(['id', 'name', 'code'])
                 ->orderBy('name')
@@ -325,9 +325,10 @@ class ImportJobController extends Controller
             }
         }
 
-        if ($job->import_type === \App\Support\Import\ImportType::ORDERS && empty($warehouses)) {
-            $warehouses = \App\Models\Warehouse::where('organization_id', $organizationId)
-                ->select(['id', 'name', 'code', 'address'])
+        $suppliers = [];
+        if ($job->import_type === \App\Support\Import\ImportType::PURCHASES) {
+            $suppliers = \App\Models\Supplier::where('organization_id', $organizationId)
+                ->select(['id', 'name', 'code'])
                 ->orderBy('name')
                 ->get();
         }
@@ -340,6 +341,7 @@ class ImportJobController extends Controller
             'datasets' => $datasets,
             'warehouses' => $warehouses,
             'stores' => $stores,
+            'suppliers' => $suppliers,
             'categories' => $categories,
             'active_sheet_index' => $dataset ? $dataset->sheet_index : 0,
             'headers' => $headers,
@@ -369,6 +371,7 @@ class ImportJobController extends Controller
             'sheet_index' => 'nullable|integer',
             'warehouse_id' => 'nullable|string',
             'store_id' => 'nullable|string',
+            'supplier_id' => 'nullable|string',
         ], [
             'fields.required' => 'تطبیق فیلدها الزامی است.',
             'fields.array' => 'فرمت تطبیق فیلدها معتبر نیست.',
@@ -378,6 +381,7 @@ class ImportJobController extends Controller
         $sheetIndex = (int) $request->input('sheet_index', 0);
         $warehouseId = $request->input('warehouse_id');
         $storeId = $request->input('store_id');
+        $supplierId = $request->input('supplier_id');
 
         // For inventory imports, verify default warehouse if provided, or ensure either warehouse column or default warehouse exists
         if ($job->import_type === \App\Support\Import\ImportType::INVENTORY) {
@@ -457,6 +461,55 @@ class ImportJobController extends Controller
             }
         }
 
+        // For purchases imports, verify store, warehouse, and supplier if provided, or fall back to defaults
+        if ($job->import_type === \App\Support\Import\ImportType::PURCHASES) {
+            if ($storeId) {
+                $storeExists = \App\Models\Store::where('organization_id', $organizationId)
+                    ->where('id', $storeId)
+                    ->exists();
+                if (!$storeExists) {
+                    return response()->json([
+                        'message' => 'فروشگاه پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            } elseif (empty($fields['store'])) {
+                $defaultStore = \App\Models\Store::where('organization_id', $organizationId)->first();
+                if (!$defaultStore) {
+                    return response()->json([
+                        'message' => 'برای درون‌ریزی خریدهای تاریخی باید حداقل یک فروشگاه در سازمان تعریف شده باشد.',
+                    ], 422);
+                }
+                $storeId = $defaultStore->id;
+            }
+
+            if ($warehouseId) {
+                $whExists = \App\Models\Warehouse::where('organization_id', $organizationId)
+                    ->where('id', $warehouseId)
+                    ->exists();
+                if (!$whExists) {
+                    return response()->json([
+                        'message' => 'انبار پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            } elseif (empty($fields['warehouse'])) {
+                $defaultWarehouse = \App\Models\Warehouse::where('organization_id', $organizationId)->first();
+                if ($defaultWarehouse) {
+                    $warehouseId = $defaultWarehouse->id;
+                }
+            }
+
+            if ($supplierId) {
+                $supExists = \App\Models\Supplier::where('organization_id', $organizationId)
+                    ->where('id', $supplierId)
+                    ->exists();
+                if (!$supExists) {
+                    return response()->json([
+                        'message' => 'تأمین‌کننده پیش‌فرض انتخاب‌شده در سامانه یافت نشد یا به این سازمان تعلق ندارد.',
+                    ], 422);
+                }
+            }
+        }
+
         // Validate mapping logic
         $valResult = $this->mappingService->validateMapping($fields, $job->import_type);
         if (!$valResult['valid']) {
@@ -482,6 +535,7 @@ class ImportJobController extends Controller
                 'fields' => $fields,
                 'warehouse_id' => $warehouseId,
                 'store_id' => $storeId,
+                'supplier_id' => $supplierId,
                 'saved_at' => now()->toIso8601String(),
             ],
         ]);

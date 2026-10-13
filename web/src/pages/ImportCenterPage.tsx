@@ -21,8 +21,8 @@ const IMPORT_TYPES = [
   { value: 'inventory', fa: 'موجودی اولیه انبار', en: 'Opening Inventory Stock' },
   { value: 'expenses', fa: 'هزینه‌های جاری', en: 'Operating Expenses' },
   { value: 'orders', fa: 'سوابق سفارش‌ها (تاریخی)', en: 'Historical Orders' },
-  { value: 'suppliers', fa: 'تأمین‌کنندگان (فازهای بعد)', en: 'Suppliers (Future Phase)' },
-  { value: 'purchases', fa: 'سفارش‌های خرید (فازهای بعد)', en: 'Purchases (Future Phase)' },
+  { value: 'suppliers', fa: 'تأمین‌کنندگان', en: 'Suppliers' },
+  { value: 'purchases', fa: 'سوابق خرید (تاریخی)', en: 'Historical Purchases' },
 ];
 
 const STATUS_LABELS: Record<string, { fa: string; en: string; color: string; bg: string }> = {
@@ -66,6 +66,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [previewData, setPreviewData] = useState<ImportPreviewResponse | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<'skip' | 'update'>('skip');
   const [isWizardLoading, setIsWizardLoading] = useState(false);
@@ -198,6 +199,14 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
           setSelectedStoreId('');
         }
 
+        if (mapRes.current_mapping && mapRes.current_mapping.supplier_id) {
+          setSelectedSupplierId(mapRes.current_mapping.supplier_id);
+        } else if (mapRes.suppliers && mapRes.suppliers.length > 0) {
+          setSelectedSupplierId(mapRes.suppliers[0].id);
+        } else {
+          setSelectedSupplierId('');
+        }
+
         setWizardStep('mapping');
       }
     } catch (err: any) {
@@ -235,7 +244,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
 
     try {
       // 1. Save mapping
-      await apiClient.saveImportMapping(wizardJobId, userFieldMappings, selectedSheetIndex, selectedWarehouseId, selectedStoreId);
+      await apiClient.saveImportMapping(wizardJobId, userFieldMappings, selectedSheetIndex, selectedWarehouseId, selectedStoreId, selectedSupplierId);
 
       // 2. Run validation
       await apiClient.validateImportJob(wizardJobId);
@@ -613,8 +622,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   </div>
                 )}
 
-                {/* Default Warehouse Selector for inventory imports */}
-                {mappingData.import_type === 'inventory' && mappingData.warehouses && mappingData.warehouses.length > 0 && (
+                {/* Default Warehouse Selector for inventory and purchases imports */}
+                {(mappingData.import_type === 'inventory' || mappingData.import_type === 'purchases') && mappingData.warehouses && mappingData.warehouses.length > 0 && (
                   <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
                       {isFa ? 'انبار پیش‌فرض (در صورت عدم تطبیق ستون انبار):' : 'Default Warehouse (if warehouse column is not mapped):'}
@@ -642,8 +651,8 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   </div>
                 )}
 
-                {/* Default Store Selector for expenses and orders imports */}
-                {(mappingData.import_type === 'expenses' || mappingData.import_type === 'orders') && mappingData.stores && mappingData.stores.length > 0 && (
+                {/* Default Store Selector for expenses, orders, and purchases imports */}
+                {(mappingData.import_type === 'expenses' || mappingData.import_type === 'orders' || mappingData.import_type === 'purchases') && mappingData.stores && mappingData.stores.length > 0 && (
                   <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
                       {isFa ? 'فروشگاه پیش‌فرض (در صورت عدم تطبیق ستون فروشگاه):' : 'Default Store (if store column is not mapped):'}
@@ -665,6 +674,35 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                       {mappingData.stores.map((st) => (
                         <option key={st.id} value={st.id}>
                           {st.name} {st.code ? `(${st.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Default Supplier Selector for purchases imports */}
+                {mappingData.import_type === 'purchases' && mappingData.suppliers && mappingData.suppliers.length > 0 && (
+                  <div style={{ marginBottom: '20px', padding: '12px', borderRadius: '8px', backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
+                      {isFa ? 'تأمین‌کننده پیش‌فرض (در صورت عدم تطبیق ستون تأمین‌کننده):' : 'Default Supplier (if supplier column is not mapped):'}
+                    </label>
+                    <select
+                      value={selectedSupplierId}
+                      onChange={(e) => setSelectedSupplierId(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${theme.colors.border}`,
+                        backgroundColor: isDark ? theme.colors.surface : '#FFFFFF',
+                        color: theme.colors.textPrimary,
+                        fontSize: '13px',
+                        minWidth: '240px',
+                      }}
+                    >
+                      <option value="">{isFa ? '-- انتخاب تأمین‌کننده پیش‌فرض --' : '-- Select Default Supplier --'}</option>
+                      {mappingData.suppliers.map((sup) => (
+                        <option key={sup.id} value={sup.id}>
+                          {sup.name} {sup.code ? `(${sup.code})` : ''}
                         </option>
                       ))}
                     </select>

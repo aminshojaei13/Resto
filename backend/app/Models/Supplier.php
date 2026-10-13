@@ -10,7 +10,7 @@ class Supplier extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'organization_id', 'name', 'email', 'phone', 'address'
+        'id', 'organization_id', 'name', 'code', 'email', 'phone', 'address', 'tax_id', 'notes'
     ];
 
     public function purchases()

@@ -1153,10 +1153,10 @@ export const apiClient = {
     });
   },
 
-  saveImportMapping: async (id: string, fields: Record<string, string>, sheetIndex: number = 0, warehouseId?: string | null, storeId?: string | null): Promise<{ message: string; job: ImportJobItem }> => {
+  saveImportMapping: async (id: string, fields: Record<string, string>, sheetIndex: number = 0, warehouseId?: string | null, storeId?: string | null, supplierId?: string | null): Promise<{ message: string; job: ImportJobItem }> => {
     return request<{ message: string; job: ImportJobItem }>(`/import/jobs/${id}/mapping`, {
       method: 'POST',
-      body: { fields, sheet_index: sheetIndex, warehouse_id: warehouseId || undefined, store_id: storeId || undefined },
+      body: { fields, sheet_index: sheetIndex, warehouse_id: warehouseId || undefined, store_id: storeId || undefined, supplier_id: supplierId || undefined },
     });
   },
 

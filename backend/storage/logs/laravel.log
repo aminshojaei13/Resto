@@ -8710,3 +8710,5 @@ CONTEXT:  unnamed portal parameter $5 = '...' at /Users/aminshojaei/AndroidStudi
 #21 /Users/aminshojaei/AndroidStudioProjects/Calcuapp/backend/artisan(13): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
 #22 {main}
 "} 
+[2026-10-13 08:39:19] testing.ERROR: Validation failed for job d6edc74b-6fde-4ef1-a89a-ffc8dbd6deed: App\Services\Import\Normalizer\DataNormalizer::toEnglishDigits(): Argument #1 ($value) must be of type string, null given, called in /Users/aminshojaei/AndroidStudioProjects/Calcuapp/backend/app/Services/Import/Validation/ImportValidationService.php on line 1590  
+[2026-10-13 08:39:19] testing.ERROR: Validation failed for job 21aec4a3-0cbb-4c8b-b70d-5c91fc9d24d4: App\Services\Import\Normalizer\DataNormalizer::toEnglishDigits(): Argument #1 ($value) must be of type string, null given, called in /Users/aminshojaei/AndroidStudioProjects/Calcuapp/backend/app/Services/Import/Validation/ImportValidationService.php on line 1590  

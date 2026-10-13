@@ -9,7 +9,10 @@ use App\Models\ImportSource;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\Store;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
@@ -91,6 +94,8 @@ class ImportExecutionService
                 ImportType::INVENTORY => $this->executeInventory($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
                 ImportType::EXPENSES => $this->executeExpenses($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
                 ImportType::ORDERS => $this->executeOrders($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
+                ImportType::SUPPLIERS => $this->executeSuppliers($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy),
+                ImportType::PURCHASES => $this->executePurchases($job, $source, $absolutePath, $sheetIndex, $mapping, $duplicateStrategy, $user),
                 default => throw new InvalidArgumentException("نوع درون‌ریزی '{$job->import_type}' پشتیبانی نمی‌شود."),
             };
 
@@ -1309,6 +1314,633 @@ class ImportExecutionService
             }
 
             $importedRows += count($orderRows);
+        });
+    }
+
+    /**
+     * Execute suppliers import.
+     */
+    private function executeSuppliers(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping,
+        string $duplicateStrategy
+    ): array {
+        $importedRows = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
+
+        $seenCodesInFile = [];
+        $seenPhonesInFile = [];
+        $seenEmailsInFile = [];
+
+        $batch = [];
+        $batchSize = 100;
+
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $batch[] = $rowItem;
+            if (count($batch) >= $batchSize) {
+                $this->processSuppliersBatch(
+                    $batch,
+                    $job,
+                    $mapping,
+                    $duplicateStrategy,
+                    $seenCodesInFile,
+                    $seenPhonesInFile,
+                    $seenEmailsInFile,
+                    $importedRows,
+                    $skippedRows,
+                    $failedRows
+                );
+                $batch = [];
+            }
+        }
+
+        if (!empty($batch)) {
+            $this->processSuppliersBatch(
+                $batch,
+                $job,
+                $mapping,
+                $duplicateStrategy,
+                $seenCodesInFile,
+                $seenPhonesInFile,
+                $seenEmailsInFile,
+                $importedRows,
+                $skippedRows,
+                $failedRows
+            );
+        }
+
+        $job->update([
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ]);
+
+        return [
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ];
+    }
+
+    private function processSuppliersBatch(
+        array $batch,
+        ImportJob $job,
+        array $mapping,
+        string $duplicateStrategy,
+        array &$seenCodesInFile,
+        array &$seenPhonesInFile,
+        array &$seenEmailsInFile,
+        int &$importedRows,
+        int &$skippedRows,
+        int &$failedRows
+    ): void {
+        DB::transaction(function () use (
+            $batch,
+            $job,
+            $mapping,
+            $duplicateStrategy,
+            &$seenCodesInFile,
+            &$seenPhonesInFile,
+            &$seenEmailsInFile,
+            &$importedRows,
+            &$skippedRows,
+            &$failedRows
+        ) {
+            foreach ($batch as $rowItem) {
+                $rowNumber = $rowItem['row_number'];
+
+                $nameRaw = $this->getMappedValue($rowItem, $mapping, 'name');
+                $codeRaw = $this->getMappedValue($rowItem, $mapping, 'code');
+                $phoneRaw = $this->getMappedValue($rowItem, $mapping, 'phone');
+                $emailRaw = $this->getMappedValue($rowItem, $mapping, 'email');
+                $addressRaw = $this->getMappedValue($rowItem, $mapping, 'address');
+                $taxIdRaw = $this->getMappedValue($rowItem, $mapping, 'tax_id');
+                $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+                $name = DataNormalizer::cleanString($nameRaw ?? '');
+                $code = DataNormalizer::cleanString($codeRaw ?? '');
+                $phone = DataNormalizer::normalizePhone($phoneRaw);
+                $email = DataNormalizer::normalizeEmail($emailRaw);
+                $address = DataNormalizer::cleanString($addressRaw ?? '');
+                $taxId = DataNormalizer::cleanString($taxIdRaw ?? '');
+                $notes = DataNormalizer::cleanString($notesRaw ?? '');
+
+                if ($name === '' || mb_strlen($name, 'UTF-8') > 191) {
+                    $failedRows++;
+                    continue;
+                }
+
+                if ($code !== '' && mb_strlen($code, 'UTF-8') > 100) {
+                    $failedRows++;
+                    continue;
+                }
+
+                // In-file duplicate checking
+                if ($code !== '' && isset($seenCodesInFile[$code])) {
+                    $skippedRows++;
+                    continue;
+                }
+                if ($phone !== null && isset($seenPhonesInFile[$phone])) {
+                    $skippedRows++;
+                    continue;
+                }
+                if ($email !== null && isset($seenEmailsInFile[$email])) {
+                    $skippedRows++;
+                    continue;
+                }
+
+                if ($code !== '') {
+                    $seenCodesInFile[$code] = $rowNumber;
+                }
+                if ($phone !== null) {
+                    $seenPhonesInFile[$phone] = $rowNumber;
+                }
+                if ($email !== null) {
+                    $seenEmailsInFile[$email] = $rowNumber;
+                }
+
+                // Deterministic UUID for idempotency
+                $deterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_sup_{$rowNumber}");
+
+                // Check if already committed by this job
+                $alreadyCommitted = Supplier::where('organization_id', $job->organization_id)
+                    ->where('id', $deterministicId)
+                    ->first();
+
+                if ($alreadyCommitted) {
+                    $skippedRows++;
+                    continue;
+                }
+
+                // Check existing supplier in database: match only by code, phone, or email
+                $existingSupplier = null;
+                if ($code !== '') {
+                    $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                        ->where('code', $code)
+                        ->first();
+                }
+                if (!$existingSupplier && $phone !== null) {
+                    $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                        ->where('phone', $phone)
+                        ->first();
+                }
+                if (!$existingSupplier && $email !== null) {
+                    $existingSupplier = Supplier::where('organization_id', $job->organization_id)
+                        ->where('email', $email)
+                        ->first();
+                }
+
+                if ($existingSupplier) {
+                    if ($duplicateStrategy === self::STRATEGY_SKIP) {
+                        $skippedRows++;
+                        continue;
+                    }
+
+                    // UPDATE strategy: update permitted fields only
+                    $updatePayload = [];
+                    if ($name !== '') {
+                        $updatePayload['name'] = $name;
+                    }
+                    if ($code !== '') {
+                        $updatePayload['code'] = $code;
+                    }
+                    if ($phone !== null) {
+                        $updatePayload['phone'] = $phone;
+                    }
+                    if ($email !== null) {
+                        $updatePayload['email'] = $email;
+                    }
+                    if ($address !== '') {
+                        $updatePayload['address'] = $address;
+                    }
+                    if ($taxId !== '') {
+                        $updatePayload['tax_id'] = $taxId;
+                    }
+                    if ($notes !== '') {
+                        $updatePayload['notes'] = $notes;
+                    }
+
+                    if (!empty($updatePayload)) {
+                        $existingSupplier->update($updatePayload);
+                    }
+                    $importedRows++;
+                    continue;
+                }
+
+                // Create fresh supplier
+                $supplier = new Supplier();
+                $supplier->fill([
+                    'id' => $deterministicId,
+                    'organization_id' => $job->organization_id,
+                    'name' => $name,
+                    'code' => $code ?: null,
+                    'phone' => $phone ?: null,
+                    'email' => $email ?: null,
+                    'address' => $address ?: null,
+                    'tax_id' => $taxId ?: null,
+                    'notes' => $notes ?: null,
+                ]);
+                $supplier->save();
+                $importedRows++;
+            }
+        });
+    }
+
+    /**
+     * Execute historical purchases import adhering strictly to HISTORICAL_RECORD_ONLY domain contract.
+     * ZERO mutations to WarehouseStock, ZERO stock movements, ZERO live general ledger journal entries.
+     */
+    private function executePurchases(
+        ImportJob $job,
+        ImportSource $source,
+        string $filePath,
+        int $sheetIndex,
+        array $mapping,
+        string $duplicateStrategy,
+        User $user
+    ): array {
+        $importedRows = 0;
+        $skippedRows = 0;
+        $failedRows = 0;
+
+        $defaultStoreId = $job->mapping_config['store_id'] ?? null;
+        $tenantStores = Store::where('organization_id', $job->organization_id)->get();
+        $defaultStore = $defaultStoreId ? $tenantStores->firstWhere('id', $defaultStoreId) : $tenantStores->first();
+
+        $defaultWarehouseId = $job->mapping_config['warehouse_id'] ?? null;
+        $tenantWarehouses = Warehouse::where('organization_id', $job->organization_id)->get();
+        $defaultWarehouse = $defaultWarehouseId ? $tenantWarehouses->firstWhere('id', $defaultWarehouseId) : $tenantWarehouses->first();
+
+        $defaultSupplierId = $job->mapping_config['supplier_id'] ?? null;
+        $tenantSuppliers = Supplier::where('organization_id', $job->organization_id)->get();
+        $defaultSupplier = $defaultSupplierId ? $tenantSuppliers->firstWhere('id', $defaultSupplierId) : $tenantSuppliers->first();
+
+        $tenantProducts = Product::where('organization_id', $job->organization_id)->get();
+
+        // 1. Group rows by purchase_id
+        $groupedPurchases = [];
+        $rowGenerator = $this->readerService->streamRows($filePath, $source->file_format, $sheetIndex);
+
+        foreach ($rowGenerator as $rowItem) {
+            $rowNumber = $rowItem['row_number'];
+            $purchaseIdRaw = $this->getMappedValue($rowItem, $mapping, 'purchase_id');
+            $skuRaw = $this->getMappedValue($rowItem, $mapping, 'sku');
+            $qtyRaw = $this->getMappedValue($rowItem, $mapping, 'quantity');
+            $costRaw = $this->getMappedValue($rowItem, $mapping, 'unit_cost');
+            $dateRaw = $this->getMappedValue($rowItem, $mapping, 'date');
+            $discRaw = $this->getMappedValue($rowItem, $mapping, 'discount_amount');
+            $taxRaw = $this->getMappedValue($rowItem, $mapping, 'tax_amount');
+            $totalRaw = $this->getMappedValue($rowItem, $mapping, 'total_amount');
+            $supRaw = $this->getMappedValue($rowItem, $mapping, 'supplier');
+            $storeRaw = $this->getMappedValue($rowItem, $mapping, 'store');
+            $whRaw = $this->getMappedValue($rowItem, $mapping, 'warehouse');
+            $statusRaw = $this->getMappedValue($rowItem, $mapping, 'status');
+            $payStatusRaw = $this->getMappedValue($rowItem, $mapping, 'payment_status');
+            $notesRaw = $this->getMappedValue($rowItem, $mapping, 'notes');
+
+            $purchaseId = DataNormalizer::cleanString($purchaseIdRaw ?? '');
+            $groupKey = ($purchaseId !== '') ? $purchaseId : ("__MISSING_PO_ROW_{$rowNumber}");
+
+            $groupedPurchases[$groupKey][] = [
+                'row_number' => $rowNumber,
+                'purchase_id' => $purchaseId,
+                'sku_raw' => $skuRaw,
+                'qty_raw' => $qtyRaw,
+                'cost_raw' => $costRaw,
+                'date_raw' => $dateRaw,
+                'disc_raw' => $discRaw,
+                'tax_raw' => $taxRaw,
+                'total_raw' => $totalRaw,
+                'sup_raw' => $supRaw,
+                'store_raw' => $storeRaw,
+                'wh_raw' => $whRaw,
+                'status_raw' => $statusRaw,
+                'pay_status_raw' => $payStatusRaw,
+                'notes_raw' => $notesRaw,
+            ];
+        }
+
+        // 2. Process each purchase group inside its own database transaction
+        foreach ($groupedPurchases as $groupKey => $purchaseRows) {
+            $this->processPurchaseGroup(
+                $purchaseRows,
+                $job,
+                $duplicateStrategy,
+                $tenantStores,
+                $defaultStore,
+                $tenantWarehouses,
+                $defaultWarehouse,
+                $tenantSuppliers,
+                $defaultSupplier,
+                $tenantProducts,
+                $user,
+                $importedRows,
+                $skippedRows,
+                $failedRows
+            );
+        }
+
+        $job->update([
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ]);
+
+        return [
+            'imported_rows' => $importedRows,
+            'skipped_rows' => $skippedRows,
+            'failed_rows' => $failedRows,
+        ];
+    }
+
+    private function processPurchaseGroup(
+        array $purchaseRows,
+        ImportJob $job,
+        string $duplicateStrategy,
+        $tenantStores,
+        ?Store $defaultStore,
+        $tenantWarehouses,
+        ?Warehouse $defaultWarehouse,
+        $tenantSuppliers,
+        ?Supplier $defaultSupplier,
+        $tenantProducts,
+        User $user,
+        int &$importedRows,
+        int &$skippedRows,
+        int &$failedRows
+    ): void {
+        DB::transaction(function () use (
+            $purchaseRows,
+            $job,
+            $duplicateStrategy,
+            $tenantStores,
+            $defaultStore,
+            $tenantWarehouses,
+            $defaultWarehouse,
+            $tenantSuppliers,
+            $defaultSupplier,
+            $tenantProducts,
+            $user,
+            &$importedRows,
+            &$skippedRows,
+            &$failedRows
+        ) {
+            $firstRow = $purchaseRows[0];
+            $externalPurchaseId = $firstRow['purchase_id'];
+
+            if ($externalPurchaseId === '') {
+                $failedRows += count($purchaseRows);
+                return;
+            }
+
+            // Parse Date
+            $parsedDate = DataNormalizer::parseDate($firstRow['date_raw']);
+            if (!$parsedDate) {
+                $failedRows += count($purchaseRows);
+                return;
+            }
+
+            // Resolve Store
+            $storeRaw = DataNormalizer::cleanString($firstRow['store_raw'] ?? '');
+            $resolvedStore = null;
+            if ($storeRaw !== '') {
+                $resolvedStore = $tenantStores->first(function ($st) use ($storeRaw) {
+                    return mb_strtolower($st->code ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || mb_strtolower($st->name ?? '', 'UTF-8') === mb_strtolower($storeRaw, 'UTF-8')
+                        || $st->id === $storeRaw;
+                });
+            }
+            if (!$resolvedStore) {
+                $resolvedStore = $defaultStore;
+            }
+            if (!$resolvedStore) {
+                $failedRows += count($purchaseRows);
+                return;
+            }
+
+            // Resolve Warehouse
+            $whRaw = DataNormalizer::cleanString($firstRow['wh_raw'] ?? '');
+            $resolvedWarehouse = null;
+            if ($whRaw !== '') {
+                $resolvedWarehouse = $tenantWarehouses->first(function ($wh) use ($whRaw) {
+                    return mb_strtolower($wh->code ?? '', 'UTF-8') === mb_strtolower($whRaw, 'UTF-8')
+                        || mb_strtolower($wh->name ?? '', 'UTF-8') === mb_strtolower($whRaw, 'UTF-8')
+                        || $wh->id === $whRaw;
+                });
+            }
+            if (!$resolvedWarehouse) {
+                $resolvedWarehouse = $defaultWarehouse;
+            }
+            if (!$resolvedWarehouse) {
+                $failedRows += count($purchaseRows);
+                return;
+            }
+
+            // Resolve Supplier
+            $supRaw = DataNormalizer::cleanString($firstRow['sup_raw'] ?? '');
+            $resolvedSupplier = null;
+            if ($supRaw !== '') {
+                $resolvedSupplier = $tenantSuppliers->first(function ($s) use ($supRaw) {
+                    return $s->id === $supRaw
+                        || ($s->code && mb_strtolower($s->code, 'UTF-8') === mb_strtolower($supRaw, 'UTF-8'))
+                        || ($s->phone && $s->phone === DataNormalizer::normalizePhone($supRaw))
+                        || ($s->email && $s->email === DataNormalizer::normalizeEmail($supRaw))
+                        || mb_strtolower($s->name, 'UTF-8') === mb_strtolower($supRaw, 'UTF-8');
+                });
+            }
+            if (!$resolvedSupplier) {
+                $resolvedSupplier = $defaultSupplier;
+            }
+            if (!$resolvedSupplier) {
+                $failedRows += count($purchaseRows);
+                return;
+            }
+
+            // Status and Payment Status
+            $statusRaw = strtoupper(DataNormalizer::cleanString($firstRow['status_raw'] ?? '') ?: 'RECEIVED');
+            $status = in_array($statusRaw, ['RECEIVED', 'ORDERED', 'PARTIALLY_RECEIVED', 'CANCELLED'], true) ? $statusRaw : 'RECEIVED';
+            $paymentStatus = strtoupper(DataNormalizer::cleanString($firstRow['pay_status_raw'] ?? '') ?: 'PAID');
+            $notes = DataNormalizer::cleanString($firstRow['notes_raw'] ?? '');
+
+            // Deterministic Purchase UUID
+            $purchaseDeterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_po_{$externalPurchaseId}");
+
+            // Check if this purchase was already committed by this job (retry idempotency)
+            $alreadyCommittedByJob = Purchase::where('organization_id', $job->organization_id)
+                ->where('id', $purchaseDeterministicId)
+                ->first();
+
+            if ($alreadyCommittedByJob) {
+                $skippedRows += count($purchaseRows);
+                return;
+            }
+
+            // Check for existing matching Purchase in database (by external_purchase_id or purchase_number)
+            $existingPurchase = Purchase::where('organization_id', $job->organization_id)
+                ->where(function ($q) use ($externalPurchaseId) {
+                    $q->where('external_purchase_id', $externalPurchaseId)
+                      ->orWhere('purchase_number', $externalPurchaseId);
+                })
+                ->first();
+
+            if ($existingPurchase) {
+                if ($duplicateStrategy === self::STRATEGY_SKIP) {
+                    $skippedRows += count($purchaseRows);
+                    return;
+                }
+
+                // UPDATE Strategy: only update descriptive non-financial attributes on historical purchase
+                $updatePayload = [];
+                if ($notes !== '') {
+                    $updatePayload['notes'] = $notes;
+                }
+                if (!empty($updatePayload)) {
+                    $existingPurchase->update($updatePayload);
+                }
+                $importedRows += count($purchaseRows);
+                return;
+            }
+
+            // Validate and prepare line items
+            $preparedLines = [];
+            $subtotalMinor = 0;
+            $discountMinor = 0;
+            $taxMinor = 0;
+
+            foreach ($purchaseRows as $rowItem) {
+                $skuNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['sku_raw'] ?? ''));
+                $matchedProduct = $tenantProducts->first(function ($p) use ($skuNorm) {
+                    return (string) $p->sku === $skuNorm
+                        || (string) $p->barcode === $skuNorm
+                        || (string) $p->id === $skuNorm;
+                });
+
+                if (!$matchedProduct) {
+                    $failedRows += count($purchaseRows);
+                    return;
+                }
+
+                $qtyNorm = DataNormalizer::cleanString(DataNormalizer::toEnglishDigits($rowItem['qty_raw'] ?? ''));
+                if ($qtyNorm === '' || !ctype_digit($qtyNorm) || (int) $qtyNorm <= 0) {
+                    $failedRows += count($purchaseRows);
+                    return;
+                }
+                $qty = (int) $qtyNorm;
+
+                $costNorm = DataNormalizer::parseMoney($rowItem['cost_raw']);
+                if ($costNorm === null || (float) $costNorm < 0) {
+                    $failedRows += count($purchaseRows);
+                    return;
+                }
+
+                $unitCostMinor = Money::toMinor($costNorm);
+                $lineSubtotalMinor = Money::multiply($unitCostMinor, $qty);
+
+                $lineDiscMinor = 0;
+                if ($rowItem['disc_raw'] !== null && trim((string) $rowItem['disc_raw']) !== '') {
+                    $discNorm = DataNormalizer::parseMoney($rowItem['disc_raw']);
+                    if ($discNorm !== null) {
+                        $lineDiscMinor = Money::toMinor($discNorm);
+                    }
+                }
+
+                $lineTaxMinor = 0;
+                if ($rowItem['tax_raw'] !== null && trim((string) $rowItem['tax_raw']) !== '') {
+                    $taxNorm = DataNormalizer::parseMoney($rowItem['tax_raw']);
+                    if ($taxNorm !== null) {
+                        $lineTaxMinor = Money::toMinor($taxNorm);
+                    }
+                }
+
+                $lineTotalMinor = $lineSubtotalMinor - $lineDiscMinor + $lineTaxMinor;
+
+                $subtotalMinor += $lineSubtotalMinor;
+                $discountMinor += $lineDiscMinor;
+                $taxMinor += $lineTaxMinor;
+
+                $lineDeterministicId = ExpenseService::deterministicUuid("resto_imp_{$job->organization_id}_{$job->id}_poitem_{$externalPurchaseId}_{$rowItem['row_number']}");
+
+                $preparedLines[] = [
+                    'id' => $lineDeterministicId,
+                    'purchase_id' => $purchaseDeterministicId,
+                    'product_id' => $matchedProduct->id,
+                    'unit' => $matchedProduct->unit ?? 'piece',
+                    'quantity' => $qty,
+                    'received_quantity' => ($status === 'RECEIVED') ? $qty : 0,
+                    'unit_cost' => Money::fromMinor($unitCostMinor),
+                    'total_cost' => Money::fromMinor($lineTotalMinor),
+                    'subtotal' => Money::fromMinor($lineSubtotalMinor),
+                    'discount_amount' => Money::fromMinor($lineDiscMinor),
+                    'tax_amount' => Money::fromMinor($lineTaxMinor),
+                    'created_at' => $parsedDate . ' 12:00:00',
+                    'updated_at' => $parsedDate . ' 12:00:00',
+                ];
+            }
+
+            // Total Amount calculation
+            $totalAmountMinor = $subtotalMinor - $discountMinor + $taxMinor;
+            if ($firstRow['total_raw'] !== null && trim((string) $firstRow['total_raw']) !== '') {
+                $parsedTotal = DataNormalizer::parseMoney($firstRow['total_raw']);
+                if ($parsedTotal !== null) {
+                    $fileTotalMinor = Money::toMinor($parsedTotal);
+                    if ($fileTotalMinor > 0) {
+                        $totalAmountMinor = $fileTotalMinor;
+                    }
+                }
+            }
+
+            // Generate purchase_number
+            $purchaseNumber = "HIST-PO-{$externalPurchaseId}";
+            if (Purchase::where('purchase_number', $purchaseNumber)->exists()) {
+                $purchaseNumber = "HIST-PO-{$externalPurchaseId}-" . substr(md5($purchaseDeterministicId), 0, 6);
+            }
+
+            // Persist Purchase: HISTORICAL_RECORD_ONLY (ZERO inventory, ZERO GL, ZERO supplier payments)
+            $purchase = new Purchase();
+            $purchase->timestamps = false;
+            $purchase->fill([
+                'id' => $purchaseDeterministicId,
+                'organization_id' => $job->organization_id,
+                'store_id' => $resolvedStore->id,
+                'warehouse_id' => $resolvedWarehouse->id,
+                'supplier_id' => $resolvedSupplier->id,
+                'purchase_number' => $purchaseNumber,
+                'external_purchase_id' => $externalPurchaseId,
+                'purchase_date' => $parsedDate,
+                'subtotal' => Money::fromMinor($subtotalMinor),
+                'discount_amount' => Money::fromMinor($discountMinor),
+                'tax_amount' => Money::fromMinor($taxMinor),
+                'total_amount' => Money::fromMinor($totalAmountMinor),
+                'status' => $status,
+                'payment_status' => $paymentStatus,
+                'notes' => $notes,
+                'source' => 'IMPORT_HISTORICAL',
+                'is_historical' => true,
+                'import_job_id' => $job->id,
+                'received_at' => ($status === 'RECEIVED') ? ($parsedDate . ' 12:00:00') : null,
+                'last_received_at' => ($status === 'RECEIVED') ? ($parsedDate . ' 12:00:00') : null,
+            ]);
+            $purchase->created_at = $parsedDate . ' 12:00:00';
+            $purchase->updated_at = $parsedDate . ' 12:00:00';
+            $purchase->save();
+
+            // Insert line items
+            foreach ($preparedLines as $lineData) {
+                $item = new PurchaseItem();
+                $item->timestamps = false;
+                $item->fill($lineData);
+                $item->created_at = $lineData['created_at'];
+                $item->updated_at = $lineData['updated_at'];
+                $item->save();
+            }
+
+            $importedRows += count($purchaseRows);
         });
     }
 

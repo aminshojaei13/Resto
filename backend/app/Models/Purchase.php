@@ -11,7 +11,13 @@ class Purchase extends Model
 
     protected $fillable = [
         'id', 'organization_id', 'store_id', 'warehouse_id', 'supplier_id', 'purchase_number',
-        'purchase_date', 'total_amount', 'status', 'received_at', 'last_received_at', 'payment_status'
+        'external_purchase_id', 'purchase_date', 'subtotal', 'discount_amount', 'tax_amount',
+        'total_amount', 'status', 'payment_status', 'notes', 'source', 'is_historical',
+        'import_job_id', 'received_at', 'last_received_at'
+    ];
+
+    protected $casts = [
+        'is_historical' => 'boolean',
     ];
 
     public function supplier()
