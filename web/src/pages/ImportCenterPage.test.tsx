@@ -14,6 +14,11 @@ jest.mock('../api/apiClient', () => ({
     getImportJobErrors: jest.fn(),
     getImportTemplates: jest.fn(),
     downloadImportTemplate: jest.fn(),
+    getImportMapping: jest.fn(),
+    saveImportMapping: jest.fn(),
+    validateImportJob: jest.fn(),
+    getImportPreview: jest.fn(),
+    executeImportJob: jest.fn(),
   },
   ApiError: class extends Error {
     constructor(msg: string) {
@@ -177,6 +182,229 @@ describe('ImportCenterPage Foundation & UX', () => {
 
     await waitFor(() => {
       expect(apiClient.downloadImportTemplate).toHaveBeenCalledWith('products', 'resto_template_products.csv');
+    });
+  });
+
+  test('displays smart mapping suggestions with badges, explanations, and bulk actions', async () => {
+    const mockJob = {
+      id: 'job-sm-1',
+      original_filename: 'catalog.csv',
+      detected_format: 'csv',
+      import_type: 'products',
+      status: 'mapping_required',
+      total_rows: 10,
+      file_size: 2048,
+      created_at: new Date().toISOString(),
+    };
+
+    (apiClient.getImportJobs as jest.Mock).mockResolvedValueOnce({
+      data: [mockJob],
+      current_page: 1,
+      total: 1,
+    });
+    (apiClient.getImportJob as jest.Mock).mockResolvedValueOnce({ job: mockJob });
+    (apiClient.getImportMapping as jest.Mock).mockResolvedValueOnce({
+      job_id: 'job-sm-1',
+      import_type: 'products',
+      status: 'mapping_required',
+      target_fields: [
+        { name: 'name', label_fa: 'نام کالا', label_en: 'Product Name', type: 'string', required: true, description_fa: 'عنوان کالا', description_en: 'Item Title', aliases: ['کالا'] },
+        { name: 'sku', label_fa: 'کد کالا / SKU', label_en: 'SKU', type: 'string', required: true, description_fa: 'شناسه کالا', description_en: 'Item SKU', aliases: ['کد فنی'] },
+        { name: 'price', label_fa: 'قیمت فروش', label_en: 'Price', type: 'numeric', required: true, description_fa: 'قیمت کالا', description_en: 'Item Price', aliases: ['فی فروش'] },
+      ],
+      datasets: [],
+      active_sheet_index: 0,
+      headers: ['نام کالا', 'کد کالا', 'فی فروش'],
+      sample_rows: [['پیتزا', 'PIZ-01', '120000']],
+      suggested_mappings: [
+        { source_column: 'نام کالا', source_index: 0, target_field: 'name', confidence: 1.0, match_category: 'exact_canonical', reason_fa: 'تطبیق قطعی با نام رسمی فیلد' },
+        { source_column: 'کد کالا', source_index: 1, target_field: 'sku', confidence: 0.95, match_category: 'exact_alias', reason_fa: 'تطبیق دقیق با عنوان مترادف' },
+        { source_column: 'فی فروش', source_index: 2, target_field: 'price', confidence: 0.90, match_category: 'normalized_alias', reason_fa: 'تطبیق نرمال‌شده با عنوان مترادف' },
+      ],
+      conflicts: [],
+      ambiguous_headers: [],
+      unmapped_required_fields: [],
+      current_mapping: null,
+    });
+
+    render(<ImportCenterPage language="fa" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('catalog.csv')).toBeInTheDocument();
+    });
+
+    // Open mapping wizard
+    const openWizardBtn = screen.getByText('تطبیق و بررسی');
+    fireEvent.click(openWizardBtn);
+
+    await waitFor(() => {
+      // Badges
+      expect(screen.getByText('تطبیق قطعی (۱۰۰٪)')).toBeInTheDocument();
+      expect(screen.getByText('مترادف دقیق (۹۵٪)')).toBeInTheDocument();
+      expect(screen.getByText('مترادف استاندارد (۹۰٪)')).toBeInTheDocument();
+      // Explanations
+      expect(screen.getByText('تطبیق قطعی با نام رسمی فیلد')).toBeInTheDocument();
+      expect(screen.getByText('تطبیق دقیق با عنوان مترادف')).toBeInTheDocument();
+      expect(screen.getByText('تطبیق نرمال‌شده با عنوان مترادف')).toBeInTheDocument();
+    });
+
+    // Test Clear All
+    const clearAllBtn = screen.getByText('✕ پاک کردن همه');
+    fireEvent.click(clearAllBtn);
+
+    // After clearing, required fields missing banner should appear
+    await waitFor(() => {
+      expect(screen.getByText('فیلدهای ضروری متصل نشده:')).toBeInTheDocument();
+    });
+
+    // Test Accept All Suggestions
+    const acceptAllBtn = screen.getByText('✓ تایید همه پیشنهادها');
+    fireEvent.click(acceptAllBtn);
+
+    await waitFor(() => {
+      // All mapped rows now have User Confirmed pill
+      expect(screen.getAllByText('✓ تایید کاربر')).toHaveLength(3);
+    });
+  });
+
+  test('detects duplicate source column assignment error and prevents submission', async () => {
+    const mockJob = {
+      id: 'job-sm-2',
+      original_filename: 'catalog2.csv',
+      detected_format: 'csv',
+      import_type: 'products',
+      status: 'mapping_required',
+      total_rows: 5,
+      file_size: 1024,
+      created_at: new Date().toISOString(),
+    };
+
+    (apiClient.getImportJobs as jest.Mock).mockResolvedValueOnce({
+      data: [mockJob],
+      current_page: 1,
+      total: 1,
+    });
+    (apiClient.getImportJob as jest.Mock).mockResolvedValueOnce({ job: mockJob });
+    (apiClient.getImportMapping as jest.Mock).mockResolvedValueOnce({
+      job_id: 'job-sm-2',
+      import_type: 'products',
+      status: 'mapping_required',
+      target_fields: [
+        { name: 'name', label_fa: 'نام کالا', label_en: 'Product Name', type: 'string', required: true, description_fa: 'عنوان', description_en: 'Title', aliases: [] },
+        { name: 'sku', label_fa: 'کد کالا / SKU', label_en: 'SKU', type: 'string', required: true, description_fa: 'کد', description_en: 'SKU', aliases: [] },
+      ],
+      datasets: [],
+      active_sheet_index: 0,
+      headers: ['ستون الف', 'ستون ب'],
+      sample_rows: [['ردیف ۱', 'ردیف ۲']],
+      suggested_mappings: [
+        { source_column: 'ستون الف', source_index: 0, target_field: 'name', confidence: 1.0, match_category: 'exact_canonical' },
+        { source_column: 'ستون ب', source_index: 1, target_field: 'sku', confidence: 1.0, match_category: 'exact_canonical' },
+      ],
+      conflicts: [],
+      ambiguous_headers: [],
+      unmapped_required_fields: [],
+      current_mapping: null,
+    });
+
+    render(<ImportCenterPage language="fa" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('catalog2.csv')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('تطبیق و بررسی'));
+
+    await waitFor(() => {
+      expect(screen.getByText('نام کالا')).toBeInTheDocument();
+    });
+
+    // Change the second select to also select "ستون الف", creating a duplicate
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[1], { target: { value: 'ستون الف' } });
+
+    await waitFor(() => {
+      // Duplicate error banner must appear
+      expect(screen.getByText('خطای انتساب تکراری ستون منبع:')).toBeInTheDocument();
+      // Inline duplicate error messages must appear
+      expect(screen.getAllByText('⚠️ این ستون به فیلد دیگری نیز اختصاص یافته است.')).toHaveLength(2);
+      // Submit button must be disabled
+      const submitBtn = screen.getByText('تایید تطبیق و اعتبارسنجی داده‌ها');
+      expect(submitBtn).toBeDisabled();
+    });
+  });
+
+  test('displays conflict and ambiguous header alert banners', async () => {
+    const mockJob = {
+      id: 'job-sm-3',
+      original_filename: 'catalog3.csv',
+      detected_format: 'csv',
+      import_type: 'products',
+      status: 'mapping_required',
+      total_rows: 5,
+      file_size: 1024,
+      created_at: new Date().toISOString(),
+    };
+
+    (apiClient.getImportJobs as jest.Mock).mockResolvedValueOnce({
+      data: [mockJob],
+      current_page: 1,
+      total: 1,
+    });
+    (apiClient.getImportJob as jest.Mock).mockResolvedValueOnce({ job: mockJob });
+    (apiClient.getImportMapping as jest.Mock).mockResolvedValueOnce({
+      job_id: 'job-sm-3',
+      import_type: 'products',
+      status: 'mapping_required',
+      target_fields: [
+        { name: 'name', label_fa: 'نام کالا', label_en: 'Product Name', type: 'string', required: true, description_fa: 'عنوان', description_en: 'Title', aliases: [] },
+      ],
+      datasets: [],
+      active_sheet_index: 0,
+      headers: ['کد_نامشخص', 'کد ۱', 'کد ۲'],
+      sample_rows: [],
+      suggested_mappings: [],
+      conflicts: [
+        {
+          target_field: 'sku',
+          target_label_fa: 'کد کالا',
+          target_label_en: 'SKU',
+          competing_columns: ['کد ۱', 'کد ۲'],
+          dominant_column: null,
+          message_fa: 'ستون‌های کد ۱ و کد ۲ برای فیلد مقصد رقابت دارند.',
+          message_en: 'Columns compete.',
+        },
+      ],
+      ambiguous_headers: [
+        {
+          source_column: 'کد_نامشخص',
+          source_index: 0,
+          candidate_fields: ['sku', 'name'],
+          candidate_labels_fa: ['کد کالا', 'نام کالا'],
+          confidence: 0.8,
+          message_fa: 'ستون کد_نامشخص با چندین فیلد مقصد مطابقت یکسان دارد.',
+          message_en: 'Ambiguous column.',
+        },
+      ],
+      unmapped_required_fields: [
+        { name: 'name', label_fa: 'نام کالا', label_en: 'Product Name', type: 'string', description_fa: '', description_en: '' },
+      ],
+      current_mapping: null,
+    });
+
+    render(<ImportCenterPage language="fa" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('catalog3.csv')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('تطبیق و بررسی'));
+
+    await waitFor(() => {
+      expect(screen.getByText('بررسی رقابت ستون‌ها (تداخل):')).toBeInTheDocument();
+      expect(screen.getByText('ستون‌های کد ۱ و کد ۲ برای فیلد مقصد رقابت دارند.')).toBeInTheDocument();
+      expect(screen.getByText('ستون‌های دارای ابهام (انتخاب خودکار انجام نشد):')).toBeInTheDocument();
+      expect(screen.getByText('ستون کد_نامشخص با چندین فیلد مقصد مطابقت یکسان دارد.')).toBeInTheDocument();
     });
   });
 });

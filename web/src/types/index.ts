@@ -376,11 +376,57 @@ export interface ImportTargetField {
   aliases: string[];
 }
 
+export type ImportMatchCategory =
+  | 'exact_canonical'
+  | 'exact_alias'
+  | 'normalized_alias'
+  | 'fuzzy_high'
+  | 'ambiguous'
+  | 'conflict'
+  | 'unmapped';
+
 export interface ImportMappingSuggestion {
   source_column: string;
   source_index: number;
   target_field: string | null;
   confidence: number | null;
+  match_category?: ImportMatchCategory;
+  is_ambiguous?: boolean;
+  has_conflict?: boolean;
+  matched_alias?: string | null;
+  candidate_fields?: string[];
+  competing_columns?: string[];
+  reason_fa?: string;
+  reason_en?: string;
+}
+
+export interface ImportMappingConflict {
+  target_field: string;
+  target_label_fa: string;
+  target_label_en: string;
+  competing_columns: string[];
+  dominant_column: string | null;
+  message_fa: string;
+  message_en: string;
+}
+
+export interface ImportMappingAmbiguousHeader {
+  source_column: string;
+  source_index: number;
+  candidate_fields: string[];
+  candidate_labels_fa: string[];
+  confidence: number;
+  message_fa: string;
+  message_en: string;
+}
+
+export interface ImportUnmappedRequiredField {
+  name: string;
+  label_fa: string;
+  label_en: string;
+  type: string;
+  description_fa: string;
+  description_en: string;
 }
 
 export interface ImportMappingResponse {
@@ -397,6 +443,9 @@ export interface ImportMappingResponse {
   headers: string[];
   sample_rows: string[][];
   suggested_mappings: ImportMappingSuggestion[];
+  conflicts?: ImportMappingConflict[];
+  ambiguous_headers?: ImportMappingAmbiguousHeader[];
+  unmapped_required_fields?: ImportUnmappedRequiredField[];
   current_mapping: {
     sheet_index?: number;
     warehouse_id?: string | null;

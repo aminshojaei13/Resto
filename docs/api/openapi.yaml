@@ -1593,6 +1593,97 @@ paths:
       responses:
         '200':
           description: Target schema and suggested column mappings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+                  import_type: { type: string }
+                  status: { type: string }
+                  target_fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        label_fa: { type: string }
+                        label_en: { type: string }
+                        type: { type: string }
+                        required: { type: boolean }
+                        description_fa: { type: string }
+                        description_en: { type: string }
+                        aliases:
+                          type: array
+                          items: { type: string }
+                  headers:
+                    type: array
+                    items: { type: string }
+                  suggested_mappings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        source_column: { type: string }
+                        source_index: { type: integer }
+                        target_field: { type: string, nullable: true }
+                        confidence: { type: number, nullable: true }
+                        match_category:
+                          type: string
+                          enum: [exact_canonical, exact_alias, normalized_alias, fuzzy_high, ambiguous, conflict, unmapped]
+                        is_ambiguous: { type: boolean }
+                        has_conflict: { type: boolean }
+                        matched_alias: { type: string, nullable: true }
+                        candidate_fields:
+                          type: array
+                          items: { type: string }
+                        competing_columns:
+                          type: array
+                          items: { type: string }
+                        reason_fa: { type: string }
+                        reason_en: { type: string }
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        target_field: { type: string }
+                        target_label_fa: { type: string }
+                        target_label_en: { type: string }
+                        competing_columns:
+                          type: array
+                          items: { type: string }
+                        dominant_column: { type: string, nullable: true }
+                        message_fa: { type: string }
+                        message_en: { type: string }
+                  ambiguous_headers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        source_column: { type: string }
+                        source_index: { type: integer }
+                        candidate_fields:
+                          type: array
+                          items: { type: string }
+                        candidate_labels_fa:
+                          type: array
+                          items: { type: string }
+                        confidence: { type: number }
+                        message_fa: { type: string }
+                        message_en: { type: string }
+                  unmapped_required_fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        label_fa: { type: string }
+                        label_en: { type: string }
+                        type: { type: string }
+                        description_fa: { type: string }
+                        description_en: { type: string }
+                  current_mapping: { type: object, nullable: true }
     post:
       summary: Save User Column Mapping Configuration
       tags: [Import Center]

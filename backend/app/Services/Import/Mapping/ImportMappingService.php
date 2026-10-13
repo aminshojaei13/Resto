@@ -8,6 +8,14 @@ use InvalidArgumentException;
 
 class ImportMappingService
 {
+    public const MATCH_EXACT_CANONICAL = 'exact_canonical';
+    public const MATCH_EXACT_ALIAS     = 'exact_alias';
+    public const MATCH_NORMALIZED_ALIAS = 'normalized_alias';
+    public const MATCH_FUZZY_HIGH       = 'fuzzy_high';
+    public const MATCH_AMBIGUOUS        = 'ambiguous';
+    public const MATCH_CONFLICT         = 'conflict';
+    public const MATCH_UNMAPPED         = 'unmapped';
+
     /**
      * Get field definitions for the specified domain.
      *
@@ -35,7 +43,7 @@ class ImportMappingService
                     'description_fa' => 'نام کامل کالا یا محصول (حداکثر ۱۹۱ کاراکتر)',
                     'description_en' => 'Full product or item title (max 191 chars)',
                     'aliases' => [
-                        'نام', 'نام کالا', 'نام محصول', 'عنوان', 'کالا', 'محصول', 'شرح کالا',
+                        'نام', 'نام کالا', 'نام محصول', 'عنوان', 'کالا', 'محصول',
                         'name', 'product name', 'product_name', 'title', 'item name', 'item_name', 'product'
                     ],
                 ],
@@ -201,7 +209,7 @@ class ImportMappingService
                     'description_fa' => 'کد یا شناسه کالا در سیستم (برای تطبیق با کالای از قبل تعریف شده)',
                     'description_en' => 'Product SKU or code to match existing product',
                     'aliases' => [
-                        'کد', 'کد کالا', 'کد محصول', 'شناسه', 'شناسه کالا', 'کد فنی', 'کد انبار',
+                        'کد', 'کد کالا', 'کد محصول', 'شناسه', 'شناسه کالا', 'کد فنی',
                         'sku', 'code', 'product code', 'product_code', 'item code', 'item_code'
                     ],
                 ],
@@ -663,7 +671,7 @@ class ImportMappingService
                     'description_fa' => 'کد، شناسه یا بارکد کالا در کاتالوگ سازمان',
                     'description_en' => 'Product code, SKU or barcode matching tenant catalog',
                     'aliases' => [
-                        'کد کالا', 'بارکد', 'کد محصول', 'شناسه کالا', 'کد فنی', 'کد انبار',
+                        'کد کالا', 'بارکد', 'کد محصول', 'شناسه کالا', 'کد فنی',
                         'sku', 'barcode', 'code', 'product_code', 'product code', 'item_code'
                     ],
                 ],
@@ -831,80 +839,518 @@ class ImportMappingService
 
     /**
      * Generate deterministic mapping suggestions for a list of source headers.
+     * Preserves backward compatibility while providing rich match metadata.
      *
      * @param string[] $sourceHeaders
      * @return array<int, array{
      *     source_column: string,
      *     source_index: int,
      *     target_field: string|null,
-     *     confidence: float|null
+     *     confidence: float|null,
+     *     match_category: string,
+     *     is_ambiguous: bool,
+     *     has_conflict: bool,
+     *     matched_alias: string|null,
+     *     candidate_fields: string[],
+     *     competing_columns: string[],
+     *     reason_fa: string,
+     *     reason_en: string
      * }>
      */
     public function suggestMappings(array $sourceHeaders, string $importType): array
     {
+        return $this->suggestMappingsDetailed($sourceHeaders, $importType)['suggestions'];
+    }
+
+    /**
+     * Generate detailed deterministic mapping suggestions, conflict analysis,
+     * ambiguity detection, and unmapped required fields check.
+     *
+     * @param string[] $sourceHeaders
+     * @return array{
+     *     suggestions: array<int, array{
+     *         source_column: string,
+     *         source_index: int,
+     *         target_field: string|null,
+     *         confidence: float|null,
+     *         match_category: string,
+     *         is_ambiguous: bool,
+     *         has_conflict: bool,
+     *         matched_alias: string|null,
+     *         candidate_fields: string[],
+     *         competing_columns: string[],
+     *         reason_fa: string,
+     *         reason_en: string
+     *     }>,
+     *     conflicts: array<int, array{
+     *         target_field: string,
+     *         target_label_fa: string,
+     *         target_label_en: string,
+     *         competing_columns: string[],
+     *         dominant_column: string|null,
+     *         message_fa: string,
+     *         message_en: string
+     *     }>,
+     *     ambiguous_headers: array<int, array{
+     *         source_column: string,
+     *         source_index: int,
+     *         candidate_fields: string[],
+     *         candidate_labels_fa: string[],
+     *         confidence: float,
+     *         message_fa: string,
+     *         message_en: string
+     *     }>,
+     *     unmapped_required_fields: array<int, array{
+     *         name: string,
+     *         label_fa: string,
+     *         label_en: string,
+     *         type: string,
+     *         description_fa: string,
+     *         description_en: string
+     *     }>
+     * }
+     */
+    public function suggestMappingsDetailed(array $sourceHeaders, string $importType): array
+    {
         $targetFields = $this->getTargetFields($importType);
-        $assignedTargets = [];
-        $suggestions = [];
+
+        // Step 1: Candidate matching per source header
+        $headerCandidates = [];
 
         foreach ($sourceHeaders as $index => $rawHeader) {
-            $normalizedHeader = $this->normalizeString($rawHeader);
-            $bestMatchField = null;
-            $bestConfidence = 0.0;
+            $rawTrimmed = trim((string) $rawHeader);
+            if ($rawTrimmed === '') {
+                $headerCandidates[$index] = [
+                    'source_column' => '',
+                    'source_index' => $index,
+                    'candidates' => [],
+                    'top_candidates' => [],
+                    'is_ambiguous' => false,
+                ];
+                continue;
+            }
 
+            $candidates = [];
             foreach ($targetFields as $fieldName => $def) {
-                // If this field is already assigned, don't assign it again
-                if (in_array($fieldName, $assignedTargets, true)) {
-                    continue;
-                }
-
-                // Check exact field name match
-                if ($normalizedHeader === $this->normalizeString($fieldName)) {
-                    $bestMatchField = $fieldName;
-                    $bestConfidence = 1.0;
-                    break;
-                }
-
-                // Check aliases
-                foreach ($def['aliases'] as $alias) {
-                    $normAlias = $this->normalizeString($alias);
-                    if ($normalizedHeader === $normAlias) {
-                        $bestMatchField = $fieldName;
-                        $bestConfidence = 1.0;
-                        break 2;
-                    }
-
-                    // Substring match with high threshold
-                    if (strlen($normAlias) > 3 && (
-                        str_starts_with($normalizedHeader, $normAlias) ||
-                        str_ends_with($normalizedHeader, $normAlias)
-                    )) {
-                        if ($bestConfidence < 0.8) {
-                            $bestMatchField = $fieldName;
-                            $bestConfidence = 0.8;
-                        }
-                    }
+                $match = $this->matchCandidate($rawTrimmed, $fieldName, $def);
+                if ($match !== null) {
+                    $candidates[] = $match;
                 }
             }
 
-            if ($bestMatchField !== null) {
-                $assignedTargets[] = $bestMatchField;
-                $suggestions[] = [
-                    'source_column' => trim($rawHeader),
-                    'source_index' => $index,
-                    'target_field' => $bestMatchField,
-                    'confidence' => $bestConfidence,
-                ];
-            } else {
-                $suggestions[] = [
-                    'source_column' => trim($rawHeader),
-                    'source_index' => $index,
-                    'target_field' => null,
-                    'confidence' => null,
+            // Sort candidates by score descending
+            usort($candidates, fn ($a, $b) => $b['score'] <=> $a['score']);
+
+            $isAmbiguous = false;
+            $topCandidates = [];
+            if (!empty($candidates)) {
+                $maxScore = $candidates[0]['score'];
+                $topCandidates = array_values(array_filter(
+                    $candidates,
+                    fn ($c) => abs($c['score'] - $maxScore) < 0.001
+                ));
+                if (count($topCandidates) > 1) {
+                    $isAmbiguous = true;
+                }
+            }
+
+            $headerCandidates[$index] = [
+                'source_column' => $rawTrimmed,
+                'source_index' => $index,
+                'candidates' => $candidates,
+                'top_candidates' => $topCandidates,
+                'is_ambiguous' => $isAmbiguous,
+            ];
+        }
+
+        // Step 2: Identify ambiguous headers
+        $ambiguousHeaders = [];
+        foreach ($headerCandidates as $index => $item) {
+            if ($item['is_ambiguous']) {
+                $candNames = array_column($item['top_candidates'], 'target_field');
+                $candLabels = array_map(fn ($f) => $targetFields[$f]['label_fa'], $candNames);
+
+                $ambiguousHeaders[] = [
+                    'source_column' => $item['source_column'],
+                    'source_index' => $item['source_index'],
+                    'candidate_fields' => $candNames,
+                    'candidate_labels_fa' => $candLabels,
+                    'confidence' => $item['top_candidates'][0]['score'],
+                    'message_fa' => "ستون '{$item['source_column']}' با فیلدهای " . implode(' و ', array_map(fn ($l) => "'{$l}'", $candLabels)) . " انطباق یکسان دارد و نیازمند انتخاب دستی است.",
+                    'message_en' => "Column '{$item['source_column']}' matches multiple fields (" . implode(', ', $candNames) . ") with equal confidence.",
                 ];
             }
         }
 
-        return $suggestions;
+        // Step 3: Group unambiguous top candidates by target field to detect competing columns (conflicts)
+        $targetProposals = [];
+        foreach ($headerCandidates as $index => $item) {
+            if (!$item['is_ambiguous'] && !empty($item['top_candidates'])) {
+                $winner = $item['top_candidates'][0];
+                $targetField = $winner['target_field'];
+                $targetProposals[$targetField][] = [
+                    'source_index' => $index,
+                    'source_column' => $item['source_column'],
+                    'match' => $winner,
+                ];
+            }
+        }
+
+        // Step 4: Resolve competition for each target field
+        $finalAssignments = [];
+        $conflicts = [];
+
+        foreach ($targetProposals as $targetField => $proposers) {
+            if (count($proposers) === 1) {
+                // No competition, single column mapped cleanly
+                $p = $proposers[0];
+                $finalAssignments[$p['source_index']] = [
+                    'target_field' => $targetField,
+                    'confidence' => $p['match']['score'],
+                    'match_category' => $p['match']['category'],
+                    'matched_alias' => $p['match']['matched_alias'],
+                    'has_conflict' => false,
+                    'competing_columns' => [],
+                    'reason_fa' => $p['match']['reason_fa'],
+                    'reason_en' => $p['match']['reason_en'],
+                ];
+            } else {
+                // Multiple columns competing for the same target field
+                usort($proposers, fn ($a, $b) => $b['match']['score'] <=> $a['match']['score']);
+                $maxScore = $proposers[0]['match']['score'];
+                $dominantProposers = array_values(array_filter(
+                    $proposers,
+                    fn ($p) => abs($p['match']['score'] - $maxScore) < 0.001
+                ));
+
+                $allColumnNames = array_column($proposers, 'source_column');
+
+                if (count($dominantProposers) > 1) {
+                    // Tie! Neither wins silently; both flagged as conflict and left unmapped
+                    $conflicts[] = [
+                        'target_field' => $targetField,
+                        'target_label_fa' => $targetFields[$targetField]['label_fa'],
+                        'target_label_en' => $targetFields[$targetField]['label_en'],
+                        'competing_columns' => $allColumnNames,
+                        'dominant_column' => null,
+                        'message_fa' => "ستون‌های " . implode(' و ', array_map(fn ($c) => "'{$c}'", $allColumnNames)) . " برای فیلد مقصد '{$targetFields[$targetField]['label_fa']}' با امتیاز یکسان رقابت دارند.",
+                        'message_en' => "Columns " . implode(' and ', $allColumnNames) . " compete for target field '{$targetField}' with equal confidence.",
+                    ];
+
+                    foreach ($proposers as $p) {
+                        $otherCols = array_values(array_diff($allColumnNames, [$p['source_column']]));
+                        $finalAssignments[$p['source_index']] = [
+                            'target_field' => null,
+                            'confidence' => null,
+                            'match_category' => self::MATCH_CONFLICT,
+                            'matched_alias' => $p['match']['matched_alias'],
+                            'has_conflict' => true,
+                            'competing_columns' => $otherCols,
+                            'reason_fa' => "تداخل: این ستون با ستون‌های " . implode(' و ', array_map(fn ($c) => "'{$c}'", $otherCols)) . " برای فیلد '{$targetFields[$targetField]['label_fa']}' رقابت یکسان دارد.",
+                            'reason_en' => "Conflict: this column competes with " . implode(', ', $otherCols) . " for '{$targetField}' with equal confidence.",
+                        ];
+                    }
+                } else {
+                    // One strictly dominates!
+                    $winner = $dominantProposers[0];
+                    $losingColumns = array_values(array_diff($allColumnNames, [$winner['source_column']]));
+
+                    $conflicts[] = [
+                        'target_field' => $targetField,
+                        'target_label_fa' => $targetFields[$targetField]['label_fa'],
+                        'target_label_en' => $targetFields[$targetField]['label_en'],
+                        'competing_columns' => $allColumnNames,
+                        'dominant_column' => $winner['source_column'],
+                        'message_fa' => "ستون '{$winner['source_column']}' به دلیل امتیاز بالاتر نسبت به " . implode(' و ', array_map(fn ($c) => "'{$c}'", $losingColumns)) . " به فیلد مقصد '{$targetFields[$targetField]['label_fa']}' اختصاص یافت.",
+                        'message_en' => "Column '{$winner['source_column']}' was assigned to '{$targetField}' over " . implode(', ', $losingColumns) . " due to higher confidence.",
+                    ];
+
+                    // Winning column is assigned
+                    $finalAssignments[$winner['source_index']] = [
+                        'target_field' => $targetField,
+                        'confidence' => $winner['match']['score'],
+                        'match_category' => $winner['match']['category'],
+                        'matched_alias' => $winner['match']['matched_alias'],
+                        'has_conflict' => false,
+                        'competing_columns' => $losingColumns,
+                        'reason_fa' => $winner['match']['reason_fa'],
+                        'reason_en' => $winner['match']['reason_en'],
+                    ];
+
+                    // Losing columns are unmapped and flagged with conflict
+                    foreach ($proposers as $p) {
+                        if ($p['source_index'] === $winner['source_index']) {
+                            continue;
+                        }
+                        $finalAssignments[$p['source_index']] = [
+                            'target_field' => null,
+                            'confidence' => null,
+                            'match_category' => self::MATCH_CONFLICT,
+                            'matched_alias' => $p['match']['matched_alias'],
+                            'has_conflict' => true,
+                            'competing_columns' => [$winner['source_column']],
+                            'reason_fa' => "ستون منبع دیگری ('{$winner['source_column']}') با اطمینان بالاتر به فیلد '{$targetFields[$targetField]['label_fa']}' اختصاص یافت.",
+                            'reason_en' => "Another source column ('{$winner['source_column']}') with higher confidence was assigned to '{$targetField}'.",
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Step 5: Build final suggestions list preserving original header order
+        $suggestions = [];
+        $assignedTargets = [];
+
+        foreach ($sourceHeaders as $index => $rawHeader) {
+            $rawTrimmed = trim((string) $rawHeader);
+            $candInfo = $headerCandidates[$index];
+
+            if ($candInfo['is_ambiguous']) {
+                $candNames = array_column($candInfo['top_candidates'], 'target_field');
+                $candLabels = array_map(fn ($f) => $targetFields[$f]['label_fa'], $candNames);
+
+                $suggestions[] = [
+                    'source_column' => $rawTrimmed,
+                    'source_index' => $index,
+                    'target_field' => null,
+                    'confidence' => null,
+                    'match_category' => self::MATCH_AMBIGUOUS,
+                    'is_ambiguous' => true,
+                    'has_conflict' => false,
+                    'matched_alias' => null,
+                    'candidate_fields' => $candNames,
+                    'competing_columns' => [],
+                    'reason_fa' => "ستون با چندین فیلد مقصد (" . implode(' و ', array_map(fn ($l) => "'{$l}'", $candLabels)) . ") مطابقت یکسان دارد و به صورت خودکار تعیین نشد.",
+                    'reason_en' => "Column matches multiple target fields (" . implode(', ', $candNames) . ") with equal confidence; left unmapped.",
+                ];
+            } elseif (isset($finalAssignments[$index])) {
+                $assignment = $finalAssignments[$index];
+                if ($assignment['target_field'] !== null) {
+                    $assignedTargets[] = $assignment['target_field'];
+                }
+
+                $suggestions[] = [
+                    'source_column' => $rawTrimmed,
+                    'source_index' => $index,
+                    'target_field' => $assignment['target_field'],
+                    'confidence' => $assignment['confidence'],
+                    'match_category' => $assignment['match_category'],
+                    'is_ambiguous' => false,
+                    'has_conflict' => $assignment['has_conflict'],
+                    'matched_alias' => $assignment['matched_alias'],
+                    'candidate_fields' => !empty($candInfo['candidates']) ? array_column($candInfo['candidates'], 'target_field') : [],
+                    'competing_columns' => $assignment['competing_columns'],
+                    'reason_fa' => $assignment['reason_fa'],
+                    'reason_en' => $assignment['reason_en'],
+                ];
+            } else {
+                // No match at all
+                $suggestions[] = [
+                    'source_column' => $rawTrimmed,
+                    'source_index' => $index,
+                    'target_field' => null,
+                    'confidence' => null,
+                    'match_category' => self::MATCH_UNMAPPED,
+                    'is_ambiguous' => false,
+                    'has_conflict' => false,
+                    'matched_alias' => null,
+                    'candidate_fields' => [],
+                    'competing_columns' => [],
+                    'reason_fa' => "هیچ فیلد مقصدی با اطمینان کافی تطبیق پیدا نکرد.",
+                    'reason_en' => "No matching target field found with sufficient confidence.",
+                ];
+            }
+        }
+
+        // Step 6: Identify unmapped required fields
+        $unmappedRequiredFields = [];
+        foreach ($targetFields as $fieldName => $def) {
+            if ($def['required'] && !in_array($fieldName, $assignedTargets, true)) {
+                $unmappedRequiredFields[] = [
+                    'name' => $fieldName,
+                    'label_fa' => $def['label_fa'],
+                    'label_en' => $def['label_en'],
+                    'type' => $def['type'],
+                    'description_fa' => $def['description_fa'],
+                    'description_en' => $def['description_en'],
+                ];
+            }
+        }
+
+        return [
+            'suggestions' => $suggestions,
+            'conflicts' => $conflicts,
+            'ambiguous_headers' => $ambiguousHeaders,
+            'unmapped_required_fields' => $unmappedRequiredFields,
+        ];
+    }
+
+    /**
+     * Match a single raw header against a target field definition.
+     * Evaluates exact canonical (1.0), exact alias (0.95), normalized (0.90), and fuzzy (0.80).
+     *
+     * @param array{
+     *     name: string,
+     *     label_fa: string,
+     *     label_en: string,
+     *     type: string,
+     *     required: bool,
+     *     description_fa: string,
+     *     description_en: string,
+     *     aliases: string[]
+     * } $targetFieldDef
+     * @return array{
+     *     target_field: string,
+     *     score: float,
+     *     category: string,
+     *     matched_alias: string,
+     *     reason_fa: string,
+     *     reason_en: string
+     * }|null
+     */
+    protected function matchCandidate(string $rawHeader, string $targetFieldName, array $targetFieldDef): ?array
+    {
+        $rawLower = mb_strtolower(trim($rawHeader), 'UTF-8');
+        $normHeader = $this->normalizeString($rawHeader);
+        $compactHeader = $this->stripSeparators($rawHeader);
+
+        // 1. Exact Canonical (score 1.0)
+        if ($rawLower === mb_strtolower($targetFieldName, 'UTF-8')) {
+            return [
+                'target_field' => $targetFieldName,
+                'score' => 1.0,
+                'category' => self::MATCH_EXACT_CANONICAL,
+                'matched_alias' => $targetFieldName,
+                'reason_fa' => "تطبیق قطعی با شناسه فیلد ('{$targetFieldName}')",
+                'reason_en' => "Exact match with canonical field identifier ('{$targetFieldName}')",
+            ];
+        }
+
+        if ($rawLower === mb_strtolower(trim($targetFieldDef['label_fa']), 'UTF-8')) {
+            return [
+                'target_field' => $targetFieldName,
+                'score' => 1.0,
+                'category' => self::MATCH_EXACT_CANONICAL,
+                'matched_alias' => $targetFieldDef['label_fa'],
+                'reason_fa' => "تطبیق قطعی با عنوان رسمی فیلد ('{$targetFieldDef['label_fa']}')",
+                'reason_en' => "Exact match with canonical Persian label ('{$targetFieldDef['label_fa']}')",
+            ];
+        }
+
+        if ($rawLower === mb_strtolower(trim($targetFieldDef['label_en']), 'UTF-8')) {
+            return [
+                'target_field' => $targetFieldName,
+                'score' => 1.0,
+                'category' => self::MATCH_EXACT_CANONICAL,
+                'matched_alias' => $targetFieldDef['label_en'],
+                'reason_fa' => "تطبیق قطعی با عنوان انگلیسی فیلد ('{$targetFieldDef['label_en']}')",
+                'reason_en' => "Exact match with canonical English label ('{$targetFieldDef['label_en']}')",
+            ];
+        }
+
+        // 2. Exact Alias (score 0.95)
+        foreach ($targetFieldDef['aliases'] as $alias) {
+            if ($rawLower === mb_strtolower(trim($alias), 'UTF-8')) {
+                return [
+                    'target_field' => $targetFieldName,
+                    'score' => 0.95,
+                    'category' => self::MATCH_EXACT_ALIAS,
+                    'matched_alias' => $alias,
+                    'reason_fa' => "تطبیق دقیق با عنوان مترادف ('{$alias}')",
+                    'reason_en' => "Exact match with alias ('{$alias}')",
+                ];
+            }
+        }
+
+        // 3. Normalized Match (score 0.90)
+        if ($normHeader === $this->normalizeString($targetFieldName) ||
+            $compactHeader === $this->stripSeparators($targetFieldName)) {
+            return [
+                'target_field' => $targetFieldName,
+                'score' => 0.90,
+                'category' => self::MATCH_NORMALIZED_ALIAS,
+                'matched_alias' => $targetFieldName,
+                'reason_fa' => "تطبیق نرمال‌شده با شناسه فیلد ('{$targetFieldName}')",
+                'reason_en' => "Normalized match with canonical field identifier ('{$targetFieldName}')",
+            ];
+        }
+
+        if ($normHeader === $this->normalizeString($targetFieldDef['label_fa']) ||
+            $compactHeader === $this->stripSeparators($targetFieldDef['label_fa'])) {
+            return [
+                'target_field' => $targetFieldName,
+                'score' => 0.90,
+                'category' => self::MATCH_NORMALIZED_ALIAS,
+                'matched_alias' => $targetFieldDef['label_fa'],
+                'reason_fa' => "تطبیق نرمال‌شده با عنوان رسمی فیلد ('{$targetFieldDef['label_fa']}')",
+                'reason_en' => "Normalized match with canonical label ('{$targetFieldDef['label_fa']}')",
+            ];
+        }
+
+        foreach ($targetFieldDef['aliases'] as $alias) {
+            $normAlias = $this->normalizeString($alias);
+            $compactAlias = $this->stripSeparators($alias);
+
+            if ($normHeader === $normAlias || $compactHeader === $compactAlias) {
+                return [
+                    'target_field' => $targetFieldName,
+                    'score' => 0.90,
+                    'category' => self::MATCH_NORMALIZED_ALIAS,
+                    'matched_alias' => $alias,
+                    'reason_fa' => "تطبیق نرمال‌شده با عنوان مترادف ('{$alias}')",
+                    'reason_en' => "Normalized match with alias ('{$alias}')",
+                ];
+            }
+        }
+
+        // 4. Fuzzy High (score 0.80)
+        $bestFuzzy = null;
+        foreach ($targetFieldDef['aliases'] as $alias) {
+            $normAlias = $this->normalizeString($alias);
+            $aliasLen = mb_strlen($normAlias, 'UTF-8');
+            $headerLen = mb_strlen($normHeader, 'UTF-8');
+
+            if ($aliasLen >= 4 && $headerLen >= 4) {
+                if (str_starts_with($normHeader, $normAlias) || str_ends_with($normHeader, $normAlias)) {
+                    return [
+                        'target_field' => $targetFieldName,
+                        'score' => 0.80,
+                        'category' => self::MATCH_FUZZY_HIGH,
+                        'matched_alias' => $alias,
+                        'reason_fa' => "شباهت متنی بالا با عنوان مترادف ('{$alias}')",
+                        'reason_en' => "High textual similarity with alias ('{$alias}')",
+                    ];
+                }
+
+                similar_text($normHeader, $normAlias, $percent);
+                if ($percent >= 85.0) {
+                    if ($bestFuzzy === null || $percent > $bestFuzzy['percent']) {
+                        $bestFuzzy = [
+                            'percent' => $percent,
+                            'target_field' => $targetFieldName,
+                            'score' => 0.80,
+                            'category' => self::MATCH_FUZZY_HIGH,
+                            'matched_alias' => $alias,
+                            'reason_fa' => "شباهت نوشتاری بالا (" . round($percent) . "٪) با عنوان مترادف ('{$alias}')",
+                            'reason_en' => "High textual similarity (" . round($percent) . "%) with alias ('{$alias}')",
+                        ];
+                    }
+                }
+            }
+        }
+
+        if ($bestFuzzy !== null) {
+            return [
+                'target_field' => $bestFuzzy['target_field'],
+                'score' => $bestFuzzy['score'],
+                'category' => $bestFuzzy['category'],
+                'matched_alias' => $bestFuzzy['matched_alias'],
+                'reason_fa' => $bestFuzzy['reason_fa'],
+                'reason_en' => $bestFuzzy['reason_en'],
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -970,10 +1416,14 @@ class ImportMappingService
     public function normalizeString(string $val): string
     {
         $val = trim($val);
-        // Normalize Persian letters (Arabic Ye -> Persian Ye, etc.)
+
+        // Remove Arabic / Persian diacritics (harakat/erab)
+        $val = preg_replace('/[\x{064B}-\x{065F}\x{0670}]/u', '', $val);
+
+        // Normalize Persian letters (Arabic Ye -> Persian Ye, Kaf -> Persian Kaf, etc.)
         $val = str_replace(
-            ['ي', 'ك', 'ة', 'ئ', 'أ', 'إ', 'آ', "\u{200C}", 'ـ'],
-            ['ی', 'ک', 'ه', 'ی', 'ا', 'ا', 'ا', ' ', ''],
+            ['ي', 'ك', 'ة', 'ئ', 'أ', 'إ', 'آ', 'ٱ', 'ؤ', "\u{200C}", 'ـ'],
+            ['ی', 'ک', 'ه', 'ی', 'ا', 'ا', 'ا', 'ا', 'و', ' ', ''],
             $val
         );
 
@@ -984,12 +1434,21 @@ class ImportMappingService
         $val = str_replace($persianNums, $englishNums, $val);
         $val = str_replace($arabicNums, $englishNums, $val);
 
-        // Replace common punctuation with spaces
-        $val = preg_replace('/[_\-\(\)\[\]\{\}\:\/\#\*\.]+/u', ' ', $val);
+        // Replace common punctuation and symbols with spaces
+        $val = preg_replace('/[_\-\(\)\[\]\{\}\:\/\#\*\.\,\،\\\]+/u', ' ', $val);
 
         // Collapse multiple spaces and lowercase
         $val = preg_replace('/\s+/u', ' ', $val);
 
         return mb_strtolower(trim($val), 'UTF-8');
+    }
+
+    /**
+     * Remove all whitespaces and separators for compact compound matching.
+     */
+    public function stripSeparators(string $val): string
+    {
+        $val = $this->normalizeString($val);
+        return preg_replace('/[\s_\-]+/u', '', $val);
     }
 }

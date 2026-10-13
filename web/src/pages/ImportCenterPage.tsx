@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
 import { FormError, PrimaryButton, SecondaryButton } from '../components/Field';
@@ -10,6 +10,7 @@ import {
   ImportPreviewResponse,
   ImportValidationResultItem,
   ImportTemplateInfo,
+  ImportMatchCategory,
 } from '../types';
 
 interface ImportCenterPageProps {
@@ -64,6 +65,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
   const [wizardStep, setWizardStep] = useState<'mapping' | 'preview' | 'executing' | 'result'>('mapping');
   const [mappingData, setMappingData] = useState<ImportMappingResponse | null>(null);
   const [userFieldMappings, setUserFieldMappings] = useState<Record<string, string>>({});
+  const [confirmedFields, setConfirmedFields] = useState<Record<string, boolean>>({});
   const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
@@ -219,8 +221,12 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
 
         // Populate initial field mappings from suggested mappings or saved mapping
         const initialMap: Record<string, string> = {};
+        const initialConfirmed: Record<string, boolean> = {};
         if (mapRes.current_mapping && mapRes.current_mapping.fields) {
           Object.assign(initialMap, mapRes.current_mapping.fields);
+          Object.keys(mapRes.current_mapping.fields).forEach((f) => {
+            initialConfirmed[f] = true;
+          });
         } else {
           mapRes.suggested_mappings.forEach((sug) => {
             if (sug.target_field) {
@@ -229,6 +235,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
           });
         }
         setUserFieldMappings(initialMap);
+        setConfirmedFields(initialConfirmed);
 
         if (mapRes.current_mapping && mapRes.current_mapping.warehouse_id) {
           setSelectedWarehouseId(mapRes.current_mapping.warehouse_id);
@@ -277,6 +284,7 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
         }
       });
       setUserFieldMappings(newMap);
+      setConfirmedFields({});
     } catch (err: any) {
       setWizardError(err.message);
     } finally {
@@ -334,6 +342,78 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const duplicateSourceColumns = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.values(userFieldMappings).forEach((col) => {
+      if (col && col.trim() !== '') {
+        counts[col] = (counts[col] || 0) + 1;
+      }
+    });
+    return Object.keys(counts).filter((col) => counts[col] > 1);
+  }, [userFieldMappings]);
+
+  const missingRequiredFields = useMemo(() => {
+    if (!mappingData) return [];
+    return mappingData.target_fields.filter(
+      (f) => f.required && (!userFieldMappings[f.name] || userFieldMappings[f.name].trim() === '')
+    );
+  }, [mappingData, userFieldMappings]);
+
+  const getMatchCategoryBadge = (category?: ImportMatchCategory) => {
+    switch (category) {
+      case 'exact_canonical':
+        return {
+          label: isFa ? 'تطبیق قطعی (۱۰۰٪)' : 'Exact Canonical (100%)',
+          bg: isDark ? '#064E3B' : '#ECFDF5',
+          color: '#10B981',
+          border: isDark ? '#047857' : '#A7F3D0',
+        };
+      case 'exact_alias':
+        return {
+          label: isFa ? 'مترادف دقیق (۹۵٪)' : 'Exact Alias (95%)',
+          bg: isDark ? '#164E63' : '#ECFEFF',
+          color: '#06B6D4',
+          border: isDark ? '#0891B2' : '#A5F3FC',
+        };
+      case 'normalized_alias':
+        return {
+          label: isFa ? 'مترادف استاندارد (۹۰٪)' : 'Normalized (90%)',
+          bg: isDark ? '#1E3A8A' : '#EFF6FF',
+          color: '#3B82F6',
+          border: isDark ? '#1D4ED8' : '#BFDBFE',
+        };
+      case 'fuzzy_high':
+        return {
+          label: isFa ? 'شباهت بالا (۸۰٪)' : 'High Similarity (80%)',
+          bg: isDark ? '#78350F' : '#FFFBEB',
+          color: '#F59E0B',
+          border: isDark ? '#B45309' : '#FDE68A',
+        };
+      case 'ambiguous':
+        return {
+          label: isFa ? 'دارای ابهام' : 'Ambiguous',
+          bg: isDark ? '#7F1D1D' : '#FEF2F2',
+          color: '#EF4444',
+          border: isDark ? '#B91C1C' : '#FECACA',
+        };
+      case 'conflict':
+        return {
+          label: isFa ? 'تداخل ستون‌ها' : 'Conflict',
+          bg: isDark ? '#7C2D12' : '#FFF7ED',
+          color: '#EA580C',
+          border: isDark ? '#C2410C' : '#FFEDD5',
+        };
+      case 'unmapped':
+      default:
+        return {
+          label: isFa ? 'بدون انطباق' : 'Unmapped',
+          bg: isDark ? '#374151' : '#F3F4F6',
+          color: theme.colors.textSecondary,
+          border: isDark ? '#4B5563' : '#E5E7EB',
+        };
+    }
   };
 
   return (
@@ -961,11 +1041,161 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   </div>
                 )}
 
-                <div style={{ marginBottom: '16px', fontSize: '14px', color: theme.colors.textSecondary }}>
-                  {isFa
-                    ? 'ستون‌های فایل خود را به فیلدهای متناظر در سیستم متصل نمایید. پیشنهادهای هوشمند بر اساس نام ستون‌ها اعمال شده‌اند.'
-                    : 'Map your spreadsheet columns to Resto fields. Deterministic suggestions have been pre-selected.'}
+                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ fontSize: '14px', color: theme.colors.textSecondary }}>
+                    {isFa
+                      ? 'ستون‌های فایل خود را به فیلدهای متناظر در سیستم متصل نمایید. پیشنهادهای هوشمند بر اساس نام ستون‌ها اعمال شده‌اند.'
+                      : 'Map your spreadsheet columns to Resto fields. Deterministic suggestions have been pre-selected.'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSuggested: Record<string, string> = {};
+                        const allConfirmed: Record<string, boolean> = {};
+                        mappingData.suggested_mappings.forEach((sug) => {
+                          if (sug.target_field) {
+                            allSuggested[sug.target_field] = sug.source_column;
+                            allConfirmed[sug.target_field] = true;
+                          }
+                        });
+                        setUserFieldMappings(allSuggested);
+                        setConfirmedFields(allConfirmed);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${isDark ? '#047857' : '#A7F3D0'}`,
+                        backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                        color: '#10B981',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isFa ? '✓ تایید همه پیشنهادها' : '✓ Accept All Suggestions'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserFieldMappings({});
+                        setConfirmedFields({});
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${theme.colors.border}`,
+                        backgroundColor: isDark ? theme.colors.surfaceElevated : '#F3F4F6',
+                        color: theme.colors.textSecondary,
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isFa ? '✕ پاک کردن همه' : '✕ Clear All'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Duplicate Source Column Assignment Error Banner */}
+                {duplicateSourceColumns.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? '#450A0A' : '#FEF2F2',
+                      border: `1px solid ${isDark ? '#7F1D1D' : '#FCA5A5'}`,
+                      color: isDark ? '#FECACA' : '#991B1B',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>🚫</span>
+                    <div>
+                      <strong>{isFa ? 'خطای انتساب تکراری ستون منبع:' : 'Duplicate Source Column Error:'}</strong>{' '}
+                      {isFa
+                        ? `ستون‌های (${duplicateSourceColumns.join('، ')}) به بیش از یک فیلد مقصد اختصاص یافته‌اند. هر ستون منبع تنها می‌تواند به یک فیلد متصل شود.`
+                        : `Columns (${duplicateSourceColumns.join(', ')}) are assigned to multiple target fields. Each column can only map to one field.`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Required Fields Alert Banner */}
+                {missingRequiredFields.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? '#78350F' : '#FFFBEB',
+                      border: `1px solid ${isDark ? '#B45309' : '#FDE68A'}`,
+                      color: isDark ? '#FDE68A' : '#92400E',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>⚠️</span>
+                    <div>
+                      <strong>{isFa ? 'فیلدهای ضروری متصل نشده:' : 'Unmapped Required Fields:'}</strong>{' '}
+                      {missingRequiredFields.map((f) => (isFa ? f.label_fa : f.label_en)).join('، ')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Conflicts Alert Banner */}
+                {mappingData.conflicts && mappingData.conflicts.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? '#431407' : '#FFF7ED',
+                      border: `1px solid ${isDark ? '#7C2D12' : '#FFEDD5'}`,
+                      color: isDark ? '#FFEDD5' : '#9A3412',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>⚡</span>
+                      {isFa ? 'بررسی رقابت ستون‌ها (تداخل):' : 'Column Competition (Conflicts):'}
+                    </div>
+                    <ul style={{ margin: 0, paddingRight: isFa ? '20px' : 0, paddingLeft: isFa ? 0 : '20px', fontSize: '12px' }}>
+                      {mappingData.conflicts.map((c, i) => (
+                        <li key={i}>{isFa ? c.message_fa : c.message_en}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Ambiguous Headers Alert Banner */}
+                {mappingData.ambiguous_headers && mappingData.ambiguous_headers.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: isDark ? '#312E81' : '#EEF2FF',
+                      border: `1px solid ${isDark ? '#4338CA' : '#C7D2FE'}`,
+                      color: isDark ? '#E0E7FF' : '#3730A3',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>ℹ️</span>
+                      {isFa ? 'ستون‌های دارای ابهام (انتخاب خودکار انجام نشد):' : 'Ambiguous Headers (Left Unmapped):'}
+                    </div>
+                    <ul style={{ margin: 0, paddingRight: isFa ? '20px' : 0, paddingLeft: isFa ? 0 : '20px', fontSize: '12px' }}>
+                      {mappingData.ambiguous_headers.map((a, i) => (
+                        <li key={i}>{isFa ? a.message_fa : a.message_en}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div style={{ border: `1px solid ${theme.colors.border}`, borderRadius: '8px', overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isFa ? 'right' : 'left' }}>
@@ -979,11 +1209,24 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                     <tbody>
                       {mappingData.target_fields.map((field) => {
                         const currentSourceCol = userFieldMappings[field.name] || '';
+                        const isDuplicate = currentSourceCol !== '' && duplicateSourceColumns.includes(currentSourceCol);
+                        const isConfirmed = Boolean(confirmedFields[field.name]);
+
+                        const suggestion = mappingData.suggested_mappings.find(
+                          (s) => s.target_field === field.name || (currentSourceCol && s.source_column === currentSourceCol)
+                        );
+                        const categoryBadge = getMatchCategoryBadge(suggestion?.match_category);
+
                         return (
                           <tr key={field.name} style={{ borderBottom: `1px solid ${theme.colors.border}`, fontSize: '13px' }}>
                             <td style={{ padding: '12px 14px', fontWeight: 600 }}>
-                              {isFa ? field.label_fa : field.label_en}
-                              {field.required && <span style={{ color: '#DC2626', marginRight: '4px' }}>*</span>}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>{isFa ? field.label_fa : field.label_en}</span>
+                                {field.required && <span style={{ color: '#DC2626' }}>*</span>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: theme.colors.textSecondary, fontFamily: 'monospace', marginTop: '2px' }}>
+                                {field.name} ({field.type})
+                              </div>
                             </td>
                             <td style={{ padding: '12px 14px' }}>
                               <select
@@ -994,12 +1237,22 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                                     ...prev,
                                     [field.name]: val,
                                   }));
+                                  setConfirmedFields((prev) => ({
+                                    ...prev,
+                                    [field.name]: true,
+                                  }));
                                 }}
                                 style={{
                                   width: '100%',
                                   padding: '8px 10px',
                                   borderRadius: '6px',
-                                  border: `1px solid ${currentSourceCol ? '#3B82F6' : theme.colors.border}`,
+                                  border: `1px solid ${
+                                    isDuplicate
+                                      ? '#EF4444'
+                                      : currentSourceCol
+                                      ? '#3B82F6'
+                                      : theme.colors.border
+                                  }`,
                                   backgroundColor: isDark ? theme.colors.surfaceElevated : '#FFFFFF',
                                   color: theme.colors.textPrimary,
                                   fontSize: '13px',
@@ -1012,9 +1265,64 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                                   </option>
                                 ))}
                               </select>
+
+                              {/* Inline duplicate error */}
+                              {isDuplicate && (
+                                <div style={{ color: '#EF4444', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                                  {isFa ? '⚠️ این ستون به فیلد دیگری نیز اختصاص یافته است.' : '⚠️ This column is assigned to another field.'}
+                                </div>
+                              )}
+
+                              {/* Smart Match category badge & user confirmation pill */}
+                              {currentSourceCol && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                                  {isConfirmed ? (
+                                    <span
+                                      style={{
+                                        fontSize: '10px',
+                                        padding: '2px 8px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                                        color: '#10B981',
+                                        border: `1px solid ${isDark ? '#047857' : '#A7F3D0'}`,
+                                      }}
+                                    >
+                                      {isFa ? '✓ تایید کاربر' : '✓ User Confirmed'}
+                                    </span>
+                                  ) : (
+                                    <span
+                                      style={{
+                                        fontSize: '10px',
+                                        padding: '2px 8px',
+                                        borderRadius: '12px',
+                                        fontWeight: 600,
+                                        backgroundColor: categoryBadge.bg,
+                                        color: categoryBadge.color,
+                                        border: `1px solid ${categoryBadge.border}`,
+                                      }}
+                                    >
+                                      {categoryBadge.label}
+                                    </span>
+                                  )}
+
+                                  {/* Explanation reason */}
+                                  {suggestion && (
+                                    <span style={{ fontSize: '11px', color: theme.colors.textSecondary }}>
+                                      {isFa ? suggestion.reason_fa : suggestion.reason_en}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '12px 14px', color: theme.colors.textSecondary, fontSize: '12px' }}>
-                              {isFa ? field.description_fa : field.description_en}
+                              <div>{isFa ? field.description_fa : field.description_en}</div>
+                              {field.aliases && field.aliases.length > 0 && (
+                                <div style={{ fontSize: '11px', color: theme.colors.textSecondary, marginTop: '4px', opacity: 0.8 }}>
+                                  <em>{isFa ? 'مترادف‌های شناخته‌شده: ' : 'Known aliases: '}</em>
+                                  {field.aliases.slice(0, 4).join('، ')}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1027,7 +1335,10 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
                   <SecondaryButton onClick={() => setWizardJobId(null)}>
                     {isFa ? 'انصراف' : 'Cancel'}
                   </SecondaryButton>
-                  <PrimaryButton onClick={handleSaveMappingAndValidate} disabled={isWizardLoading}>
+                  <PrimaryButton
+                    onClick={handleSaveMappingAndValidate}
+                    disabled={isWizardLoading || duplicateSourceColumns.length > 0 || missingRequiredFields.length > 0}
+                  >
                     {isWizardLoading
                       ? (isFa ? 'در حال بررسی و اعتبارسنجی...' : 'Validating...')
                       : (isFa ? 'تایید تطبیق و اعتبارسنجی داده‌ها' : 'Save & Run Validation')}

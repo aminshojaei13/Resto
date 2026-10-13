@@ -347,7 +347,7 @@ class ImportJobController extends Controller
         $dataset = $datasets->firstWhere('sheet_index', $sheetIndex) ?? $datasets->first();
 
         $headers = $dataset ? ($dataset->headers ?? []) : [];
-        $suggestions = $this->mappingService->suggestMappings($headers, $job->import_type);
+        $detailedMapping = $this->mappingService->suggestMappingsDetailed($headers, $job->import_type);
 
         $warehouses = [];
         if ($job->import_type === \App\Support\Import\ImportType::INVENTORY || $job->import_type === \App\Support\Import\ImportType::ORDERS || $job->import_type === \App\Support\Import\ImportType::PURCHASES) {
@@ -393,7 +393,10 @@ class ImportJobController extends Controller
             'active_sheet_index' => $dataset ? $dataset->sheet_index : 0,
             'headers' => $headers,
             'sample_rows' => $dataset ? ($dataset->sample_rows ?? []) : [],
-            'suggested_mappings' => $suggestions,
+            'suggested_mappings' => $detailedMapping['suggestions'],
+            'conflicts' => $detailedMapping['conflicts'],
+            'ambiguous_headers' => $detailedMapping['ambiguous_headers'],
+            'unmapped_required_fields' => $detailedMapping['unmapped_required_fields'],
             'current_mapping' => $job->mapping_config,
         ]);
     }
