@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiClient, getCurrentContext } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge } from '../components/StatusBadge';
 import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
@@ -118,10 +119,14 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ language = 'fa' })
       <PageHeader
         title={s.currentStockTitle}
         description={s.currentStockSubtitle}
+        helpSection="inventory"
+        language={language}
         actions={
           <PrimaryButton onClick={() => setIsStockInOpen(true)}>➕ {isFa ? 'افزایش موجودی' : 'Increase stock'}</PrimaryButton>
         }
       />
+
+      <SectionHelp language={language} sectionKey="inventory" />
 
       <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '13px', color: theme.colors.textSecondary }}>{s.warehouse}:</span>

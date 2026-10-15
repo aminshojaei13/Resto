@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../theme/ThemeContext';
+import { useReducedMotion } from '../theme/animations';
 
 interface StatCardProps {
   title: string;
@@ -23,6 +24,9 @@ export const StatCard: React.FC<StatCardProps> = ({
   badgeColor = 'info',
 }) => {
   const { theme } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
+  const [isHovered, setIsHovered] = useState(false);
+
   const getBadgeStyle = () => {
     switch (badgeColor) {
       case 'success':
@@ -40,17 +44,20 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.xl,
         padding: theme.spacing['2xl'],
-        border: `1px solid ${theme.colors.border}`,
-        boxShadow: theme.shadows.card,
+        border: `1px solid ${isHovered && !prefersReducedMotion ? theme.colors.borderStrong : theme.colors.border}`,
+        boxShadow: isHovered && !prefersReducedMotion ? theme.shadows.md : theme.shadows.card,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         position: 'relative',
-        transition: 'all 0.2s ease',
+        transform: isHovered && !prefersReducedMotion ? 'translateY(-2px)' : 'none',
+        transition: prefersReducedMotion ? 'none' : 'transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: theme.spacing.md }}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import { Customer } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { ContextualHelp, SectionHelp } from '../components/HelpSystem';
 
 interface CustomersPageProps {
   language?: 'fa' | 'en';
@@ -76,7 +77,12 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ language = 'fa' })
 
   return (
     <div style={{ fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
-      <h2 style={{ margin: '0 0 16px 0', color: theme.colors.textPrimary }}>{isFa ? 'مدیریت مشتریان و باشگاه مشتریان' : 'Customer Profiles & CRM'}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+        <h2 style={{ margin: 0, color: theme.colors.textPrimary }}>{isFa ? 'مدیریت مشتریان و باشگاه مشتریان' : 'Customer Profiles & CRM'}</h2>
+        <ContextualHelp language={language} section="customers" />
+      </div>
+
+      <SectionHelp language={language} sectionKey="customers" />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
         {customers.map((c) => {

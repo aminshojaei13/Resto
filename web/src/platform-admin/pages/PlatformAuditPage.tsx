@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import { useTheme } from '../../theme/ThemeContext';
+import { ContextualHelp, SectionHelp } from '../../components/HelpSystem';
 
 interface PlatformAuditPageProps {
   language?: 'fa' | 'en';
@@ -32,13 +33,18 @@ export const PlatformAuditPage: React.FC<PlatformAuditPageProps> = ({ language =
   return (
     <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
-          {isFa ? 'دفتر ثبت رویدادهای راهبری (Platform Admin Audit Trail)' : 'Platform Operational Audit Trail'}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
+            {isFa ? 'دفتر ثبت رویدادهای راهبری (Platform Admin Audit Trail)' : 'Platform Operational Audit Trail'}
+          </h2>
+          <ContextualHelp language={language} section="audit" />
+        </div>
         <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '14px' }}>
           {isFa ? 'گزارش غیرقابل تغییر از تمامی اکشن‌های راهبران، ثبت سازمان‌ها و تغییرات سستمی' : 'Immutable audit stream tracking platform administrative actions and security events'}
         </p>
       </div>
+
+      <SectionHelp language={language} sectionKey="audit" />
 
       <div style={{ backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}`, overflow: 'hidden' }}>
         {isLoading ? (

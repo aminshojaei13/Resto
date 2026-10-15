@@ -3,6 +3,7 @@ import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
 import { FormError, PrimaryButton, SecondaryButton } from '../components/Field';
 import { EmptyState } from '../components/EmptyState';
+import { SectionHelp } from '../components/HelpSystem';
 import { useTheme } from '../theme/ThemeContext';
 import {
   ImportJobItem,
@@ -444,7 +445,11 @@ export const ImportCenterPage: React.FC<ImportCenterPageProps> = ({ language = '
             </PrimaryButton>
           </div>
         }
+        helpSection="imports"
+        language={language}
       />
+
+      <SectionHelp language={language} sectionKey="imports" />
 
       {errorMessage && <FormError message={errorMessage} />}
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
+import { HelpButton } from './HelpSystem';
 
 interface PlatformAdminShellProps {
   currentPath: string;
@@ -280,6 +281,7 @@ export const PlatformAdminShell: React.FC<PlatformAdminShellProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? '6px' : theme.spacing.md, flexShrink: 0 }}>
             <ThemeToggle language={language} />
+            <HelpButton language={language} currentSection={currentPath} />
             {!isCompactScreen && (
               <div
                 style={{

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ApiError, apiClient, getCurrentContext } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { FormError, InfoNote, PrimaryButton, SecondaryButton } from '../components/Field';
 import { useTheme } from '../theme/ThemeContext';
 import { messageExamples, opsStrings } from '../i18n/opsStrings';
@@ -245,7 +246,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ language = 'fa' }) =
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
-      <PageHeader title={s.messageTitle} description={s.messageSubtitle} />
+      <PageHeader
+        title={s.messageTitle}
+        description={s.messageSubtitle}
+        helpSection="messages"
+        language={language}
+      />
+
+      <SectionHelp language={language} sectionKey="messages" />
 
       {/* The six steps, always visible so the flow is never a mystery. */}
       <ol

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge, StatusVariant } from '../components/StatusBadge';
 import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
@@ -92,8 +93,12 @@ export const PurchasesPage: React.FC<PurchasesPageProps> = ({ language = 'fa', n
       <PageHeader
         title={s.purchasesTitle}
         description={s.purchasesSubtitle}
+        helpSection="purchases"
+        language={language}
         actions={<PrimaryButton onClick={() => setIsCreateOpen(true)}>➕ {s.newPurchase}</PrimaryButton>}
       />
+
+      <SectionHelp language={language} sectionKey="purchases" />
 
       <FormError message={errorMessage} />
       <FormError message={notice} />

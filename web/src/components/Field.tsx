@@ -114,6 +114,8 @@ export const TextInput: React.FC<TextInputProps> = ({ label, error, hint, requir
           boxSizing: 'border-box',
           backgroundColor: theme.colors.surfaceElevated,
           color: theme.colors.textPrimary,
+          transition: 'border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease',
+          outline: 'none',
           ...rest.style,
         }}
       />
@@ -144,6 +146,8 @@ export const SelectInput: React.FC<SelectInputProps> = ({ label, error, hint, re
           boxSizing: 'border-box',
           backgroundColor: theme.colors.surfaceElevated,
           color: theme.colors.textPrimary,
+          transition: 'border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease',
+          outline: 'none',
           ...rest.style,
         }}
       >
@@ -177,6 +181,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
         overflowY: 'auto',
         zIndex: 1000,
         boxSizing: 'border-box',
+        transition: 'background-color 200ms ease',
       }}
       onClick={onClose}
     >
@@ -195,6 +200,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
           margin: 'auto',
           boxShadow: theme.shadows.lg,
           fontFamily: theme.typography.fontFamily,
+          transition: 'transform 200ms ease, opacity 200ms ease',
         }}
       >
         <div
@@ -210,7 +216,16 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
           <button
             onClick={onClose}
             aria-label="close"
-            style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: theme.colors.textMuted, padding: '4px' }}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: theme.colors.textMuted,
+              padding: '4px',
+              borderRadius: theme.borderRadius.sm,
+              transition: 'color 150ms ease, transform 150ms ease',
+            }}
           >
             ✕
           </button>
@@ -226,13 +241,38 @@ export const ModalShell: React.FC<ModalShellProps> = ({ title, onClose, children
 
 export const PrimaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, disabled, ...rest }) => {
   const { theme } = useTheme();
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [isActive, setIsActive] = React.useState(false);
 
   return (
     <button
       {...rest}
       disabled={disabled}
+      onMouseEnter={(e) => {
+        setIsHovered(true);
+        rest.onMouseEnter?.(e);
+      }}
+      onMouseLeave={(e) => {
+        setIsHovered(false);
+        setIsActive(false);
+        rest.onMouseLeave?.(e);
+      }}
+      onMouseDown={(e) => {
+        setIsActive(true);
+        rest.onMouseDown?.(e);
+      }}
+      onMouseUp={(e) => {
+        setIsActive(false);
+        rest.onMouseUp?.(e);
+      }}
       style={{
-        backgroundColor: disabled ? theme.colors.surfaceHover : theme.colors.primary,
+        backgroundColor: disabled
+          ? theme.colors.surfaceHover
+          : isActive
+          ? theme.colors.primaryPressed
+          : isHovered
+          ? theme.colors.primaryHover
+          : theme.colors.primary,
         color: disabled ? theme.colors.textMuted : theme.colors.primaryTextOnBrand,
         border: 'none',
         borderRadius: theme.borderRadius.md,
@@ -240,6 +280,9 @@ export const PrimaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElemen
         fontWeight: 700,
         fontSize: '14px',
         cursor: disabled ? 'not-allowed' : 'pointer',
+        boxShadow: disabled ? 'none' : isHovered ? theme.shadows.md : theme.shadows.sm,
+        transform: !disabled && isActive ? 'scale(0.98)' : 'none',
+        transition: 'background-color 150ms ease, box-shadow 150ms ease, transform 100ms ease',
         ...rest.style,
       }}
     >
@@ -250,20 +293,45 @@ export const PrimaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const SecondaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, disabled, ...rest }) => {
   const { theme } = useTheme();
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [isActive, setIsActive] = React.useState(false);
 
   return (
     <button
       {...rest}
       disabled={disabled}
+      onMouseEnter={(e) => {
+        setIsHovered(true);
+        rest.onMouseEnter?.(e);
+      }}
+      onMouseLeave={(e) => {
+        setIsHovered(false);
+        setIsActive(false);
+        rest.onMouseLeave?.(e);
+      }}
+      onMouseDown={(e) => {
+        setIsActive(true);
+        rest.onMouseDown?.(e);
+      }}
+      onMouseUp={(e) => {
+        setIsActive(false);
+        rest.onMouseUp?.(e);
+      }}
       style={{
-        backgroundColor: theme.colors.background,
-        color: theme.colors.textPrimary,
-        border: `1px solid ${theme.colors.border}`,
+        backgroundColor: disabled
+          ? theme.colors.surfaceHover
+          : isHovered
+          ? theme.colors.surfaceHover
+          : theme.colors.background,
+        color: disabled ? theme.colors.textMuted : theme.colors.textPrimary,
+        border: `1px solid ${isHovered && !disabled ? theme.colors.borderStrong : theme.colors.border}`,
         borderRadius: theme.borderRadius.md,
         padding: '10px 20px',
         fontWeight: 600,
         fontSize: '14px',
         cursor: disabled ? 'not-allowed' : 'pointer',
+        transform: !disabled && isActive ? 'scale(0.98)' : 'none',
+        transition: 'background-color 150ms ease, border-color 150ms ease, transform 100ms ease',
         ...rest.style,
       }}
     >

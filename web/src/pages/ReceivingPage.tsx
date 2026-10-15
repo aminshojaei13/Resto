@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { EmptyState } from '../components/EmptyState';
 import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput } from '../components/Field';
 import { BusinessWarehouse, Purchase } from '../types';
@@ -58,7 +59,14 @@ export const ReceivingPage: React.FC<ReceivingPageProps> = ({ language = 'fa' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
-      <PageHeader title={s.receivingTitle} description={s.receivingSubtitle} />
+      <PageHeader
+        title={s.receivingTitle}
+        description={s.receivingSubtitle}
+        helpSection="receiving"
+        language={language}
+      />
+
+      <SectionHelp language={language} sectionKey="receiving" />
 
       <FormError message={errorMessage} />
       <FormError message={notice} />

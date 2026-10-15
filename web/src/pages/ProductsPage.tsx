@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { EmptyState } from '../components/EmptyState';
 import { FormError, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
 import { Product, UnitOption } from '../types';
@@ -62,12 +63,16 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ language = 'fa' }) =
             ? 'هر کالا واحد خودش را دارد؛ همان واحد در انبار، خرید و سفارش هم استفاده می‌شود.'
             : 'Each product declares the unit it is counted in; the same unit is used in stock, purchases and orders.'
         }
+        helpSection="products"
+        language={language}
         actions={
           <PrimaryButton onClick={() => { setEditing(null); setIsOpen(true); }}>
             ➕ {isFa ? 'افزودن کالای جدید' : 'Add product'}
           </PrimaryButton>
         }
       />
+
+      <SectionHelp language={language} sectionKey="products" />
 
       {units.length > 0 && (
         <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>

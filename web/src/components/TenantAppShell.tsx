@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
+import { HelpButton } from './HelpSystem';
 
 interface TenantAppShellProps {
   currentPath: string;
@@ -14,6 +15,8 @@ interface TenantAppShellProps {
   /** Display name of the signed-in person, exactly as the server reports it. */
   currentUserName: string;
   onLogout: () => void;
+  onStartTour?: () => void;
+  onRestartTour?: () => void;
   children: React.ReactNode;
 }
 
@@ -33,6 +36,8 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
   onOpenBusinessModal,
   currentUserName,
   onLogout,
+  onStartTour,
+  onRestartTour,
   children,
 }) => {
   const isFa = language === 'fa';
@@ -128,6 +133,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
     >
       {/* Brand / Logo Area */}
       <div
+        data-tour="nav-brand"
         style={{
           padding: theme.spacing['2xl'],
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
@@ -174,7 +180,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       </div>
 
       {/* Business switcher */}
-      <div style={{ padding: theme.spacing.lg }}>
+      <div data-tour="nav-business-switcher" style={{ padding: theme.spacing.lg }}>
         <button
           onClick={onOpenBusinessModal}
           style={{
@@ -205,7 +211,11 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       {/* Grouped Navigation Items */}
       <nav style={{ flex: 1, padding: `${theme.spacing.sm} ${theme.spacing.lg}`, overflowY: 'auto' }}>
         {navGroups.map((group, groupIdx) => (
-          <div key={groupIdx} style={{ marginBottom: theme.spacing.lg }}>
+          <div
+            key={groupIdx}
+            data-tour={groupIdx === 0 ? 'nav-group-sales' : groupIdx === 1 ? 'nav-group-purchasing' : undefined}
+            style={{ marginBottom: theme.spacing.lg }}
+          >
             <div
               style={{
                 fontSize: '11px',
@@ -262,7 +272,7 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
       </nav>
 
       {/* Language Switcher Footer */}
-      <div style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+      <div data-tour="nav-language-switcher" style={{ padding: theme.spacing.lg, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
         <button
           onClick={() => setLanguage(isFa ? 'en' : 'fa')}
           style={{
@@ -363,6 +373,13 @@ export const TenantAppShell: React.FC<TenantAppShellProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: isNarrowScreen ? '6px' : theme.spacing.md, flexShrink: 0 }}>
             <ThemeToggle language={language} />
+
+            <HelpButton
+              language={language}
+              currentSection={currentPath}
+              onStartTour={onStartTour}
+              onRestartTour={onRestartTour}
+            />
 
             {!isNarrowScreen && (
               <button

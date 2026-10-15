@@ -6,6 +6,7 @@ import { opsStrings } from '../i18n/opsStrings';
 import { formatMoney } from '../util/money';
 import { formatPercent, formatPercentFa, quantityWithUnit } from '../util/units';
 import { FormError, PrimaryButton, SelectInput, TextInput } from '../components/Field';
+import { ContextualHelp, SectionHelp } from '../components/HelpSystem';
 
 interface PosPageProps {
   language?: 'fa' | 'en';
@@ -170,7 +171,19 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
   };
 
   return (
-    <div style={{ display: 'flex', gap: theme.spacing.xl, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: theme.colors.textPrimary }}>
+            {isFa ? 'صندوق فروش (POS)' : 'Point of Sale (POS)'}
+          </h1>
+          <ContextualHelp language={language} section="pos" />
+        </div>
+      </div>
+
+      <SectionHelp language={language} sectionKey="pos" />
+
+      <div style={{ display: 'flex', gap: theme.spacing.xl, flexWrap: 'wrap', alignItems: 'flex-start' }}>
       <div style={{ flex: '2 1 280px', minWidth: 'min(100%, 280px)', boxSizing: 'border-box' }}>
         <TextInput
           label={isFa ? 'جستجوی کالا' : 'Search products'}
@@ -345,6 +358,7 @@ export const PosPage: React.FC<PosPageProps> = ({ language = 'fa' }) => {
           </PrimaryButton>
         </div>
       </div>
+    </div>
     </div>
   );
 };

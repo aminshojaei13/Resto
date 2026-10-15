@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import { Organization } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
+import { ContextualHelp, SectionHelp } from '../../components/HelpSystem';
 
 interface PlatformTenantsPageProps {
   language?: 'fa' | 'en';
@@ -64,9 +65,12 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
     <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h2 style={{ margin: '0 0 6px 0', fontSize: '22px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
-            {isFa ? 'مدیریت تننت‌ها و سازمان‌های فعال (Platform Tenants)' : 'Provisioned Tenant Organizations'}
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: theme.colors.textPrimary }}>
+              {isFa ? 'مدیریت تننت‌ها و سازمان‌های فعال (Platform Tenants)' : 'Provisioned Tenant Organizations'}
+            </h2>
+            <ContextualHelp language={language} section="tenants" />
+          </div>
           <p style={{ margin: 0, color: theme.colors.textSecondary, fontSize: '14px' }}>
             {isFa ? 'فهرست تمامی سازمان‌ها، شعب فروشگاه و انبارهای راه‌اندازی‌شده در پلتفرم ابری رستو' : 'Overview of all active tenants, stores, and warehouses provisioned on Resto SaaS'}
           </p>
@@ -91,6 +95,8 @@ export const PlatformTenantsPage: React.FC<PlatformTenantsPageProps> = ({ langua
           ➕ {isFa ? 'ثبت سازمان جدید' : 'New Organization'}
         </button>
       </div>
+
+      <SectionHelp language={language} sectionKey="tenants" />
 
       <div style={{ backgroundColor: theme.colors.surface, borderRadius: '12px', border: `1px solid ${theme.colors.border}`, overflow: 'hidden' }}>
         {isLoading ? (

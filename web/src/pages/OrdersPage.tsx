@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge, StatusVariant } from '../components/StatusBadge';
 import { FormError, ModalShell, PrimaryButton, SecondaryButton } from '../components/Field';
@@ -145,7 +146,14 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ language = 'fa' }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl }}>
-      <PageHeader title={s.ordersTitle} description={s.ordersSubtitle} />
+      <PageHeader
+        title={s.ordersTitle}
+        description={s.ordersSubtitle}
+        helpSection="orders"
+        language={language}
+      />
+
+      <SectionHelp language={language} sectionKey="orders" />
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: theme.spacing.sm, flexWrap: 'wrap' }}>

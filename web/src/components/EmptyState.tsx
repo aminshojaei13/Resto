@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../theme/ThemeContext';
+import { useReducedMotion } from '../theme/animations';
 
 interface EmptyStateProps {
   title: string;
@@ -17,6 +18,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon = '📂',
 }) => {
   const { theme } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
+  const [btnHovered, setBtnHovered] = useState(false);
+
   return (
     <div
       style={{
@@ -32,6 +36,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         justifyContent: 'center',
         maxWidth: '480px',
         margin: `${theme.spacing['3xl']} auto`,
+        transition: prefersReducedMotion ? 'none' : 'box-shadow 200ms ease',
       }}
     >
       <div
@@ -45,6 +50,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: theme.spacing.lg,
+          transition: prefersReducedMotion ? 'none' : 'transform 200ms ease',
         }}
       >
         {icon}
@@ -75,8 +81,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {actionText && onAction && (
         <button
           onClick={onAction}
+          onMouseEnter={() => setBtnHovered(true)}
+          onMouseLeave={() => setBtnHovered(false)}
           style={{
-            backgroundColor: theme.colors.primary,
+            backgroundColor: btnHovered ? theme.colors.primaryHover : theme.colors.primary,
             color: '#FFF',
             border: 'none',
             borderRadius: theme.borderRadius.md,
@@ -84,7 +92,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             fontWeight: 600,
             fontSize: '14px',
             cursor: 'pointer',
-            transition: 'background-color 0.2s ease',
+            transition: prefersReducedMotion ? 'none' : 'background-color 0.2s ease, transform 0.15s ease',
+            transform: btnHovered && !prefersReducedMotion ? 'scale(1.02)' : 'none',
           }}
         >
           {actionText}
@@ -93,3 +102,4 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     </div>
   );
 };
+

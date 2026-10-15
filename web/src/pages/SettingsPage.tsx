@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 import { FormError, InfoNote, PrimaryButton, SecondaryButton, TextInput } from '../components/Field';
 import { BusinessSettings } from '../types';
 import { useTheme } from '../theme/ThemeContext';
@@ -83,7 +84,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ language = 'fa', nav
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xl, maxWidth: 640 }}>
-      <PageHeader title={s.businessSettingsTitle} description={s.businessSettingsSubtitle} />
+      <PageHeader
+        title={s.businessSettingsTitle}
+        description={s.businessSettingsSubtitle}
+        helpSection="settings"
+        language={language}
+      />
+
+      <SectionHelp language={language} sectionKey="settings" />
 
       <FormError message={formError} />
       <FormError message={notice} />

@@ -3,6 +3,7 @@ import { apiClient } from '../api/apiClient';
 import { LedgerEntry } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 import { PageHeader } from '../components/PageHeader';
+import { SectionHelp } from '../components/HelpSystem';
 
 interface AccountingPageProps {
   language?: 'fa' | 'en';
@@ -22,7 +23,11 @@ export const AccountingPage: React.FC<AccountingPageProps> = ({ language = 'fa' 
       <PageHeader
         title={isFa ? 'دفتر کل و اسناد دوطرفه حسابداری' : 'Double-Entry General Ledger'}
         description={isFa ? 'تمام اسناد بدهکار و بستانکار به‌صورت خودکار ثبت می‌شوند' : 'Automatic double-entry posting for every operation'}
+        helpSection="accounting"
+        language={language}
       />
+
+      <SectionHelp language={language} sectionKey="accounting" />
 
       <div
         style={{

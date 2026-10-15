@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import { Supplier } from '../types';
 import { useTheme } from '../theme/ThemeContext';
+import { ContextualHelp, SectionHelp } from '../components/HelpSystem';
 
 interface SuppliersPageProps {
   language?: 'fa' | 'en';
@@ -159,7 +160,10 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
   return (
     <div style={{ padding: '24px', fontFamily: theme.typography.fontFamily, color: theme.colors.textPrimary }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: theme.colors.textPrimary }}>{isFa ? 'مدیریت تامین‌کنندگان' : 'Supplier Management'}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 style={{ margin: 0, color: theme.colors.textPrimary }}>{isFa ? 'مدیریت تامین‌کنندگان' : 'Supplier Management'}</h2>
+          <ContextualHelp language={language} section="suppliers" />
+        </div>
         <button
           onClick={openCreateModal}
           style={{ backgroundColor: theme.colors.primary, color: theme.colors.primaryTextOnBrand, border: 'none', borderRadius: '8px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
@@ -167,6 +171,8 @@ export const SuppliersPage: React.FC<SuppliersPageProps> = ({ language = 'fa' })
           {isFa ? '+ ثبت تامین‌کننده جدید' : '+ Add New Supplier'}
         </button>
       </div>
+
+      <SectionHelp language={language} sectionKey="suppliers" />
 
       {/* Search Input */}
       <input

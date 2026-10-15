@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { OnboardingChecklistCard } from '../components/OnboardingChecklistCard';
 import { OnboardingWelcomeModal } from '../components/OnboardingWelcomeModal';
+import { SectionHelp } from '../components/HelpSystem';
 import { useTheme } from '../theme/ThemeContext';
 
 interface DashboardPageProps {
@@ -98,29 +99,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing['2xl'] }}>
       {/* Top Header Controls */}
-      <PageHeader
-        title={isFa ? 'مرکز مدیریت و عملیات کسب‌وکار' : 'Business Control Center'}
-        description={isFa ? 'مدیریت متمرکز موجودی انبار، سفارش‌های آنلاین و جریان عملیاتی روزانه' : 'Centralized management of inventory, online orders, and daily business operations'}
-      />
+      <div data-tour="dashboard-header">
+        <PageHeader
+          title={isFa ? 'مرکز مدیریت و عملیات کسب‌وکار' : 'Business Control Center'}
+          description={isFa ? 'مدیریت متمرکز موجودی انبار، سفارش‌های آنلاین و جریان عملیاتی روزانه' : 'Centralized management of inventory, online orders, and daily business operations'}
+          helpSection="dashboard"
+          language={language}
+        />
+        <SectionHelp language={language} sectionKey="dashboard" />
+      </div>
 
       {/* Onboarding 4-Step Checklist Card */}
       {!isOnboardingDismissed && (
-        <OnboardingChecklistCard
-          language={language}
-          hasProducts={products.length > 0}
-          hasSuppliers={isSupplierSkipped}
-          isSupplierSkipped={isSupplierSkipped}
-          hasOrders={hasOrders}
-          hasCompletedOrders={hasOrders}
-          onNavigate={handleNav}
-          onSkipSupplier={handleSkipSupplier}
-          onDismiss={handleDismissOnboarding}
-          onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
-        />
+        <div data-tour="dashboard-onboarding">
+          <OnboardingChecklistCard
+            language={language}
+            hasProducts={products.length > 0}
+            hasSuppliers={isSupplierSkipped}
+            isSupplierSkipped={isSupplierSkipped}
+            hasOrders={hasOrders}
+            hasCompletedOrders={hasOrders}
+            onNavigate={handleNav}
+            onSkipSupplier={handleSkipSupplier}
+            onDismiss={handleDismissOnboarding}
+            onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
+          />
+        </div>
       )}
 
       {/* 5 Prioritized Quick Actions Banner */}
       <div
+        data-tour="dashboard-quick-actions"
         style={{
           backgroundColor: theme.colors.surface,
           border: `1px solid ${theme.colors.border}`,
@@ -252,6 +261,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
 
       {/* THREE CORE NEED CARDS */}
       <div
+        data-tour="dashboard-core-needs"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
@@ -538,6 +548,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ language = 'fa', n
 
       {/* General Ledger Recent Activity Stream */}
       <div
+        data-tour="dashboard-transactions"
         style={{
           backgroundColor: theme.colors.surface,
           borderRadius: theme.borderRadius.xl,

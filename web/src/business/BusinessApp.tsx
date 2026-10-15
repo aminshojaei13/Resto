@@ -29,6 +29,7 @@ import { AccountingPage } from '../pages/AccountingPage';
 import { ImportCenterPage } from '../pages/ImportCenterPage';
 import { useTheme } from '../theme/ThemeContext';
 import { Language } from '../i18n/authStrings';
+import { TourProvider, useTourContext, dashboardTour } from '../components/ProductTour';
 
 const BusinessAppRoutes: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname || '/');
@@ -200,28 +201,95 @@ const BusinessAppRoutes: React.FC = () => {
   };
 
   return (
+    <TourProvider language={language}>
+      <SignedInTenantView
+        currentPath={path || '/app/dashboard'}
+        navigate={navigate}
+        language={language}
+        setLanguage={setLanguage}
+        businessName={businessName}
+        storeName={store?.name ?? ''}
+        warehouseName={warehouse?.name ?? ''}
+        onOpenBusinessModal={() => setIsBusinessModalOpen(true)}
+        currentUserName={user.displayName || user.email}
+        onLogout={handleSignOut}
+        isBusinessModalOpen={isBusinessModalOpen}
+        onCloseBusinessModal={() => setIsBusinessModalOpen(false)}
+        onBusinessSelected={() => {
+          setIsBusinessModalOpen(false);
+          setCurrentPath('/app/dashboard');
+        }}
+      >
+        {renderModule()}
+      </SignedInTenantView>
+    </TourProvider>
+  );
+};
+
+const SignedInTenantView: React.FC<{
+  currentPath: string;
+  navigate: (path: string) => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  businessName: string;
+  storeName: string;
+  warehouseName: string;
+  onOpenBusinessModal: () => void;
+  currentUserName: string;
+  onLogout: () => void;
+  children: React.ReactNode;
+  isBusinessModalOpen: boolean;
+  onCloseBusinessModal: () => void;
+  onBusinessSelected: () => void;
+}> = ({
+  currentPath,
+  navigate,
+  language,
+  setLanguage,
+  businessName,
+  storeName,
+  warehouseName,
+  onOpenBusinessModal,
+  currentUserName,
+  onLogout,
+  children,
+  isBusinessModalOpen,
+  onCloseBusinessModal,
+  onBusinessSelected,
+}) => {
+  const { startTour, resetTour } = useTourContext();
+
+  const handleStartTour = useCallback(() => {
+    startTour(dashboardTour);
+  }, [startTour]);
+
+  const handleRestartTour = useCallback(() => {
+    resetTour('dashboard');
+    startTour(dashboardTour);
+  }, [resetTour, startTour]);
+
+  return (
     <TenantAppShell
-      currentPath={path || '/app/dashboard'}
+      currentPath={currentPath}
       navigate={navigate}
       language={language}
       setLanguage={setLanguage}
       activeOrgName={businessName}
-      activeStoreName={store?.name ?? ''}
-      activeWarehouseName={warehouse?.name ?? ''}
-      onOpenBusinessModal={() => setIsBusinessModalOpen(true)}
-      currentUserName={user.displayName || user.email}
-      onLogout={handleSignOut}
+      activeStoreName={storeName}
+      activeWarehouseName={warehouseName}
+      onOpenBusinessModal={onOpenBusinessModal}
+      currentUserName={currentUserName}
+      onLogout={onLogout}
+      onStartTour={handleStartTour}
+      onRestartTour={handleRestartTour}
     >
-      {renderModule()}
+      {children}
 
       {isBusinessModalOpen && (
         <TenantModal
           language={language}
-          onClose={() => setIsBusinessModalOpen(false)}
-          onSelected={() => {
-            setIsBusinessModalOpen(false);
-            setCurrentPath('/app/dashboard');
-          }}
+          onClose={onCloseBusinessModal}
+          onSelected={onBusinessSelected}
         />
       )}
     </TenantAppShell>

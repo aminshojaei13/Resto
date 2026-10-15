@@ -3,6 +3,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { ApiError, apiClient } from '../api/apiClient';
 import { useAuth } from '../auth/AuthContext';
 import { Language, roleLabel, t } from '../i18n/authStrings';
+import { ContextualHelp, SectionHelp } from '../components/HelpSystem';
 import { inputStyle, revealButtonStyle } from './LoginPage';
 import { labelStyle, primaryButton } from './ResetPasswordPage';
 
@@ -103,8 +104,13 @@ export const ProfilePage: React.FC<{ language: Language }> = ({ language }) => {
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto', direction: isFa ? 'rtl' : 'ltr', textAlign: isFa ? 'right' : 'left' }}>
-      <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', color: theme.colors.textPrimary }}>{strings.profileTitle}</h1>
-      <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: theme.colors.textSecondary }}>{strings.profileSubtitle}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <h1 style={{ margin: 0, fontSize: '22px', color: theme.colors.textPrimary }}>{strings.profileTitle}</h1>
+        <ContextualHelp language={language} section="profile" />
+      </div>
+      <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: theme.colors.textSecondary }}>{strings.profileSubtitle}</p>
+
+      <SectionHelp language={language} sectionKey="profile" />
 
       <section style={cardStyle} aria-label={strings.profileTitle}>
         <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', margin: 0, fontSize: '13px' }}>

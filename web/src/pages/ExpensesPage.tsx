@@ -3,6 +3,7 @@ import { ApiError, apiClient } from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { FormError, InfoNote, ModalShell, PrimaryButton, SecondaryButton, SelectInput, TextInput } from '../components/Field';
+import { SectionHelp } from '../components/HelpSystem';
 import { Expense, ExpenseCategory, ExpenseSummary } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 import { opsStrings } from '../i18n/opsStrings';
@@ -84,7 +85,11 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ language = 'fa' }) =
         title={s.expensesTitle}
         description={s.expensesSubtitle}
         actions={<PrimaryButton onClick={() => { setEditing(null); setIsOpen(true); }}>➕ {s.newExpense}</PrimaryButton>}
+        helpSection="expenses"
+        language={language}
       />
+
+      <SectionHelp language={language} sectionKey="expenses" />
 
       <InfoNote>{s.expensesPurpose}</InfoNote>
       <InfoNote>{s.expensesVsPurchase}</InfoNote>

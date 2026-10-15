@@ -3,6 +3,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { ApiError, apiClient } from '../api/apiClient';
 import { useAuth } from '../auth/AuthContext';
 import { Language, roleLabel, t } from '../i18n/authStrings';
+import { ContextualHelp, SectionHelp } from '../components/HelpSystem';
 import { inputStyle } from './LoginPage';
 import { labelStyle } from './ResetPasswordPage';
 
@@ -125,8 +126,13 @@ export const StaffPage: React.FC<{ language: Language }> = ({ language }) => {
 
   return (
     <div style={{ maxWidth: '860px', margin: '0 auto', direction: isFa ? 'rtl' : 'ltr', textAlign: isFa ? 'right' : 'left' }}>
-      <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', color: theme.colors.textPrimary }}>{strings.staffTitle}</h1>
-      <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: theme.colors.textSecondary }}>{strings.staffSubtitle}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <h1 style={{ margin: 0, fontSize: '22px', color: theme.colors.textPrimary }}>{strings.staffTitle}</h1>
+        <ContextualHelp language={language} section="staff" />
+      </div>
+      <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: theme.colors.textSecondary }}>{strings.staffSubtitle}</p>
+
+      <SectionHelp language={language} sectionKey="staff" />
 
       {!canManage && !isLoading && (
         <p style={{ fontSize: '13px', color: theme.colors.textSecondary, marginBottom: '16px' }}>{strings.cannotManageStaff}</p>
