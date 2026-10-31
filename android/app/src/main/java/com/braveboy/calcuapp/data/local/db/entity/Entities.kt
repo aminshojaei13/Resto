@@ -125,7 +125,8 @@ data class ProductEntity(
     val imageUrl: String,
     val unit: String,
     val variants: List<ProductVariant>,
-    val stockQuantityByWarehouse: Map<String, Int>
+    val stockQuantityByWarehouse: Map<String, Int>,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = Product(
         id = id,
@@ -144,7 +145,7 @@ data class ProductEntity(
     )
 }
 
-fun Product.toEntity() = ProductEntity(
+fun Product.toEntity(isSynced: Boolean = true) = ProductEntity(
     id = id,
     orgId = orgId,
     sku = sku,
@@ -157,7 +158,8 @@ fun Product.toEntity() = ProductEntity(
     imageUrl = imageUrl,
     unit = unit,
     variants = variants,
-    stockQuantityByWarehouse = stockQuantityByWarehouse
+    stockQuantityByWarehouse = stockQuantityByWarehouse,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "customers")
@@ -170,7 +172,8 @@ data class CustomerEntity(
     val address: String,
     val totalPurchases: Double,
     val loyaltyPoints: Int,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = Customer(
         id = id,
@@ -185,7 +188,7 @@ data class CustomerEntity(
     )
 }
 
-fun Customer.toEntity() = CustomerEntity(
+fun Customer.toEntity(isSynced: Boolean = true) = CustomerEntity(
     id = id,
     orgId = orgId,
     name = name,
@@ -194,7 +197,8 @@ fun Customer.toEntity() = CustomerEntity(
     address = address,
     totalPurchases = totalPurchases,
     loyaltyPoints = loyaltyPoints,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "suppliers")
@@ -205,7 +209,8 @@ data class SupplierEntity(
     val email: String,
     val phone: String,
     val address: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = Supplier(
         id = id,
@@ -218,14 +223,15 @@ data class SupplierEntity(
     )
 }
 
-fun Supplier.toEntity() = SupplierEntity(
+fun Supplier.toEntity(isSynced: Boolean = true) = SupplierEntity(
     id = id,
     orgId = orgId,
     name = name,
     email = email,
     phone = phone,
     address = address,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "purchases")
@@ -241,7 +247,8 @@ data class PurchaseEntity(
     val totalAmount: Double,
     val status: String,
     val paymentStatus: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = Purchase(
         id = id,
@@ -259,7 +266,7 @@ data class PurchaseEntity(
     )
 }
 
-fun Purchase.toEntity() = PurchaseEntity(
+fun Purchase.toEntity(isSynced: Boolean = true) = PurchaseEntity(
     id = id,
     purchaseNumber = purchaseNumber,
     orgId = orgId,
@@ -271,7 +278,8 @@ fun Purchase.toEntity() = PurchaseEntity(
     totalAmount = totalAmount,
     status = status,
     paymentStatus = paymentStatus,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "expenses")
@@ -285,7 +293,8 @@ data class ExpenseEntity(
     val date: String,
     val notes: String,
     val userId: String?,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = Expense(
         id = id,
@@ -301,7 +310,7 @@ data class ExpenseEntity(
     )
 }
 
-fun Expense.toEntity() = ExpenseEntity(
+fun Expense.toEntity(isSynced: Boolean = true) = ExpenseEntity(
     id = id,
     orgId = orgId,
     storeId = storeId,
@@ -311,7 +320,8 @@ fun Expense.toEntity() = ExpenseEntity(
     date = date,
     notes = notes,
     userId = userId,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "sales_orders")
@@ -332,7 +342,8 @@ data class SalesOrderEntity(
     val paymentStatus: PaymentStatus,
     val fulfillmentStatus: FulfillmentStatus,
     val notes: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val isSynced: Boolean = true
 ) {
     fun toDomain() = SalesOrder(
         id = id,
@@ -355,7 +366,7 @@ data class SalesOrderEntity(
     )
 }
 
-fun SalesOrder.toEntity() = SalesOrderEntity(
+fun SalesOrder.toEntity(isSynced: Boolean = true) = SalesOrderEntity(
     id = id,
     orderNumber = orderNumber,
     orgId = orgId,
@@ -372,7 +383,8 @@ fun SalesOrder.toEntity() = SalesOrderEntity(
     paymentStatus = paymentStatus,
     fulfillmentStatus = fulfillmentStatus,
     notes = notes,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isSynced = isSynced
 )
 
 @Entity(tableName = "ledger_entries")

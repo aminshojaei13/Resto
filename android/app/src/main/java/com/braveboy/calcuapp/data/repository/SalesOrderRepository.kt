@@ -126,7 +126,8 @@ class SalesOrderRepositoryImpl(
         val validCartItems = cartItems.filter { it.productId.isNotBlank() }
         require(validCartItems.isNotEmpty()) { "Cart contains no valid products for checkout" }
 
-        // Sync with remote API (Backend Source of Truth) with Idempotency protection
+        // Sync with remote API with Idempotency protection; fallback gracefully if offline
+        var isSynced = true
         val remoteOrder: OrderDto? = try {
             val response = apiService.checkout(
                 request = CheckoutRequestDto(
@@ -158,12 +159,13 @@ class SalesOrderRepositoryImpl(
             if (response.isSuccessful && response.body() != null) {
                 response.body()
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "خطای ناشناخته در سرور"
-                throw IllegalStateException("خطا در ثبت سفارش در سرور (${response.code()}): $errorMsg")
+                isSynced = false
+                null
             }
         } catch (e: Exception) {
-            // Never silently swallow backend errors
-            throw e
+            // Offline fallback: complete checkout locally and mark unsynced for SyncManager
+            isSynced = false
+            null
         }
 
         val orderCount = salesOrderDao.getOrderCountForOrg(orgId) + 1001
@@ -208,8 +210,8 @@ class SalesOrderRepositoryImpl(
             createdAt = System.currentTimeMillis()
         )
 
-        // Save Order to Room DB
-        salesOrderDao.insertSalesOrder(order.toEntity())
+        // Save Order to Room DB with sync status
+        salesOrderDao.insertSalesOrder(order.toEntity(isSynced = isSynced))
 
         // Decrement product stock in warehouse
         for (item in cartItems) {

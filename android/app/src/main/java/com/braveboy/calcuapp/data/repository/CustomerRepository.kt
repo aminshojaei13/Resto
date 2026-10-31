@@ -66,8 +66,9 @@ class CustomerRepositoryImpl(
     }
 
     override suspend fun addCustomer(customer: Customer) {
+        var isSynced = true
         try {
-            apiService.addCustomer(
+            val response = apiService.addCustomer(
                 CustomerDto(
                     id = customer.id,
                     organizationId = customer.orgId,
@@ -79,15 +80,19 @@ class CustomerRepositoryImpl(
                     loyaltyPoints = customer.loyaltyPoints
                 )
             )
-        } catch (e: Exception) {
-            // Offline fallback
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
+        } catch (_: Exception) {
+            isSynced = false
         }
-        customerDao.insertCustomer(customer.toEntity())
+        customerDao.insertCustomer(customer.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateCustomer(customer: Customer) {
+        var isSynced = true
         try {
-            apiService.updateCustomer(
+            val response = apiService.updateCustomer(
                 id = customer.id,
                 customer = CustomerDto(
                     id = customer.id,
@@ -100,9 +105,12 @@ class CustomerRepositoryImpl(
                     loyaltyPoints = customer.loyaltyPoints
                 )
             )
-        } catch (e: Exception) {
-            // Offline fallback
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
+        } catch (_: Exception) {
+            isSynced = false
         }
-        customerDao.insertCustomer(customer.toEntity())
+        customerDao.insertCustomer(customer.toEntity(isSynced = isSynced))
     }
 }

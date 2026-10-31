@@ -1,5 +1,6 @@
 package com.braveboy.calcuapp.ui.expenses
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,7 +61,7 @@ import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import com.braveboy.calcuapp.util.PersianFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun ExpensesScreen(
     viewModel: ExpensesViewModel,
@@ -106,10 +107,9 @@ fun ExpensesScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

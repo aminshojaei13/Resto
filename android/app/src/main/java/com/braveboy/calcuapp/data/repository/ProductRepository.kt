@@ -162,8 +162,9 @@ class ProductRepositoryImpl(
         }
         val productWithStock = product.copy(stockQuantityByWarehouse = stockMap)
 
+        var isSynced = true
         try {
-            apiService.addProduct(
+            val response = apiService.addProduct(
                 ProductDto(
                     id = productWithStock.id,
                     organizationId = productWithStock.orgId,
@@ -178,9 +179,14 @@ class ProductRepositoryImpl(
                     imageUrl = productWithStock.imageUrl
                 )
             )
-        } catch (_: Exception) {}
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
+        } catch (_: Exception) {
+            isSynced = false
+        }
 
-        productDao.insertProduct(productWithStock.toEntity())
+        productDao.insertProduct(productWithStock.toEntity(isSynced = isSynced))
 
         if (initialStock > 0 && warehouseId.isNotBlank()) {
             val value = initialStock * productWithStock.costPrice
@@ -199,8 +205,9 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun updateProduct(product: Product) {
+        var isSynced = true
         try {
-            apiService.updateProduct(
+            val response = apiService.updateProduct(
                 id = product.id,
                 product = ProductDto(
                     id = product.id,
@@ -216,9 +223,12 @@ class ProductRepositoryImpl(
                     imageUrl = product.imageUrl
                 )
             )
-        } catch (e: Exception) {
-            // Offline fallback - syncs to Room DB
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
+        } catch (_: Exception) {
+            isSynced = false
         }
-        productDao.insertProduct(product.toEntity())
+        productDao.insertProduct(product.toEntity(isSynced = isSynced))
     }
 }

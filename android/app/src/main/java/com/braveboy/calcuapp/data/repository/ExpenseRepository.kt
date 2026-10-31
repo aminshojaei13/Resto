@@ -59,8 +59,9 @@ class ExpenseRepositoryImpl(
     }
 
     override suspend fun addExpense(expense: Expense) {
+        var isSynced = true
         try {
-            apiService.addExpense(
+            val response = apiService.addExpense(
                 ExpenseDto(
                     id = expense.id,
                     organizationId = expense.orgId,
@@ -72,10 +73,13 @@ class ExpenseRepositoryImpl(
                     notes = expense.notes
                 )
             )
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
         } catch (_: Exception) {
-            // Offline fallback
+            isSynced = false
         }
-        expenseDao.insertExpense(expense.toEntity())
+        expenseDao.insertExpense(expense.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateExpense(expense: Expense) {

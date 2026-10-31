@@ -66,6 +66,12 @@ interface ProductDao {
 
     @Query("SELECT * FROM products WHERE orgId = :orgId AND barcode = :barcode LIMIT 1")
     suspend fun getProductByBarcodeDirect(orgId: String, barcode: String): ProductEntity?
+
+    @Query("SELECT * FROM products WHERE isSynced = 0")
+    suspend fun getUnsyncedProducts(): List<ProductEntity>
+
+    @Query("UPDATE products SET isSynced = 1 WHERE id = :id")
+    suspend fun markProductSynced(id: String)
 }
 
 @Dao
@@ -84,6 +90,12 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE id = :id")
     fun getCustomerById(id: String): Flow<CustomerEntity?>
+
+    @Query("SELECT * FROM customers WHERE isSynced = 0")
+    suspend fun getUnsyncedCustomers(): List<CustomerEntity>
+
+    @Query("UPDATE customers SET isSynced = 1 WHERE id = :id")
+    suspend fun markCustomerSynced(id: String)
 }
 
 @Dao
@@ -105,6 +117,12 @@ interface SupplierDao {
 
     @Query("DELETE FROM suppliers WHERE id = :id")
     suspend fun deleteSupplier(id: String)
+
+    @Query("SELECT * FROM suppliers WHERE isSynced = 0")
+    suspend fun getUnsyncedSuppliers(): List<SupplierEntity>
+
+    @Query("UPDATE suppliers SET isSynced = 1 WHERE id = :id")
+    suspend fun markSupplierSynced(id: String)
 }
 
 @Dao
@@ -123,6 +141,12 @@ interface PurchaseDao {
 
     @Query("SELECT * FROM purchases WHERE id = :id")
     suspend fun getPurchaseByIdDirect(id: String): PurchaseEntity?
+
+    @Query("SELECT * FROM purchases WHERE isSynced = 0")
+    suspend fun getUnsyncedPurchases(): List<PurchaseEntity>
+
+    @Query("UPDATE purchases SET isSynced = 1 WHERE id = :id")
+    suspend fun markPurchaseSynced(id: String)
 }
 
 @Dao
@@ -141,6 +165,12 @@ interface ExpenseDao {
 
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun deleteExpense(id: String)
+
+    @Query("SELECT * FROM expenses WHERE isSynced = 0")
+    suspend fun getUnsyncedExpenses(): List<ExpenseEntity>
+
+    @Query("UPDATE expenses SET isSynced = 1 WHERE id = :id")
+    suspend fun markExpenseSynced(id: String)
 }
 
 @Dao
@@ -165,6 +195,15 @@ interface SalesOrderDao {
 
     @Query("SELECT COUNT(*) FROM sales_orders WHERE orgId = :orgId")
     suspend fun getOrderCountForOrg(orgId: String): Int
+
+    @Query("SELECT * FROM sales_orders WHERE isSynced = 0")
+    suspend fun getUnsyncedSalesOrders(): List<SalesOrderEntity>
+
+    @Query("UPDATE sales_orders SET isSynced = 1 WHERE id = :id")
+    suspend fun markSalesOrderSynced(id: String)
+
+    @Query("SELECT COUNT(*) FROM (SELECT id FROM sales_orders WHERE isSynced = 0 UNION ALL SELECT id FROM products WHERE isSynced = 0 UNION ALL SELECT id FROM customers WHERE isSynced = 0 UNION ALL SELECT id FROM expenses WHERE isSynced = 0 UNION ALL SELECT id FROM suppliers WHERE isSynced = 0 UNION ALL SELECT id FROM purchases WHERE isSynced = 0)")
+    fun getTotalUnsyncedCount(): Flow<Int>
 }
 
 @Dao

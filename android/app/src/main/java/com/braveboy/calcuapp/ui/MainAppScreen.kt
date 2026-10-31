@@ -191,64 +191,17 @@ fun MainAppScreen(
         )
     )
 
-    // Primary 4 tabs in bottom navigation
-    val primaryDestinations = listOf(
-        MainDestination.ACCOUNTING,
-        MainDestination.ORDERS,
-        MainDestination.INVENTORY,
-        MainDestination.POS
-    )
-
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    tonalElevation = 3.dp
-                ) {
-                    primaryDestinations.forEach { destination ->
-                        NavigationBarItem(
-                            selected = currentDestination == destination,
-                            onClick = { currentDestination = destination },
-                            icon = {
-                                Icon(
-                                    imageVector = destination.icon,
-                                    contentDescription = if (isPersian) destination.titleFa else destination.title
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = if (isPersian) destination.titleFa else destination.title,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
-                            }
-                        )
-                    }
-
-                    // 5th Item: More / Operations Drawer
-                    val isMoreSelected = !primaryDestinations.contains(currentDestination)
-                    NavigationBarItem(
-                        selected = isMoreSelected,
-                        onClick = { isMoreMenuOpen = true },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Rounded.MoreHoriz,
-                                contentDescription = if (isPersian) "بیشتر" else "More"
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = if (isPersian) "بیشتر" else "More",
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                        }
-                    )
-                }
+                com.braveboy.calcuapp.ui.components.RestoBottomNav(
+                    currentDestination = currentDestination,
+                    onDestinationSelected = { currentDestination = it },
+                    onCenterFabClick = { dashboardViewModel.openRecordEntryDialog() },
+                    onMoreClick = { isMoreMenuOpen = true },
+                    isPersian = isPersian
+                )
             }
         ) { innerPadding ->
             Box(
@@ -302,6 +255,7 @@ fun MainAppScreen(
                         SettingsScreen(
                             tenantRepository = appContainer.tenantRepository,
                             authRepository = appContainer.authRepository,
+                            syncManager = appContainer.syncManager,
                             onOpenTenantSwitcher = { isTenantSwitcherOpen = true }
                         )
                     }

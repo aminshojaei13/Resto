@@ -1,5 +1,6 @@
 package com.braveboy.calcuapp.ui.customer
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,13 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,8 +43,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.braveboy.calcuapp.data.model.Customer
-import com.braveboy.calcuapp.ui.components.RestoBadge
-import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
 import com.braveboy.calcuapp.ui.components.RestoBottomSheet
 import com.braveboy.calcuapp.ui.components.RestoButton
 import com.braveboy.calcuapp.ui.components.RestoButtonVariant
@@ -55,11 +52,10 @@ import com.braveboy.calcuapp.ui.components.RestoEmptyState
 import com.braveboy.calcuapp.ui.components.RestoSearchField
 import com.braveboy.calcuapp.ui.components.RestoTextField
 import com.braveboy.calcuapp.ui.components.RestoTopBar
-import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import com.braveboy.calcuapp.util.PersianFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun CustomerScreen(
     viewModel: CustomerViewModel,
@@ -105,10 +101,9 @@ fun CustomerScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

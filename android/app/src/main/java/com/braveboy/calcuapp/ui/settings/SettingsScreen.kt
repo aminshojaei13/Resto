@@ -38,26 +38,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import com.braveboy.calcuapp.data.model.TenantState
 import com.braveboy.calcuapp.data.repository.AuthRepository
 import com.braveboy.calcuapp.data.repository.TenantRepository
+import com.braveboy.calcuapp.data.sync.SyncManager
+import com.braveboy.calcuapp.data.sync.SyncStatus
 import com.braveboy.calcuapp.ui.components.RestoCard
 import com.braveboy.calcuapp.ui.components.RestoListItem
 import com.braveboy.calcuapp.ui.components.RestoSection
+import android.annotation.SuppressLint
 import com.braveboy.calcuapp.ui.components.RestoTopBar
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import kotlinx.coroutines.launch
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun SettingsScreen(
     tenantRepository: TenantRepository,
     authRepository: AuthRepository,
+    syncManager: SyncManager? = null,
     onOpenTenantSwitcher: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tenantState by tenantRepository.getTenantState().collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
     val scope = rememberCoroutineScope()
+
+    val syncStatus by syncManager?.syncState?.collectAsState() ?: remember { mutableStateOf(SyncStatus.IDLE) }
+    val unsyncedCount by syncManager?.unsyncedCount?.collectAsState(initial = 0) ?: remember { mutableStateOf(0) }
 
     Scaffold(
         topBar = {
@@ -67,10 +81,9 @@ fun SettingsScreen(
             )
         },
         modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
+    ) { _ ->
         LazyColumn(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(RestoSpacing.md),
             contentPadding = PaddingValues(bottom = 80.dp),
@@ -90,6 +103,78 @@ fun SettingsScreen(
                             subtitle = "${if (isPersian) "نقش:" else "Role:"} ${tenantState.userRole}",
                             leadingText = tenantState.userName.ifBlank { "M" }
                         )
+                    }
+                }
+            }
+
+            // Offline & Synchronization Section
+            item {
+                RestoSection(
+                    title = if (isPersian) "همگام‌سازی و دیتابیس آفلاین" else "Offline Sync & Data"
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+                RestoCard {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(RestoSpacing.md)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = when (syncStatus) {
+                                        SyncStatus.SYNCING -> Icons.Rounded.CloudSync
+                                        SyncStatus.OFFLINE -> Icons.Rounded.CloudOff
+                                        SyncStatus.SUCCESS -> Icons.Rounded.CloudDone
+                                        else -> Icons.Rounded.Sync
+                                    },
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.padding(start = RestoSpacing.md))
+                                Column {
+                                    Text(
+                                        text = if (isPersian) "موارد منتظر ارسال به سرور: $unsyncedCount" else "Pending Unsynced Items: $unsyncedCount",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = when (syncStatus) {
+                                            SyncStatus.SYNCING -> if (isPersian) "در حال ارسال اطلاعات..." else "Syncing..."
+                                            SyncStatus.OFFLINE -> if (isPersian) "آفلاین - ثبت محلی انجام می‌شود" else "Offline mode"
+                                            SyncStatus.SUCCESS -> if (isPersian) "همه اطلاعات همگام است" else "All data synced"
+                                            SyncStatus.ERROR -> if (isPersian) "خطا در همگام‌سازی شبکه" else "Sync error"
+                                            SyncStatus.IDLE -> if (isPersian) "سیستم آماده همگام‌سازی" else "Ready to sync"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            if (syncStatus == SyncStatus.SYNCING) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(RestoSpacing.md))
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    syncManager?.triggerSync(tenantState.activeOrgId)
+                                }
+                            },
+                            enabled = syncStatus != SyncStatus.SYNCING,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = if (isPersian) "همگام‌سازی خودکار با سرور" else "Sync Now With Server")
+                        }
                     }
                 }
             }

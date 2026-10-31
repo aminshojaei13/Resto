@@ -127,4 +127,17 @@ class AppContainer(private val context: Context) {
             productDao = database.productDao()
         )
     }
+
+    val syncManager: com.braveboy.calcuapp.data.sync.SyncManager by lazy {
+        com.braveboy.calcuapp.data.sync.SyncManager(
+            database = database,
+            apiService = NetworkModule.apiService,
+            productRepository = productRepository,
+            customerRepository = customerRepository,
+            supplierRepository = supplierRepository,
+            salesOrderRepository = salesOrderRepository,
+            expenseRepository = expenseRepository,
+            purchaseRepository = purchaseRepository
+        )
+    }
 }

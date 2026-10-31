@@ -93,8 +93,9 @@ class PurchaseRepositoryImpl(
             paymentStatus = "UNPAID"
         )
 
+        var isSynced = true
         try {
-            apiService.createPurchase(
+            val response = apiService.createPurchase(
                 payload = mapOf(
                     "store_id" to storeId,
                     "warehouse_id" to warehouseId,
@@ -108,11 +109,14 @@ class PurchaseRepositoryImpl(
                     }
                 )
             )
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
         } catch (_: Exception) {
-            // Offline fallback
+            isSynced = false
         }
 
-        purchaseDao.insertPurchase(purchase.toEntity())
+        purchaseDao.insertPurchase(purchase.toEntity(isSynced = isSynced))
     }
 
     override suspend fun receivePurchase(purchase: Purchase) {

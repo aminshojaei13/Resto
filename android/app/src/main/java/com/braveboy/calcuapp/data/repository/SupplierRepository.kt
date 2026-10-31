@@ -65,8 +65,9 @@ class SupplierRepositoryImpl(
     }
 
     override suspend fun addSupplier(supplier: Supplier) {
+        var isSynced = true
         try {
-            apiService.addSupplier(
+            val response = apiService.addSupplier(
                 SupplierDto(
                     id = supplier.id,
                     organizationId = supplier.orgId,
@@ -76,15 +77,19 @@ class SupplierRepositoryImpl(
                     address = supplier.address
                 )
             )
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
         } catch (_: Exception) {
-            // Offline fallback
+            isSynced = false
         }
-        supplierDao.insertSupplier(supplier.toEntity())
+        supplierDao.insertSupplier(supplier.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateSupplier(supplier: Supplier) {
+        var isSynced = true
         try {
-            apiService.updateSupplier(
+            val response = apiService.updateSupplier(
                 id = supplier.id,
                 supplier = SupplierDto(
                     id = supplier.id,
@@ -95,10 +100,13 @@ class SupplierRepositoryImpl(
                     address = supplier.address
                 )
             )
+            if (!response.isSuccessful) {
+                isSynced = false
+            }
         } catch (_: Exception) {
-            // Offline fallback
+            isSynced = false
         }
-        supplierDao.insertSupplier(supplier.toEntity())
+        supplierDao.insertSupplier(supplier.toEntity(isSynced = isSynced))
     }
 
     override suspend fun deleteSupplier(id: String) {

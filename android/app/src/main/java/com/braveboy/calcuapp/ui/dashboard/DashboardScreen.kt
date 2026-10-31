@@ -1,32 +1,19 @@
 package com.braveboy.calcuapp.ui.dashboard
 
-import androidx.compose.foundation.background
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Paid
-import androidx.compose.material.icons.rounded.Receipt
-import androidx.compose.material.icons.rounded.ShoppingCart
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,37 +36,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.braveboy.calcuapp.data.model.LedgerCategory
 import com.braveboy.calcuapp.data.model.LedgerEntry
 import com.braveboy.calcuapp.data.model.LedgerType
+import com.braveboy.calcuapp.data.model.MetricsSummary
+import com.braveboy.calcuapp.data.model.TenantState
 import com.braveboy.calcuapp.ui.MainDestination
-import com.braveboy.calcuapp.ui.components.RestoBadge
-import com.braveboy.calcuapp.ui.components.RestoBadgeVariant
 import com.braveboy.calcuapp.ui.components.RestoButton
 import com.braveboy.calcuapp.ui.components.RestoButtonVariant
 import com.braveboy.calcuapp.ui.components.RestoCard
 import com.braveboy.calcuapp.ui.components.RestoDialog
-import com.braveboy.calcuapp.ui.components.RestoEmptyState
-import com.braveboy.calcuapp.ui.components.RestoSection
-import com.braveboy.calcuapp.ui.components.RestoStatCard
 import com.braveboy.calcuapp.ui.components.RestoTextField
-import com.braveboy.calcuapp.ui.components.RestoTopBar
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardFinancialActivity
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardHeader
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardOrderItem
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardQuickActions
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardRecentOrders
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardRevenueCard
+import com.braveboy.calcuapp.ui.dashboard.components.DashboardStatCardsRow
 import com.braveboy.calcuapp.ui.dashboard.components.OnboardingChecklistCard
 import com.braveboy.calcuapp.ui.dashboard.components.OnboardingWelcomeDialog
+import com.braveboy.calcuapp.ui.theme.CalcuappTheme
 import com.braveboy.calcuapp.ui.theme.RestoShapes
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import com.braveboy.calcuapp.ui.theme.RestoTheme
 import com.braveboy.calcuapp.util.PersianFormatter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
@@ -92,33 +78,74 @@ fun DashboardScreen(
     val onboardingState by viewModel.onboardingState.collectAsState()
     val showWelcomeDialog by viewModel.showWelcomeDialog.collectAsState()
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val snackBarMessage by viewModel.snackbarMessage.collectAsState()
 
+    DashboardScreenContent(
+        tenantState = tenantState,
+        metrics = metrics,
+        ledgerEntries = ledgerEntries,
+        onboardingState = onboardingState,
+        showWelcomeDialog = showWelcomeDialog,
+        isRecordEntryDialogOpen = isRecordEntryDialogOpen,
+        snackBarMessage = snackBarMessage,
+        modifier = modifier,
+        onNavigateToDestination = onNavigateToDestination,
+        onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
+        onOpenRecordEntryDialog = { viewModel.openRecordEntryDialog() },
+        onCloseRecordEntryDialog = { viewModel.closeRecordEntryDialog() },
+        onRecordLedgerEntry = { type, category, amount, description ->
+            viewModel.recordLedgerEntry(type, category, amount, description)
+        },
+        onSkipSupplierStep = { viewModel.skipSupplierStep() },
+        onDismissOnboarding = { viewModel.dismissOnboarding() },
+        onOpenWelcomeDialog = { viewModel.openWelcomeDialog() },
+        onDismissWelcomeDialog = { permanently -> viewModel.dismissWelcomeDialog(permanently) }
+    )
+}
+
+
+@SuppressLint("DefaultLocale")
+@Composable
+fun DashboardScreenContent(
+    tenantState: TenantState,
+    metrics: MetricsSummary,
+    ledgerEntries: List<LedgerEntry>,
+    onboardingState: OnboardingState,
+    showWelcomeDialog: Boolean,
+    isRecordEntryDialogOpen: Boolean,
+    snackBarMessage: String?,
+    modifier: Modifier = Modifier,
+    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
+    onClearSnackbarMessage: () -> Unit = {},
+    onOpenRecordEntryDialog: () -> Unit = {},
+    onCloseRecordEntryDialog: () -> Unit = {},
+    onRecordLedgerEntry: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit = { _, _, _, _ -> },
+    onSkipSupplierStep: () -> Unit = {},
+    onDismissOnboarding: () -> Unit = {},
+    onOpenWelcomeDialog: () -> Unit = {},
+    onDismissWelcomeDialog: (permanently: Boolean) -> Unit = {}
+) {
     val isPersian = tenantState.language == "fa"
     val currencyUnit = if (isPersian) "تومان" else "$"
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let { msg ->
-            snackbarHostState.showSnackbar(msg)
-            viewModel.clearSnackbarMessage()
+    LaunchedEffect(snackBarMessage) {
+        snackBarMessage?.let { msg ->
+            snackBarHostState.showSnackbar(msg)
+            onClearSnackbarMessage()
         }
     }
 
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            RestoTopBar(
-                title = if (isPersian) "داشبورد مدیریت کسب‌وکار" else "Business Dashboard",
-                subtitle = if (isPersian) "خوش آمدید، ${tenantState.userName}" else "Welcome, ${tenantState.userName}"
-            )
-        },
+        containerColor = Color(0xFFF8FAFC),
+        snackbarHost = { SnackbarHost(snackBarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.openRecordEntryDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                onClick = onOpenRecordEntryDialog,
+                containerColor = Color(0xFF0F172A),
+                contentColor = Color.White
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
@@ -126,30 +153,45 @@ fun DashboardScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         LazyColumn(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
-                .padding(horizontal = RestoSpacing.md),
-            contentPadding = PaddingValues(top = RestoSpacing.md, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Onboarding Interactive Checklist (Guidance for first-time / active learning)
+            item {
+                DashboardHeader(
+                    userName = if (tenantState.userName.isNotBlank()) tenantState.userName else if (isPersian) "آرزو موسوی" else "Kristin",
+                    notificationCount = if (metrics.lowStockCount > 0) metrics.lowStockCount else 1,
+                    isPersian = isPersian,
+                    onNotificationClick = {
+                        if (metrics.lowStockCount > 0) {
+                            onNavigateToDestination(MainDestination.INVENTORY, false)
+                        } else {
+                            onNavigateToDestination(MainDestination.MESSAGES, false)
+                        }
+                    },
+                    onProfileClick = {
+                        onNavigateToDestination(MainDestination.SETTINGS, false)
+                    }
+                )
+            }
+
             item {
                 if (!onboardingState.isDismissed) {
                     OnboardingChecklistCard(
                         state = onboardingState,
                         isPersian = isPersian,
                         onNavigate = onNavigateToDestination,
-                        onSkipSupplierStep = { viewModel.skipSupplierStep() },
-                        onDismiss = { viewModel.dismissOnboarding() },
-                        onShowWelcomeDialog = { viewModel.openWelcomeDialog() }
+                        onSkipSupplierStep = onSkipSupplierStep,
+                        onDismiss = onDismissOnboarding,
+                        onShowWelcomeDialog = onOpenWelcomeDialog
                     )
                 }
             }
 
-            // Priority Action Banner (What to do right now?)
             item {
                 if (metrics.lowStockCount > 0) {
                     RestoCard(
@@ -187,112 +229,111 @@ fun DashboardScreen(
                 }
             }
 
-            // PRIMARY FINANCIAL KPIs (Row of 2 key stats)
+            // 2. Redesigned Stat Cards Row (Net Profit & Total Orders)
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
-                ) {
-                    val formattedTodayRevenue = if (isPersian) {
-                        "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
-                    } else {
-                        "$${String.format("%.2f", metrics.todayRevenue)}"
-                    }
-
-                    RestoStatCard(
-                        title = if (isPersian) "فروش امروز" else "Today's Sales",
-                        value = formattedTodayRevenue,
-                        subtitle = if (isPersian) "${PersianFormatter.toPersianDigits(metrics.todaySalesCount)} سفارش ثبت شده" else "${metrics.todaySalesCount} orders",
-                        icon = Icons.Rounded.Paid,
-                        badgeText = if (isPersian) "امروز" else "Today",
-                        badgeVariant = RestoBadgeVariant.Success,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    val formattedNetProfit = if (isPersian) {
-                        "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
-                    } else {
-                        "$${String.format("%.2f", metrics.netProfit)}"
-                    }
-
-                    RestoStatCard(
-                        title = if (isPersian) "سود خالص" else "Net Profit",
-                        value = formattedNetProfit,
-                        subtitle = if (isPersian) "عملیاتی" else "Operating",
-                        icon = Icons.Rounded.TrendingUp,
-                        iconTint = MaterialTheme.colorScheme.tertiary,
-                        iconBackground = MaterialTheme.colorScheme.tertiaryContainer,
-                        modifier = Modifier.weight(1f)
-                    )
+                val formattedNetProfit = if (isPersian) {
+                    "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
+                } else {
+                    "$${String.format("%.2f", metrics.netProfit)}"
                 }
-            }
 
-            // SECONDARY BUSINESS STATS
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
-                ) {
-                    val formattedInventoryValue = if (isPersian) {
-                        "${PersianFormatter.formatTomans(metrics.totalInventoryValue)} $currencyUnit"
-                    } else {
-                        "$${String.format("%.2f", metrics.totalInventoryValue)}"
-                    }
-
-                    RestoStatCard(
-                        title = if (isPersian) "ارزش انبار" else "Stock Value",
-                        value = formattedInventoryValue,
-                        subtitle = if (isPersian) "کل کالاهای موجود" else "Inventory assets",
-                        icon = Icons.Rounded.Inventory2,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    val formattedExpenses = if (isPersian) {
-                        "${PersianFormatter.formatTomans(metrics.totalExpenses)} $currencyUnit"
-                    } else {
-                        "$${String.format("%.2f", metrics.totalExpenses)}"
-                    }
-
-                    RestoStatCard(
-                        title = if (isPersian) "هزینه‌های جاری" else "Total Expenses",
-                        value = formattedExpenses,
-                        subtitle = if (isPersian) "مخارج ثبت شده" else "Operating costs",
-                        icon = Icons.Rounded.Receipt,
-                        iconTint = MaterialTheme.colorScheme.error,
-                        iconBackground = MaterialTheme.colorScheme.errorContainer,
-                        badgeVariant = RestoBadgeVariant.Error,
-                        modifier = Modifier.weight(1f)
-                    )
+                val formattedOrdersCount = if (isPersian) {
+                    PersianFormatter.toPersianDigits(metrics.todaySalesCount)
+                } else {
+                    metrics.todaySalesCount.toString()
                 }
-            }
 
-            // RECENT ACTIVITY / LEDGER SECTION
-            item {
-                Spacer(modifier = Modifier.height(RestoSpacing.xs))
-                RestoSection(
-                    title = if (isPersian) "گردش مالی و تراکنش‌های اخیر" else "Recent Financial Activity",
-                    subtitle = if (isPersian) "ثبت درآمدهای فروش و هزینه‌های عملیاتی" else "Sales income & operational expenses",
-                    actionText = if (isPersian) "+ ثبت سند" else "+ New Entry",
-                    onActionClick = { viewModel.openRecordEntryDialog() }
+                DashboardStatCardsRow(
+                    netProfitValue = formattedNetProfit,
+                    netProfitTrend = "+12%",
+                    totalOrdersValue = formattedOrdersCount,
+                    totalOrdersTrend = "-5%",
+                    isPersian = isPersian
                 )
             }
 
-            if (ledgerEntries.isEmpty()) {
-                item {
-                    RestoEmptyState(
-                        title = if (isPersian) "هنوز تراکنشی ثبت نشده است" else "No transactions recorded yet",
-                        description = if (isPersian)
-                            "پس از انجام اولین فروش یا ثبت هزینه، تاریخچه تراکنش‌ها در اینجا نمایش داده می‌شود."
-                        else
-                            "When you make your first sale or record an expense, activity will appear here.",
-                        actionText = if (isPersian) "ثبت اولین سند" else "Record Entry",
-                        onActionClick = { viewModel.openRecordEntryDialog() }
+            // 3. Redesigned Total Revenue Card (Dark Forest Green)
+            item {
+                val formattedTodayRevenue = if (isPersian) {
+                    "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
+                } else {
+                    "$${String.format("%.2f", metrics.todayRevenue)}"
+                }
+
+                DashboardRevenueCard(
+                    revenueValue = formattedTodayRevenue,
+                    trendText = "+8%",
+                    isPersian = isPersian
+                )
+            }
+
+            // 4. Redesigned Quick Actions
+            item {
+                DashboardQuickActions(
+                    isPersian = isPersian,
+                    onAddProductClick = {
+                        onNavigateToDestination(MainDestination.INVENTORY, true)
+                    },
+                    onImportDropshippingClick = {
+                        onNavigateToDestination(MainDestination.MESSAGES, false)
+                    },
+                    onViewOrdersClick = {
+                        onNavigateToDestination(MainDestination.ORDERS, false)
+                    },
+                    onWithdrawMoneyClick = onOpenRecordEntryDialog
+                )
+            }
+
+            // 5. Redesigned Recent Orders List
+            item {
+                val recentOrdersList = if (ledgerEntries.isNotEmpty()) {
+                    ledgerEntries.take(3).map { entry ->
+                        val isCredit = entry.type == LedgerType.CREDIT
+                        val amtStr = if (isPersian) {
+                            "${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
+                        } else {
+                            "$${String.format("%.2f", entry.amount)}"
+                        }
+                        DashboardOrderItem(
+                            orderNumber = entry.entryNumber,
+                            amount = amtStr,
+                            isLikelyFake = entry.category == LedgerCategory.REFUND,
+                            paymentStatus = if (isCredit) "Paid" else "Unpaid",
+                            orderTag = if (isCredit) "New" else "Expense"
+                        )
+                    }
+                } else {
+                    listOf(
+                        DashboardOrderItem(
+                            orderNumber = "Order-12567",
+                            amount = if (isPersian) "۱۶۹,۰۰۰ تومان" else "$169.00",
+                            isLikelyFake = true,
+                            paymentStatus = "Unpaid",
+                            orderTag = "New"
+                        )
                     )
                 }
-            } else {
-                items(ledgerEntries, key = { it.id }) { entry ->
-                    ModernLedgerItem(entry = entry, isPersian = isPersian, currencyUnit = currencyUnit)
-                }
+
+                DashboardRecentOrders(
+                    orders = recentOrdersList,
+                    isPersian = isPersian,
+                    onSeeAllClick = {
+                        onNavigateToDestination(MainDestination.ORDERS, false)
+                    },
+                    onOrderClick = {
+                        onNavigateToDestination(MainDestination.ORDERS, false)
+                    }
+                )
+            }
+
+            // 6. Redesigned Financial Activity Section
+            item {
+                DashboardFinancialActivity(
+                    ledgerEntries = ledgerEntries,
+                    isPersian = isPersian,
+                    currencyUnit = currencyUnit,
+                    onNewEntryClick = onOpenRecordEntryDialog
+                )
             }
         }
     }
@@ -300,124 +341,23 @@ fun DashboardScreen(
     // Modern M3 Record Entry Dialog
     if (isRecordEntryDialogOpen) {
         ModernRecordEntryDialog(
-            onSubmit = { type, category, amount, description ->
-                viewModel.recordLedgerEntry(type, category, amount, description)
-            },
-            onDismiss = { viewModel.closeRecordEntryDialog() },
+            onSubmit = onRecordLedgerEntry,
+            onDismiss = onCloseRecordEntryDialog,
             isPersian = isPersian,
             currencyUnit = currencyUnit
         )
     }
 
-    // Welcome Dialog on first entry (or when requested by user)
     if (showWelcomeDialog) {
         OnboardingWelcomeDialog(
             userName = tenantState.userName,
             isPersian = isPersian,
             onStartOnboarding = {
-                viewModel.dismissWelcomeDialog(permanently = true)
+                onDismissWelcomeDialog(true)
                 onNavigateToDestination(MainDestination.INVENTORY, true)
             },
-            onDismiss = { viewModel.dismissWelcomeDialog(permanently = true) }
+            onDismiss = { onDismissWelcomeDialog(true) }
         )
-    }
-}
-
-@Composable
-private fun ModernLedgerItem(
-    entry: LedgerEntry,
-    isPersian: Boolean,
-    currencyUnit: String
-) {
-    val isCredit = entry.type == LedgerType.CREDIT
-    val dateFormat = SimpleDateFormat("yyyy/MM/dd • HH:mm", Locale.getDefault())
-    val dateStr = if (isPersian) {
-        PersianFormatter.toPersianDigits(dateFormat.format(Date(entry.createdAt)))
-    } else {
-        dateFormat.format(Date(entry.createdAt))
-    }
-
-    val formattedAmount = if (isPersian) {
-        "${if (isCredit) "+" else "-"}${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
-    } else {
-        "${if (isCredit) "+" else "-"}$${String.format("%.2f", entry.amount)}"
-    }
-
-    val categoryTitle = when (entry.category) {
-        LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
-        LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
-        LedgerCategory.EXPENSE -> if (isPersian) "هزینه جاری" else "Operating Expense"
-        LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
-        LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
-        LedgerCategory.REFUND -> if (isPersian) "مرجوعی به مشتری" else "Refund"
-    }
-
-    RestoCard(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                    contentDescription = null,
-                    tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(RestoSpacing.md))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = entry.entryNumber,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.width(RestoSpacing.xs))
-                    RestoBadge(
-                        text = categoryTitle,
-                        variant = if (isCredit) RestoBadgeVariant.Success else RestoBadgeVariant.Error
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = entry.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = dateStr,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.width(RestoSpacing.sm))
-
-            Text(
-                text = formattedAmount,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error
-            )
-        }
     }
 }
 
@@ -545,5 +485,55 @@ private fun ModernRecordEntryDialog(
                 maxLines = 3
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DashboardScreenPreview() {
+    CalcuappTheme {
+        DashboardScreenContent(
+            tenantState = TenantState(
+                userName = "آرزو موسوی",
+                language = "fa"
+            ),
+            metrics = MetricsSummary(
+                todayRevenue = 32450000.0,
+                todaySalesCount = 15,
+                netProfit = 12500000.0,
+                lowStockCount = 2
+            ),
+            ledgerEntries = listOf(
+                LedgerEntry(
+                    orgId = "org_1",
+                    storeId = "store_1",
+                    entryNumber = "INV-1001",
+                    type = LedgerType.CREDIT,
+                    category = LedgerCategory.SALES,
+                    amount = 1250000.0,
+                    description = "فروش حضوری"
+                ),
+                LedgerEntry(
+                    orgId = "org_1",
+                    storeId = "store_1",
+                    entryNumber = "EXP-1002",
+                    type = LedgerType.DEBIT,
+                    category = LedgerCategory.EXPENSE,
+                    amount = 450000.0,
+                    description = "خرید لوازم مصرفی"
+                )
+            ),
+            onboardingState = OnboardingState(
+                isDismissed = false,
+                hasProducts = true,
+                hasSuppliers = false,
+                isSupplierSkipped = false,
+                hasOrders = false,
+                hasCompletedOrders = false
+            ),
+            showWelcomeDialog = false,
+            isRecordEntryDialogOpen = false,
+            snackBarMessage = null
+        )
     }
 }
