@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -30,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -58,13 +56,17 @@ import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoStatCard
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
+import com.braveboy.resto.ui.guide.GuidePreferences
+import com.braveboy.resto.ui.guide.ScreenGuideHost
+import com.braveboy.resto.ui.guide.rememberGuideState
+import com.braveboy.resto.ui.guide.spotlightTarget
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(
     viewModel: InventoryViewModel,
+    guidePreferences: GuidePreferences? = null,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
@@ -82,6 +84,8 @@ fun InventoryScreen(
     val currencyUnit = if (isPersian) "تومان" else "$"
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val guideState = rememberGuideState()
+
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -98,146 +102,160 @@ fun InventoryScreen(
         products.map { it.category }.distinct().sorted()
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFFF8FAFC),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            RestoTopBar(
-                title = if (isPersian) "موجودی انبار" else "Inventory",
-                subtitle = if (isPersian) "کنترل انبارها و موجودی کالا" else "Stock levels & catalog",
-                onNavigationClick = onBackClick
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.openAddProductDialog() },
-                containerColor = Color(0xFF0F172A),
-                contentColor = Color.White
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = RestoSpacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color(0xFFF8FAFC),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                RestoTopBar(
+                    title = if (isPersian) "موجودی انبار" else "Inventory",
+                    subtitle = if (isPersian) "کنترل انبارها و موجودی کالا" else "Stock levels & catalog",
+                    onNavigationClick = onBackClick
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { viewModel.openAddProductDialog() },
+                    containerColor = Color(0xFF0F172A),
+                    contentColor = Color.White,
+                    modifier = Modifier.spotlightTarget("inventory_fab", guideState)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = if (isPersian) "ثبت کالا" else "Add Product"
-                    )
-                    Text(
-                        text = if (isPersian) "ثبت کالای جدید" else "Add Product",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(top = innerPadding.calculateTopPadding())
-                .fillMaxSize()
-                .padding(horizontal = RestoSpacing.md)
-        ) {
-            Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-            // STATS ROW
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
-            ) {
-                RestoStatCard(
-                    title = if (isPersian) "تعداد اقلام" else "Total SKUs",
-                    value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
-                    subtitle = if (isPersian) "کالای فعال" else "Active items",
-                    icon = Icons.Rounded.Inventory,
-                    modifier = Modifier.weight(1f)
-                )
-
-                RestoStatCard(
-                    title = if (isPersian) "موجودی کل" else "Total Units",
-                    value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
-                    subtitle = if (isPersian) "عدد در انبارها" else "Units in stock",
-                    icon = Icons.Rounded.Inventory2,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (lowStockCount > 0 || outOfStockCount > 0) {
-                    val alertTotal = lowStockCount + outOfStockCount
-                    RestoStatCard(
-                        title = if (isPersian) "هشدار کسری" else "Low Stock",
-                        value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
-                        subtitle = if (isPersian) "$outOfStockCount ناموجود" else "$outOfStockCount empty",
-                        icon = Icons.Rounded.Warning,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-            // SEARCH
-            RestoSearchField(
-                query = searchQuery,
-                onQueryChange = { viewModel.setSearchQuery(it) },
-                placeholder = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search by name, SKU, barcode..."
-            )
-
-            Spacer(modifier = Modifier.height(RestoSpacing.xs))
-
-            // CATEGORY CHIPS
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    RestoChip(
-                        text = if (isPersian) "همه دسته‌ها" else "All",
-                        selected = selectedCategory == null,
-                        onClick = { viewModel.selectCategory(null) }
-                    )
-                }
-                items(categories) { category ->
-                    RestoChip(
-                        text = category,
-                        selected = selectedCategory == category,
-                        onClick = { viewModel.selectCategory(category) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-            // PRODUCT LIST
-            if (products.isEmpty()) {
-                RestoEmptyState(
-                    title = if (isPersian) "هنوز کالایی ثبت نشده است" else "No products found",
-                    description = if (isPersian)
-                        "برای شروع صدور فاکتور و کنترل موجودی انبار، اولین کالای خود را اضافه کنید."
-                    else
-                        "Add your first product to start inventory tracking and invoicing.",
-                    actionText = if (isPersian) "ثبت اولین کالا" else "Add First Product",
-                    onActionClick = { viewModel.openAddProductDialog() },
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(products, key = { it.id }) { product ->
-                        InventoryItemCard(
-                            product = product,
-                            warehouses = warehouses,
-                            isPersian = isPersian,
-                            currencyUnit = currencyUnit,
-                            onEditProductClick = { viewModel.openEditProduct(product) },
-                            onAdjustStockClick = { viewModel.openStockAdjustment(product) }
+                    Row(
+                        modifier = Modifier.padding(horizontal = RestoSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = if (isPersian) "ثبت کالا" else "Add Product"
+                        )
+                        Text(
+                            text = if (isPersian) "ثبت کالای جدید" else "Add Product",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(top = innerPadding.calculateTopPadding())
+                    .fillMaxSize()
+                    .padding(horizontal = RestoSpacing.md)
+            ) {
+                Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+                // STATS ROW
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .spotlightTarget("inventory_stats", guideState),
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+                ) {
+                    RestoStatCard(
+                        title = if (isPersian) "تعداد اقلام" else "Total SKUs",
+                        value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
+                        subtitle = if (isPersian) "کالای فعال" else "Active items",
+                        icon = Icons.Rounded.Inventory,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    RestoStatCard(
+                        title = if (isPersian) "موجودی کل" else "Total Units",
+                        value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
+                        subtitle = if (isPersian) "عدد در انبارها" else "Units in stock",
+                        icon = Icons.Rounded.Inventory2,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (lowStockCount > 0 || outOfStockCount > 0) {
+                        val alertTotal = lowStockCount + outOfStockCount
+                        RestoStatCard(
+                            title = if (isPersian) "هشدار کسری" else "Low Stock",
+                            value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
+                            subtitle = if (isPersian) "$outOfStockCount ناموجود" else "$outOfStockCount empty",
+                            icon = Icons.Rounded.Warning,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+                // SEARCH
+                RestoSearchField(
+                    query = searchQuery,
+                    onQueryChange = { viewModel.setSearchQuery(it) },
+                    placeholder = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search by name, SKU, barcode...",
+                    modifier = Modifier.spotlightTarget("inventory_search", guideState)
+                )
+
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+
+                // CATEGORY CHIPS
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        RestoChip(
+                            text = if (isPersian) "همه دسته‌ها" else "All",
+                            selected = selectedCategory == null,
+                            onClick = { viewModel.selectCategory(null) }
+                        )
+                    }
+                    items(categories) { category ->
+                        RestoChip(
+                            text = category,
+                            selected = selectedCategory == category,
+                            onClick = { viewModel.selectCategory(category) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+                // PRODUCT LIST
+                if (products.isEmpty()) {
+                    RestoEmptyState(
+                        title = if (isPersian) "هنوز کالایی ثبت نشده است" else "No products found",
+                        description = if (isPersian)
+                            "برای شروع صدور فاکتور و کنترل موجودی انبار، اولین کالای خود را اضافه کنید."
+                        else
+                            "Add your first product to start inventory tracking and invoicing.",
+                        actionText = if (isPersian) "ثبت اولین کالا" else "Add First Product",
+                        onActionClick = { viewModel.openAddProductDialog() },
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(products, key = { it.id }) { product ->
+                            InventoryItemCard(
+                                product = product,
+                                isPersian = isPersian,
+                                currencyUnit = currencyUnit,
+                                onEditProductClick = { viewModel.openEditProduct(product) },
+                                onAdjustStockClick = { viewModel.openStockAdjustment(product) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (guidePreferences != null) {
+            ScreenGuideHost(
+                screenId = "inventory",
+                guideState = guideState,
+                guidePreferences = guidePreferences,
+                isPersian = isPersian
+            )
         }
     }
 
@@ -297,7 +315,6 @@ fun InventoryScreen(
 @Composable
 fun InventoryItemCard(
     product: Product,
-    warehouses: List<Warehouse>,
     isPersian: Boolean,
     currencyUnit: String,
     onEditProductClick: () -> Unit,

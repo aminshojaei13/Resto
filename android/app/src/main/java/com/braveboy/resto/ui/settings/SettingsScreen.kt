@@ -49,6 +49,8 @@ import com.braveboy.resto.data.repository.AuthRepository
 import com.braveboy.resto.data.repository.TenantRepository
 import com.braveboy.resto.data.sync.SyncManager
 import com.braveboy.resto.data.sync.SyncStatus
+import com.braveboy.resto.ui.components.RestoButton
+import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoListItem
 import com.braveboy.resto.ui.components.RestoSection
@@ -63,6 +65,7 @@ fun SettingsScreen(
     tenantRepository: TenantRepository,
     authRepository: AuthRepository,
     syncManager: SyncManager? = null,
+    guidePreferences: com.braveboy.resto.ui.guide.GuidePreferences? = null,
     onOpenTenantSwitcher: () -> Unit,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
@@ -264,8 +267,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
 
-                        // Onboarding Walkthrough toggle
-                        val isOnboardingDismissed by tenantRepository.isOnboardingDismissed.collectAsState(initial = false)
+                        // Interactive Screen Guides Replay Item
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -286,28 +288,26 @@ fun SettingsScreen(
                                 Spacer(modifier = Modifier.padding(start = RestoSpacing.md))
                                 Column {
                                     Text(
-                                        text = if (isPersian) "راهنمای شروع به کار و آموزش" else "Getting Started Guide",
+                                        text = if (isPersian) "راه‌اندازی مجدد راهنماهای تصویری" else "Replay Screen Guides",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        text = if (isPersian) "نمایش کارت چک‌لیست ۴ مرحله‌ای در داشبورد" else "Show 4-step checklist on Dashboard",
+                                        text = if (isPersian) "نمایش مجدد راهنمای تعاملی تمام صفحات" else "Reset and show interactive tours for all screens",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                            Switch(
-                                checked = !isOnboardingDismissed,
-                                onCheckedChange = { show ->
+                            RestoButton(
+                                text = if (isPersian) "راه‌اندازی مجدد" else "Reset",
+                                onClick = {
                                     scope.launch {
-                                        tenantRepository.setOnboardingDismissed(!show)
-                                        if (show) {
-                                            tenantRepository.setSupplierStepSkipped(false)
-                                            tenantRepository.setHasSeenOnboardingDialog(false)
-                                        }
+                                        guidePreferences?.resetAllGuides()
                                     }
-                                }
+                                },
+                                variant = RestoButtonVariant.Outlined,
+                                compact = true
                             )
                         }
                     }

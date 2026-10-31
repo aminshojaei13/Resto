@@ -2,6 +2,7 @@ package com.braveboy.resto.ui.dashboard
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -58,8 +59,11 @@ import com.braveboy.resto.ui.dashboard.components.DashboardQuickActions
 import com.braveboy.resto.ui.dashboard.components.DashboardRecentOrders
 import com.braveboy.resto.ui.dashboard.components.DashboardRevenueCard
 import com.braveboy.resto.ui.dashboard.components.DashboardStatCardsRow
-import com.braveboy.resto.ui.dashboard.components.OnboardingChecklistCard
-import com.braveboy.resto.ui.dashboard.components.OnboardingWelcomeDialog
+import com.braveboy.resto.ui.guide.GuidePreferences
+import com.braveboy.resto.ui.guide.GuideState
+import com.braveboy.resto.ui.guide.ScreenGuideHost
+import com.braveboy.resto.ui.guide.rememberGuideState
+import com.braveboy.resto.ui.guide.spotlightTarget
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
@@ -68,38 +72,46 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    guidePreferences: GuidePreferences,
     modifier: Modifier = Modifier,
-    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> }
+    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
+    isReplayGuideRequested: Boolean = false,
+    onReplayGuideHandled: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val metrics by viewModel.metricsSummary.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
-    val onboardingState by viewModel.onboardingState.collectAsState()
-    val showWelcomeDialog by viewModel.showWelcomeDialog.collectAsState()
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
     val snackBarMessage by viewModel.snackbarMessage.collectAsState()
 
-    DashboardScreenContent(
-        tenantState = tenantState,
-        metrics = metrics,
-        ledgerEntries = ledgerEntries,
-        onboardingState = onboardingState,
-        showWelcomeDialog = showWelcomeDialog,
-        isRecordEntryDialogOpen = isRecordEntryDialogOpen,
-        snackBarMessage = snackBarMessage,
-        modifier = modifier,
-        onNavigateToDestination = onNavigateToDestination,
-        onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
-        onOpenRecordEntryDialog = { viewModel.openRecordEntryDialog() },
-        onCloseRecordEntryDialog = { viewModel.closeRecordEntryDialog() },
-        onRecordLedgerEntry = { type, category, amount, description ->
-            viewModel.recordLedgerEntry(type, category, amount, description)
-        },
-        onSkipSupplierStep = { viewModel.skipSupplierStep() },
-        onDismissOnboarding = { viewModel.dismissOnboarding() },
-        onOpenWelcomeDialog = { viewModel.openWelcomeDialog() },
-        onDismissWelcomeDialog = { permanently -> viewModel.dismissWelcomeDialog(permanently) }
-    )
+    val guideState = rememberGuideState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        DashboardScreenContent(
+            tenantState = tenantState,
+            metrics = metrics,
+            ledgerEntries = ledgerEntries,
+            isRecordEntryDialogOpen = isRecordEntryDialogOpen,
+            snackBarMessage = snackBarMessage,
+            guideState = guideState,
+            onNavigateToDestination = onNavigateToDestination,
+            onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
+            onOpenRecordEntryDialog = { viewModel.openRecordEntryDialog() },
+            onCloseRecordEntryDialog = { viewModel.closeRecordEntryDialog() },
+            onRecordLedgerEntry = { type, category, amount, description ->
+                viewModel.recordLedgerEntry(type, category, amount, description)
+            }
+        )
+
+        ScreenGuideHost(
+            screenId = "dashboard",
+            guideState = guideState,
+            guidePreferences = guidePreferences,
+            isPersian = tenantState.language == "fa",
+            isReplayRequested = isReplayGuideRequested,
+            onReplayHandled = onReplayGuideHandled
+        )
+    }
 }
 
 @SuppressLint("DefaultLocale")
@@ -108,20 +120,15 @@ fun DashboardScreenContent(
     tenantState: TenantState,
     metrics: MetricsSummary,
     ledgerEntries: List<LedgerEntry>,
-    onboardingState: OnboardingState,
-    showWelcomeDialog: Boolean,
     isRecordEntryDialogOpen: Boolean,
     snackBarMessage: String?,
+    guideState: GuideState,
     modifier: Modifier = Modifier,
     onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
     onClearSnackbarMessage: () -> Unit = {},
     onOpenRecordEntryDialog: () -> Unit = {},
     onCloseRecordEntryDialog: () -> Unit = {},
-    onRecordLedgerEntry: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit = { _, _, _, _ -> },
-    onSkipSupplierStep: () -> Unit = {},
-    onDismissOnboarding: () -> Unit = {},
-    onOpenWelcomeDialog: () -> Unit = {},
-    onDismissWelcomeDialog: (permanently: Boolean) -> Unit = {}
+    onRecordLedgerEntry: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit = { _, _, _, _ -> }
 ) {
     val isPersian = tenantState.language == "fa"
     val currencyUnit = if (isPersian) "تومان" else "$"
@@ -173,21 +180,9 @@ fun DashboardScreenContent(
                     },
                     onProfileClick = {
                         onNavigateToDestination(MainDestination.SETTINGS, false)
-                    }
+                    },
+                    modifier = Modifier.spotlightTarget("dashboard_header", guideState)
                 )
-            }
-
-            item {
-                if (!onboardingState.isDismissed) {
-                    OnboardingChecklistCard(
-                        state = onboardingState,
-                        isPersian = isPersian,
-                        onNavigate = onNavigateToDestination,
-                        onSkipSupplierStep = onSkipSupplierStep,
-                        onDismiss = onDismissOnboarding,
-                        onShowWelcomeDialog = onOpenWelcomeDialog
-                    )
-                }
             }
 
             item {
@@ -246,7 +241,8 @@ fun DashboardScreenContent(
                     netProfitTrend = if (metrics.netProfit > 0) "+12%" else "۰٪",
                     totalOrdersValue = formattedOrdersCount,
                     totalOrdersTrend = if (metrics.todaySalesCount > 0) "+5%" else "۰٪",
-                    isPersian = isPersian
+                    isPersian = isPersian,
+                    modifier = Modifier.spotlightTarget("dashboard_stats", guideState)
                 )
             }
 
@@ -261,7 +257,8 @@ fun DashboardScreenContent(
                 DashboardRevenueCard(
                     revenueValue = formattedTodayRevenue,
                     trendText = if (metrics.todayRevenue > 0) "+8%" else "۰٪",
-                    isPersian = isPersian
+                    isPersian = isPersian,
+                    modifier = Modifier.spotlightTarget("dashboard_revenue", guideState)
                 )
             }
 
@@ -278,7 +275,8 @@ fun DashboardScreenContent(
                     onViewOrdersClick = {
                         onNavigateToDestination(MainDestination.ORDERS, false)
                     },
-                    onWithdrawMoneyClick = onOpenRecordEntryDialog
+                    onWithdrawMoneyClick = onOpenRecordEntryDialog,
+                    modifier = Modifier.spotlightTarget("dashboard_actions", guideState)
                 )
             }
 
@@ -322,7 +320,8 @@ fun DashboardScreenContent(
                     ledgerEntries = ledgerEntries,
                     isPersian = isPersian,
                     currencyUnit = currencyUnit,
-                    onNewEntryClick = onOpenRecordEntryDialog
+                    onNewEntryClick = onOpenRecordEntryDialog,
+                    modifier = Modifier.spotlightTarget("dashboard_activity", guideState)
                 )
             }
         }
@@ -335,18 +334,6 @@ fun DashboardScreenContent(
             onDismiss = onCloseRecordEntryDialog,
             isPersian = isPersian,
             currencyUnit = currencyUnit
-        )
-    }
-
-    if (showWelcomeDialog) {
-        OnboardingWelcomeDialog(
-            userName = tenantState.userName,
-            isPersian = isPersian,
-            onStartOnboarding = {
-                onDismissWelcomeDialog(true)
-                onNavigateToDestination(MainDestination.INVENTORY, true)
-            },
-            onDismiss = { onDismissWelcomeDialog(true) }
         )
     }
 }
@@ -494,17 +481,9 @@ fun DashboardScreenPreview() {
                 lowStockCount = 0
             ),
             ledgerEntries = emptyList(),
-            onboardingState = OnboardingState(
-                isDismissed = false,
-                hasProducts = false,
-                hasSuppliers = false,
-                isSupplierSkipped = false,
-                hasOrders = false,
-                hasCompletedOrders = false
-            ),
-            showWelcomeDialog = false,
             isRecordEntryDialogOpen = false,
-            snackBarMessage = null
+            snackBarMessage = null,
+            guideState = rememberGuideState()
         )
     }
 }
