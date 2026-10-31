@@ -73,6 +73,28 @@ class LoginViewModel(
         }
     }
 
+    fun continueOffline() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = authRepository.startOfflineMode()
+            when (result) {
+                is AuthResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isSuccess = true,
+                        errorMessage = null
+                    )
+                }
+                is AuthResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = result.message
+                    )
+                }
+            }
+        }
+    }
+
     class Factory(private val authRepository: AuthRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

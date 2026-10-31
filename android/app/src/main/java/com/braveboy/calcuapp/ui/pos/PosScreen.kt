@@ -63,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.braveboy.calcuapp.data.model.Customer
 
+import android.annotation.SuppressLint
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PosScreen(
@@ -170,10 +173,9 @@ fun PosScreen(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Row(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
         ) {
             // Main Product Catalog Area

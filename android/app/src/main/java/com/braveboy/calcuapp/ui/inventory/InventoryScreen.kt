@@ -131,10 +131,9 @@ fun InventoryScreen(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

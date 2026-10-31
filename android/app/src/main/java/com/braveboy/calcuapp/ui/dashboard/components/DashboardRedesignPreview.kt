@@ -20,7 +20,7 @@ import com.braveboy.calcuapp.ui.theme.CalcuappTheme
 
 @Composable
 fun DashboardRedesignView(
-    userName: String = "آرزو موسوی",
+    userName: String = "ایران علوی",
     notificationCount: Int = 1,
     netProfitValue: String = "۰ تومان",
     netProfitTrend: String = "+12%",

@@ -163,7 +163,7 @@ fun DashboardScreenContent(
         ) {
             item {
                 DashboardHeader(
-                    userName = if (tenantState.userName.isNotBlank()) tenantState.userName else if (isPersian) "آرزو موسوی" else "Kristin",
+                    userName = if (tenantState.userName.isNotBlank()) tenantState.userName else if (isPersian) "ایران علوی" else "Kristin",
                     notificationCount = if (metrics.lowStockCount > 0) metrics.lowStockCount else 1,
                     isPersian = isPersian,
                     onNotificationClick = {
@@ -494,7 +494,7 @@ fun DashboardScreenPreview() {
     CalcuappTheme {
         DashboardScreenContent(
             tenantState = TenantState(
-                userName = "آرزو موسوی",
+                userName = "ایران علوی",
                 language = "fa"
             ),
             metrics = MetricsSummary(

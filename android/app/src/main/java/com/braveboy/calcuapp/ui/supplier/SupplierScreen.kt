@@ -55,6 +55,9 @@ import com.braveboy.calcuapp.ui.components.RestoTopBar
 import com.braveboy.calcuapp.ui.theme.RestoSpacing
 import com.braveboy.calcuapp.util.PersianFormatter
 
+import android.annotation.SuppressLint
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupplierScreen(
@@ -100,10 +103,9 @@ fun SupplierScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

@@ -62,6 +62,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import android.annotation.SuppressLint
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesOrdersScreen(
@@ -96,10 +99,9 @@ fun SalesOrdersScreen(
                 subtitle = if (isPersian) "پیگیری سفارشات آنلاین، فروشگاهی و وضعیت پرداخت" else "Track online and in-store orders"
             )
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

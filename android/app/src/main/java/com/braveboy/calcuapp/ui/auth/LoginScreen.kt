@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -123,7 +124,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(RestoSpacing.xs))
 
                     Text(
-                        text = "برای دسترسی به اطلاعات مالی و انبار، وارد شوید",
+                        text = "مدیریت مالی و انبار به صورت ۱۰۰٪ آفلاین و قابل همگام‌سازی ابری",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -178,7 +179,7 @@ fun LoginScreen(
                             RestoTextField(
                                 value = uiState.email,
                                 onValueChange = { viewModel.onEmailChanged(it) },
-                                label = "ایمیل",
+                                label = "ایمیل (برای همگام‌سازی ابری)",
                                 placeholder = "admin@gmail.com",
                                 leadingIcon = Icons.Rounded.Email,
                                 keyboardOptions = KeyboardOptions(
@@ -224,9 +225,9 @@ fun LoginScreen(
 
                             Spacer(modifier = Modifier.height(RestoSpacing.lg))
 
-                            // Submit Button
+                            // Submit Online Login Button
                             RestoButton(
-                                text = "ورود به حساب کاربری",
+                                text = "ورود به حساب کاربری ابری",
                                 onClick = {
                                     focusManager.clearFocus()
                                     viewModel.login()
@@ -236,13 +237,45 @@ fun LoginScreen(
                                 fullWidth = true,
                                 variant = RestoButtonVariant.Primary
                             )
+
+                            Spacer(modifier = Modifier.height(RestoSpacing.md))
+
+                            // Offline Mode Option
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                HorizontalDivider(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = " یا ",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(horizontal = RestoSpacing.xs)
+                                )
+                                HorizontalDivider(modifier = Modifier.weight(1f))
+                            }
+
+                            Spacer(modifier = Modifier.height(RestoSpacing.md))
+
+                            // Continue Offline Button
+                            RestoButton(
+                                text = "استفاده به صورت آفلاین (بدون اینترنت)",
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    viewModel.continueOffline()
+                                },
+                                isLoading = uiState.isLoading,
+                                enabled = !uiState.isLoading,
+                                fullWidth = true,
+                                variant = RestoButtonVariant.Outlined
+                            )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(RestoSpacing.lg))
 
                     Text(
-                        text = "ارتباط با سرور امن و احراز هویت Sanctum",
+                        text = "پایگاه داده محلی SQLite با قابلیت سنکرون هوشمند Sanctuam",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )

@@ -147,10 +147,9 @@ fun MessagesScreen(
                     )
                 )
             }
-        ) { innerPadding ->
+        ) { _ ->
             Column(
                 modifier = Modifier
-                    .padding(innerPadding)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(RestoSpacing.md),

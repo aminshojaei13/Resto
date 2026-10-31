@@ -66,7 +66,9 @@ object NetworkModule {
 
         // Attach Authorization header if authenticated
         val token = sessionStore?.tokenSnapshot() ?: ""
-        if (token.isNotBlank()) {
+        val isOfflineToken = token == "OFFLINE_SESSION_TOKEN" || token.startsWith("OFFLINE_")
+
+        if (token.isNotBlank() && !isOfflineToken) {
             builder.header("Authorization", "Bearer $token")
         }
 
@@ -81,7 +83,8 @@ object NetworkModule {
         val response: Response = chain.proceed(builder.build())
 
         // Handle 401 Unauthorized: session expired or revoked
-        if (response.code == 401) {
+        // DO NOT invalidate session if operating under local offline mode
+        if (response.code == 401 && !isOfflineToken) {
             onUnauthorizedCallback?.invoke()
         }
 

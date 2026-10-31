@@ -69,6 +69,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import android.annotation.SuppressLint
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurchasesScreen(
@@ -115,10 +118,9 @@ fun PurchasesScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    ) { _ ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

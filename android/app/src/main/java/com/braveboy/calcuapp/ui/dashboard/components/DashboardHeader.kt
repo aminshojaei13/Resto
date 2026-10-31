@@ -152,7 +152,7 @@ fun DashboardHeaderPreview() {
                     .padding(16.dp)
             ) {
                 DashboardHeader(
-                    userName = "آرزو موسوی",
+                    userName = "ایران علوی",
                     notificationCount = 5,
                     isPersian = true
                 )

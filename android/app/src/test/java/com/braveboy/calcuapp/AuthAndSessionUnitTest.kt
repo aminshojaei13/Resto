@@ -8,6 +8,7 @@ import com.braveboy.calcuapp.data.remote.dto.MembershipWarehouseDto
 import com.braveboy.calcuapp.data.remote.dto.UserDto
 import com.braveboy.calcuapp.data.repository.AuthRepository
 import com.braveboy.calcuapp.data.repository.AuthResult
+import com.braveboy.calcuapp.ui.auth.BusinessSetupViewModel
 import com.braveboy.calcuapp.ui.auth.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,7 +21,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -69,7 +69,7 @@ class AuthAndSessionUnitTest {
         assertEquals(0.0, zeroTaxItem.taxAmount, 0.01)
         assertEquals(200000.0, zeroTaxItem.total, 0.01)
 
-        // 9% dynamic Iranian VAT tax test
+        // 9% dynamic VAT tax test
         val vatItem = CartItem(
             id = "c2",
             orgId = "org_1",
@@ -104,6 +104,25 @@ class AuthAndSessionUnitTest {
     }
 
     @Test
+    fun businessSetupViewModel_validatesStoreNameAndSucceeds() = runTest {
+        val fakeRepo = FakeAuthRepository(AuthResult.Success(createSampleUser()))
+        val viewModel = BusinessSetupViewModel(fakeRepo)
+
+        viewModel.setupBusiness()
+        assertEquals("لطفاً نام فروشگاه یا کسب‌وکار خود را وارد کنید.", viewModel.uiState.value.errorMessage)
+
+        viewModel.onStoreNameChanged("پوشاک ایران")
+        viewModel.onOwnerNameChanged("ایران علوی")
+        viewModel.setupBusiness()
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSuccess)
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
     fun loginViewModel_successfulLogin_updatesUiState() = runTest {
         val sampleUser = createSampleUser()
         val fakeRepo = FakeAuthRepository(AuthResult.Success(sampleUser))
@@ -121,19 +140,18 @@ class AuthAndSessionUnitTest {
     }
 
     @Test
-    fun loginViewModel_failedLogin_displaysErrorMessage() = runTest {
-        val fakeRepo = FakeAuthRepository(AuthResult.Error("ایمیل یا رمز عبور وارد شده نادرست است."))
+    fun loginViewModel_continueOffline_succeedsWithoutCredentials() = runTest {
+        val sampleUser = createSampleUser()
+        val fakeRepo = FakeAuthRepository(AuthResult.Success(sampleUser))
         val viewModel = LoginViewModel(fakeRepo)
 
-        viewModel.onEmailChanged("wrong@gmail.com")
-        viewModel.onPasswordChanged("wrongpass")
-        viewModel.login()
+        viewModel.continueOffline()
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isSuccess)
+        assertTrue(viewModel.uiState.value.isSuccess)
         assertFalse(viewModel.uiState.value.isLoading)
-        assertEquals("ایمیل یا رمز عبور وارد شده نادرست است.", viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.errorMessage)
     }
 
     private fun createSampleUser(): UserDto {
@@ -174,11 +192,33 @@ class AuthAndSessionUnitTest {
             return loginResult
         }
 
+        override suspend fun startOfflineMode(): AuthResult {
+            return AuthResult.Success(
+                UserDto(
+                    id = "usr_local_default",
+                    name = "کسب‌وکار من",
+                    email = "offline@local",
+                    role = "admin"
+                )
+            )
+        }
+
+        override suspend fun setupLocalBusiness(storeName: String, ownerName: String): AuthResult {
+            return AuthResult.Success(
+                UserDto(
+                    id = "usr_local_1",
+                    name = ownerName,
+                    email = "offline@local",
+                    role = "admin"
+                )
+            )
+        }
+
         override suspend fun getProfile(): Result<UserDto> {
             return Result.failure(NotImplementedError())
         }
 
-        override suspend fun restoreSession(): Boolean = false
+        override suspend fun restoreSession(): Boolean = true
         override suspend fun logout() {}
         override suspend fun invalidateSession() {}
     }

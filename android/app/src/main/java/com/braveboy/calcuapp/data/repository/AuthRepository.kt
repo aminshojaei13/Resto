@@ -6,10 +6,14 @@ import com.braveboy.calcuapp.data.local.db.AppDatabase
 import com.braveboy.calcuapp.data.remote.CalcuappApiService
 import com.braveboy.calcuapp.data.remote.NetworkModule
 import com.braveboy.calcuapp.data.remote.dto.LoginRequestDto
+import com.braveboy.calcuapp.data.remote.dto.MembershipDto
+import com.braveboy.calcuapp.data.remote.dto.MembershipStoreDto
+import com.braveboy.calcuapp.data.remote.dto.MembershipWarehouseDto
 import com.braveboy.calcuapp.data.remote.dto.UserDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 
 sealed interface AuthResult {
     data class Success(val user: UserDto) : AuthResult
@@ -20,6 +24,8 @@ interface AuthRepository {
     val currentUser: Flow<UserDto?>
     val isSessionValid: Flow<Boolean>
     suspend fun login(email: String, password: String, locale: String = "fa"): AuthResult
+    suspend fun startOfflineMode(): AuthResult
+    suspend fun setupLocalBusiness(storeName: String, ownerName: String): AuthResult
     suspend fun getProfile(): Result<UserDto>
     suspend fun restoreSession(): Boolean
     suspend fun logout()
@@ -58,7 +64,7 @@ class AuthRepositoryImpl(
                 sessionStore.updateCachedToken(token)
                 _currentUser.value = user
 
-                // Clear previous user's local database cache to prevent data leakage (Step 42 & 43)
+                // Clear previous user's local database cache to prevent data leakage
                 database.clearAllTables()
 
                 // Sync memberships to local database & store user info
@@ -66,11 +72,11 @@ class AuthRepositoryImpl(
 
                 // Resolve primary organization, store, and warehouse from memberships
                 val primaryOrg = user.memberships?.firstOrNull()
-                val orgId = primaryOrg?.id ?: ""
+                val orgId = primaryOrg?.id ?: "org_local_default"
                 val primaryStore = primaryOrg?.stores?.firstOrNull()
-                val storeId = primaryStore?.id ?: ""
+                val storeId = primaryStore?.id ?: "store_local_default"
                 val primaryWarehouse = primaryStore?.warehouses?.firstOrNull()
-                val warehouseId = primaryWarehouse?.id ?: ""
+                val warehouseId = primaryWarehouse?.id ?: "wh_local_default"
 
                 // Update tenant context
                 tenantPreferences.setActiveTenant(orgId, storeId, warehouseId)
@@ -87,11 +93,90 @@ class AuthRepositoryImpl(
                 AuthResult.Error(errorMsg)
             }
         } catch (e: Exception) {
-            AuthResult.Error("خطا در اتصال به سرور. لطفاً اینترنت خود را بررسی کنید.")
+            AuthResult.Error("خطا در اتصال به سرور. می‌توانید از حالت آفلاین استفاده کنید.")
+        }
+    }
+
+    override suspend fun startOfflineMode(): AuthResult {
+        return try {
+            val offlineToken = "OFFLINE_SESSION_TOKEN"
+            sessionStore.save(offlineToken)
+            sessionStore.updateCachedToken(offlineToken)
+
+            val user = ensureLocalOfflineTenantInitialized()
+            AuthResult.Success(user)
+        } catch (e: Exception) {
+            AuthResult.Error("خطا در راه‌اندازی حالت آفلاین: ${e.localizedMessage}")
+        }
+    }
+
+    override suspend fun setupLocalBusiness(storeName: String, ownerName: String): AuthResult {
+        return try {
+            val offlineToken = "OFFLINE_SESSION_TOKEN"
+            sessionStore.save(offlineToken)
+            sessionStore.updateCachedToken(offlineToken)
+
+            val cleanStoreName = storeName.trim().ifBlank { "فروشگاه من" }
+            val cleanOwnerName = ownerName.trim().ifBlank { "ایران علوی" }
+
+            val timestamp = System.currentTimeMillis().toString().takeLast(6)
+            val orgId = "org_local_$timestamp"
+            val storeId = "store_local_$timestamp"
+            val warehouseId = "wh_local_$timestamp"
+            val userId = "usr_local_$timestamp"
+
+            val user = UserDto(
+                id = userId,
+                name = cleanOwnerName,
+                email = "offline@local",
+                role = "admin",
+                memberships = listOf(
+                    MembershipDto(
+                        id = orgId,
+                        name = cleanStoreName,
+                        role = "admin",
+                        stores = listOf(
+                            MembershipStoreDto(
+                                id = storeId,
+                                name = "شعبه اصلی",
+                                warehouses = listOf(
+                                    MembershipWarehouseDto(
+                                        id = warehouseId,
+                                        name = "انبار اصلی"
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+
+            _currentUser.value = user
+            syncUserMemberships(user)
+            tenantPreferences.setActiveTenant(orgId, storeId, warehouseId)
+            tenantPreferences.setUserInfo(userId, cleanOwnerName, "admin")
+            NetworkModule.setTenantContext(orgId, storeId)
+
+            AuthResult.Success(user)
+        } catch (e: Exception) {
+            AuthResult.Error("خطا در ایجاد کسب‌وکار: ${e.localizedMessage}")
         }
     }
 
     override suspend fun getProfile(): Result<UserDto> {
+        val token = sessionStore.currentToken()
+        if (token == "OFFLINE_SESSION_TOKEN" || token.startsWith("OFFLINE_")) {
+            val tenant = tenantPreferences.tenantState.first()
+            val offlineUser = UserDto(
+                id = tenant.userId.ifBlank { "usr_local_default" },
+                name = tenant.userName.ifBlank { "کسب‌وکار من" },
+                email = "offline@local",
+                role = tenant.userRole.ifBlank { "admin" }
+            )
+            _currentUser.value = offlineUser
+            return Result.success(offlineUser)
+        }
+
         return try {
             val response = apiService.getProfile()
             if (response.isSuccessful && response.body() != null) {
@@ -128,13 +213,51 @@ class AuthRepositoryImpl(
     override suspend fun restoreSession(): Boolean {
         sessionStore.warmUp()
         val token = sessionStore.currentToken()
+
+        if (token == "OFFLINE_SESSION_TOKEN" || token.startsWith("OFFLINE_")) {
+            ensureLocalOfflineTenantInitialized()
+            return true
+        }
+
         if (token.isBlank()) {
+            val tenant = tenantPreferences.tenantState.first()
+            if (tenant.activeOrgId.isNotBlank()) {
+                sessionStore.save("OFFLINE_SESSION_TOKEN")
+                sessionStore.updateCachedToken("OFFLINE_SESSION_TOKEN")
+                ensureLocalOfflineTenantInitialized()
+                return true
+            }
             return false
         }
 
-        // Validate token with real backend
+        // Stored token exists from online login
         val profileResult = getProfile()
-        return profileResult.isSuccess
+        return if (profileResult.isSuccess) {
+            true
+        } else {
+            val exception = profileResult.exceptionOrNull()
+            if (exception != null && isNetworkException(exception)) {
+                // Network is offline; keep offline session active without logging user out!
+                val tenant = tenantPreferences.tenantState.first()
+                val cachedUser = UserDto(
+                    id = tenant.userId.ifBlank { "usr_local_default" },
+                    name = tenant.userName.ifBlank { "کسب‌وکار من (آفلاین)" },
+                    email = "offline@local",
+                    role = tenant.userRole.ifBlank { "admin" }
+                )
+                _currentUser.value = cachedUser
+                if (tenant.activeOrgId.isNotBlank()) {
+                    NetworkModule.setTenantContext(tenant.activeOrgId, tenant.activeStoreId)
+                } else {
+                    ensureLocalOfflineTenantInitialized()
+                }
+                true
+            } else {
+                // Token explicitly rejected by server (401)
+                invalidateSession()
+                false
+            }
+        }
     }
 
     override suspend fun logout() {
@@ -153,8 +276,55 @@ class AuthRepositoryImpl(
         sessionStore.updateCachedToken("")
         tenantPreferences.clearActiveTenant()
         NetworkModule.clearTenantContext()
-        // Invalidate database tables to prevent cross-account data leakage
         database.clearAllTables()
+    }
+
+    private suspend fun ensureLocalOfflineTenantInitialized(): UserDto {
+        val tenant = tenantPreferences.tenantState.first()
+        val orgId = if (tenant.activeOrgId.isNotBlank()) tenant.activeOrgId else "org_local_default"
+        val storeId = if (tenant.activeStoreId.isNotBlank()) tenant.activeStoreId else "store_local_default"
+        val warehouseId = if (tenant.activeWarehouseId.isNotBlank()) tenant.activeWarehouseId else "wh_local_default"
+        val userId = if (tenant.userId.isNotBlank()) tenant.userId else "usr_local_default"
+        val userName = if (tenant.userName.isNotBlank()) tenant.userName else "کسب‌وکار من"
+        val role = if (tenant.userRole.isNotBlank()) tenant.userRole else "admin"
+
+        val offlineUser = UserDto(
+            id = userId,
+            name = userName,
+            email = "offline@local",
+            role = role,
+            memberships = listOf(
+                MembershipDto(
+                    id = orgId,
+                    name = userName,
+                    role = role,
+                    stores = listOf(
+                        MembershipStoreDto(
+                            id = storeId,
+                            name = "شعبه اصلی",
+                            warehouses = listOf(
+                                MembershipWarehouseDto(
+                                    id = warehouseId,
+                                    name = "انبار اصلی"
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        _currentUser.value = offlineUser
+
+        syncUserMemberships(offlineUser)
+        tenantPreferences.setActiveTenant(orgId, storeId, warehouseId)
+        NetworkModule.setTenantContext(orgId, storeId)
+
+        return offlineUser
+    }
+
+    private fun isNetworkException(e: Throwable): Boolean {
+        return e is java.io.IOException
     }
 
     private suspend fun syncUserMemberships(user: UserDto) {
