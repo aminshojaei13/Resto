@@ -69,7 +69,8 @@ import android.annotation.SuppressLint
 @Composable
 fun SalesOrdersScreen(
     viewModel: SalesOrdersViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -95,13 +96,15 @@ fun SalesOrdersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "سفارش‌ها و فاکتورهای فروش" else "Orders & Invoices",
-                subtitle = if (isPersian) "پیگیری سفارشات آنلاین، فروشگاهی و وضعیت پرداخت" else "Track online and in-store orders"
+                title = if (isPersian) "سفارش‌ها" else "Orders",
+                subtitle = if (isPersian) "پیگیری سفارشات آنلاین و فروشگاهی" else "Track orders",
+                onNavigationClick = onBackClick
             )
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

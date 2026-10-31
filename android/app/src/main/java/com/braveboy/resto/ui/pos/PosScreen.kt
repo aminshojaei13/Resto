@@ -1,8 +1,6 @@
 package com.braveboy.resto.ui.pos
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
@@ -44,10 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,12 +49,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.braveboy.resto.data.model.Customer
-
-import android.annotation.SuppressLint
+import com.braveboy.resto.ui.components.RestoTopBar
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,7 +62,8 @@ import android.annotation.SuppressLint
 fun PosScreen(
     viewModel: PosViewModel,
     onNavigateToTenantSwitch: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -94,9 +86,9 @@ fun PosScreen(
     val isPersian = tenantState.language == "fa"
     val currencyUnit = if (isPersian) "تومان" else "$"
 
-    // Adaptive Window Size check
     val windowInfo = currentWindowAdaptiveInfo()
-    val isExpandedWidth = windowInfo.windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+    val isExpandedWidth =
+        windowInfo.windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
@@ -109,42 +101,26 @@ fun PosScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (isPersian) "صندوق فروش (POS)" else "Mobile POS",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${if (isPersian) "سازمان" else "Org"}: ${tenantState.activeOrgId} | ${if (isPersian) "فروشگاه" else "Store"}: ${tenantState.activeStoreId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
-                },
+            RestoTopBar(
+                title = if (isPersian) "صندوق فروش (POS)" else "Mobile POS",
+                subtitle = if (isPersian) "ثبت سریع سفارش و صدور فاکتور" else "Fast checkout & receipts",
+                onNavigationClick = onBackClick,
                 actions = {
                     IconButton(onClick = { viewModel.openBarcodeScanner() }) {
                         Icon(
                             imageVector = Icons.Rounded.QrCodeScanner,
-                            contentDescription = if (isPersian) "اسکن بارکد" else "Scan Barcode"
+                            contentDescription = if (isPersian) "اسکن بارکد" else "Scan Barcode",
+                            tint = Color(0xFF0F172A)
                         )
                     }
                     IconButton(onClick = onNavigateToTenantSwitch) {
                         Icon(
                             imageVector = Icons.Rounded.Storefront,
-                            contentDescription = if (isPersian) "تغییر فروشگاه یا سازمان" else "Switch Store / Org"
+                            contentDescription = if (isPersian) "تغییر فروشگاه یا سازمان" else "Switch Store / Org",
+                            tint = Color(0xFF0F172A)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
+                }
             )
         },
         floatingActionButton = {
@@ -155,7 +131,9 @@ fun PosScreen(
                         if (totalItems > 0) {
                             Badge {
                                 Text(
-                                    if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(totalItems) else "$totalItems"
+                                    if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
+                                        totalItems
+                                    ) else "$totalItems"
                                 )
                             }
                         }
@@ -173,9 +151,10 @@ fun PosScreen(
                 }
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Row(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
         ) {
             // Main Product Catalog Area
@@ -196,7 +175,12 @@ fun PosScreen(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     },
-                    leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null
+                        )
+                    },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.setSearchQuery("") }) {
@@ -223,7 +207,12 @@ fun PosScreen(
                         FilterChip(
                             selected = selectedCategory == null,
                             onClick = { viewModel.selectCategory(null) },
-                            label = { Text(if (isPersian) "همه دسته‌ها" else "All Categories", maxLines = 1) }
+                            label = {
+                                Text(
+                                    if (isPersian) "همه دسته‌ها" else "All Categories",
+                                    maxLines = 1
+                                )
+                            }
                         )
                     }
                     items(categories) { category ->
@@ -282,8 +271,18 @@ fun PosScreen(
                     CartPanel(
                         cartItems = cartItems,
                         selectedCustomer = selectedCustomer,
-                        onUpdateQuantity = { item, delta -> viewModel.updateCartQuantity(item, delta) },
-                        onApplyDiscount = { id, percent -> viewModel.applyCartItemDiscount(id, percent) },
+                        onUpdateQuantity = { item, delta ->
+                            viewModel.updateCartQuantity(
+                                item,
+                                delta
+                            )
+                        },
+                        onApplyDiscount = { id, percent ->
+                            viewModel.applyCartItemDiscount(
+                                id,
+                                percent
+                            )
+                        },
                         onRemoveItem = { id -> viewModel.removeFromCart(id) },
                         onClearCart = { viewModel.clearCart() },
                         onSelectCustomerClick = { isCustomerPickerOpen = true },
@@ -444,7 +443,11 @@ fun CustomerPickerModal(
                                 maxLines = 1
                             )
                             Text(
-                                text = "${if (isPersian) "امتیاز باشگاه:" else "Points:"} ${if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(customer.loyaltyPoints) else customer.loyaltyPoints}",
+                                text = "${if (isPersian) "امتیاز باشگاه:" else "Points:"} ${
+                                    if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
+                                        customer.loyaltyPoints
+                                    ) else customer.loyaltyPoints
+                                }",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1

@@ -59,7 +59,8 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun CustomerScreen(
     viewModel: CustomerViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -85,8 +86,9 @@ fun CustomerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "مدیریت مشتریان و حساب‌ها" else "Customer CRM",
-                subtitle = if (isPersian) "لیست مشتریان، شماره تماس و تاریخچه خرید" else "Profiles, contact info & purchase history"
+                title = if (isPersian) "مدیریت مشتریان" else "Customers",
+                subtitle = if (isPersian) "لیست مشتریان و سابقه حساب" else "Contact info & history",
+                onNavigationClick = onBackClick
             )
         },
         floatingActionButton = {
@@ -101,9 +103,10 @@ fun CustomerScreen(
                 )
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

@@ -222,41 +222,62 @@ fun MainAppScreen(
                         )
                     }
                     MainDestination.ORDERS -> {
-                        SalesOrdersScreen(viewModel = salesOrdersViewModel)
+                        SalesOrdersScreen(
+                            viewModel = salesOrdersViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.INVENTORY -> {
-                        InventoryScreen(viewModel = inventoryViewModel)
+                        InventoryScreen(
+                            viewModel = inventoryViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.POS -> {
                         PosScreen(
                             viewModel = posViewModel,
-                            onNavigateToTenantSwitch = { isTenantSwitcherOpen = true }
+                            onNavigateToTenantSwitch = { isTenantSwitcherOpen = true },
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
                         )
                     }
                     MainDestination.MESSAGES -> {
                         MessagesScreen(
                             viewModel = messagesViewModel,
-                            initialSharedText = initialSharedText
+                            initialSharedText = initialSharedText,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
                         )
                     }
                     MainDestination.PURCHASES -> {
-                        PurchasesScreen(viewModel = purchasesViewModel)
+                        PurchasesScreen(
+                            viewModel = purchasesViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.CUSTOMERS -> {
-                        CustomerScreen(viewModel = customerViewModel)
+                        CustomerScreen(
+                            viewModel = customerViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.SUPPLIERS -> {
-                        SupplierScreen(viewModel = supplierViewModel)
+                        SupplierScreen(
+                            viewModel = supplierViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.EXPENSES -> {
-                        ExpensesScreen(viewModel = expensesViewModel)
+                        ExpensesScreen(
+                            viewModel = expensesViewModel,
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                        )
                     }
                     MainDestination.SETTINGS -> {
                         SettingsScreen(
                             tenantRepository = appContainer.tenantRepository,
                             authRepository = appContainer.authRepository,
                             syncManager = appContainer.syncManager,
-                            onOpenTenantSwitcher = { isTenantSwitcherOpen = true }
+                            onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
+                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
                         )
                     }
                 }

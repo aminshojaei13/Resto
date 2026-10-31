@@ -62,7 +62,8 @@ import android.annotation.SuppressLint
 @Composable
 fun SupplierScreen(
     viewModel: SupplierViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -87,8 +88,9 @@ fun SupplierScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "مدیریت تأمین‌کنندگان" else "Supplier Management",
-                subtitle = if (isPersian) "فهرست فروشندگان کالا و شرکت‌های طرف قرارداد" else "Suppliers, vendors & contact directory"
+                title = if (isPersian) "تأمین‌کنندگان" else "Suppliers",
+                subtitle = if (isPersian) "فهرست فروشندگان کالا و شرکت‌ها" else "Vendors & contact directory",
+                onNavigationClick = onBackClick
             )
         },
         floatingActionButton = {
@@ -103,9 +105,10 @@ fun SupplierScreen(
                 )
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

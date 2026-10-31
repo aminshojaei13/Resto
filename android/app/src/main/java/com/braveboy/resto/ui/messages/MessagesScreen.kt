@@ -33,7 +33,6 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,8 +44,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.braveboy.resto.ui.components.RestoTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -61,11 +59,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.data.intake.ParsedCustomer
 import com.braveboy.resto.data.intake.ParsedItem
+import com.braveboy.resto.data.intake.ParsedOrderDraft
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.Product
+import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.model.Warehouse
 import com.braveboy.resto.ui.components.RestoBadge
 import com.braveboy.resto.ui.components.RestoBadgeVariant
@@ -78,18 +80,85 @@ import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesScreen(
     viewModel: MessagesViewModel,
     modifier: Modifier = Modifier,
-    initialSharedText: String? = null
+    initialSharedText: String? = null,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val catalogProducts by viewModel.catalogProducts.collectAsState()
     val warehouses by viewModel.warehouses.collectAsState()
 
+    MessagesScreenContent(
+        tenantState = tenantState,
+        uiState = uiState,
+        catalogProducts = catalogProducts,
+        warehouses = warehouses,
+        modifier = modifier,
+        initialSharedText = initialSharedText,
+        onBackClick = onBackClick,
+        onSetRawText = { viewModel.setRawText(it) },
+        onParseMessage = { text, source ->
+            if (text != null && source != null) {
+                viewModel.parseMessage(text, source)
+            } else {
+                viewModel.parseMessage()
+            }
+        },
+        onCheckAndConsumePendingImport = { viewModel.checkAndConsumePendingImport() },
+        onClearErrorMessage = { viewModel.clearErrorMessage() },
+        onSetSource = { viewModel.setSource(it) },
+        onPasteFromClipboard = { viewModel.pasteFromClipboard(it) },
+        onClearDraft = { viewModel.clearDraft() },
+        onUpdateCustomerName = { viewModel.updateCustomerName(it) },
+        onUpdateCustomerPhone = { viewModel.updateCustomerPhone(it) },
+        onUpdateCustomerAddress = { viewModel.updateCustomerAddress(it) },
+        onUpdateItemQuantity = { index, qty -> viewModel.updateItemQuantity(index, qty) },
+        onRemoveItem = { viewModel.removeItem(it) },
+        onOpenProductMatchingDialog = { viewModel.openProductMatchingDialog(it) },
+        onSetWarehouseId = { viewModel.setWarehouseId(it) },
+        onSetPaymentMethod = { viewModel.setPaymentMethod(it) },
+        onConfirmAndCheckout = { viewModel.confirmAndCheckout() },
+        onCloseProductMatchingDialog = { viewModel.closeProductMatchingDialog() },
+        onMatchProductToItem = { index, product -> viewModel.matchProductToItem(index, product) },
+        onAddProductToDraft = { viewModel.addProductToDraft(it) },
+        onDismissSuccess = { viewModel.dismissSuccess() }
+    )
+}
+
+@Composable
+fun MessagesScreenContent(
+    tenantState: TenantState,
+    uiState: MessagesUiState,
+    catalogProducts: List<Product>,
+    warehouses: List<Warehouse>,
+    modifier: Modifier = Modifier,
+    initialSharedText: String? = null,
+    onBackClick: () -> Unit = {},
+    onSetRawText: (String) -> Unit = {},
+    onParseMessage: (text: String?, source: String?) -> Unit = { _, _ -> },
+    onCheckAndConsumePendingImport: () -> Unit = {},
+    onClearErrorMessage: () -> Unit = {},
+    onSetSource: (String) -> Unit = {},
+    onPasteFromClipboard: (String) -> Unit = {},
+    onClearDraft: () -> Unit = {},
+    onUpdateCustomerName: (String) -> Unit = {},
+    onUpdateCustomerPhone: (String) -> Unit = {},
+    onUpdateCustomerAddress: (String) -> Unit = {},
+    onUpdateItemQuantity: (index: Int, quantity: Int) -> Unit = { _, _ -> },
+    onRemoveItem: (index: Int) -> Unit = {},
+    onOpenProductMatchingDialog: (index: Int?) -> Unit = {},
+    onSetWarehouseId: (String) -> Unit = {},
+    onSetPaymentMethod: (PaymentMethod) -> Unit = {},
+    onConfirmAndCheckout: () -> Unit = {},
+    onCloseProductMatchingDialog: () -> Unit = {},
+    onMatchProductToItem: (index: Int, product: Product) -> Unit = { _, _ -> },
+    onAddProductToDraft: (product: Product) -> Unit = {},
+    onDismissSuccess: () -> Unit = {}
+) {
     val isPersian = tenantState.language == "fa"
     val currencyUnit = if (isPersian) "تومان" else "$"
 
@@ -98,17 +167,17 @@ fun MessagesScreen(
 
     LaunchedEffect(initialSharedText) {
         if (!initialSharedText.isNullOrBlank()) {
-            viewModel.setRawText(initialSharedText)
-            viewModel.parseMessage(initialSharedText, source = "android_share")
+            onSetRawText(initialSharedText)
+            onParseMessage(initialSharedText, "android_share")
         } else {
-            viewModel.checkAndConsumePendingImport()
+            onCheckAndConsumePendingImport()
         }
     }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
-            viewModel.clearErrorMessage()
+            onClearErrorMessage()
         }
     }
 
@@ -128,31 +197,17 @@ fun MessagesScreen(
             modifier = modifier.fillMaxSize(),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = "ثبت سفارش از شبکه‌های اجتماعی",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "شعبه: ${tenantState.activeStoreId.ifBlank { "پیش‌فرض" }}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
+                RestoTopBar(
+                    title = if (isPersian) "سفارش پیامکی" else "Social Orders",
+                    subtitle = if (isPersian) "پردازش هوشمند چت شبکه‌های اجتماعی" else "Process social chat messages",
+                    onNavigationClick = onBackClick
                 )
             }
-        ) { paddingValues ->
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
+                    .padding(top = innerPadding.calculateTopPadding())
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(RestoSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
@@ -190,7 +245,7 @@ fun MessagesScreen(
                         sources.forEach { (key, label) ->
                             FilterChip(
                                 selected = uiState.source.equals(key, ignoreCase = true),
-                                onClick = { viewModel.setSource(key) },
+                                onClick = { onSetSource(key) },
                                 label = { Text(label, style = MaterialTheme.typography.labelSmall) }
                             )
                         }
@@ -201,7 +256,7 @@ fun MessagesScreen(
                     // Text Field
                     OutlinedTextField(
                         value = uiState.rawText,
-                        onValueChange = { viewModel.setRawText(it) },
+                        onValueChange = { onSetRawText(it) },
                         placeholder = {
                             Text(
                                 "متن پیام مشتری را اینجا بچسبانید یا تایپ کنید...",
@@ -226,7 +281,7 @@ fun MessagesScreen(
                         onClick = {
                             val clip = clipboardManager.getText()?.text
                             if (!clip.isNullOrBlank()) {
-                                viewModel.pasteFromClipboard(clip)
+                                onPasteFromClipboard(clip)
                             }
                         }
                     )
@@ -239,7 +294,7 @@ fun MessagesScreen(
                             text = if (isPersian) "نمونه پیام" else "Sample",
                             variant = RestoButtonVariant.Outlined,
                             compact = true,
-                            onClick = { viewModel.setRawText(sampleOrderText) },
+                            onClick = { onSetRawText(sampleOrderText) },
                             modifier = Modifier.weight(1f)
                         )
 
@@ -249,7 +304,7 @@ fun MessagesScreen(
                                 leadingIcon = Icons.Rounded.Clear,
                                 variant = RestoButtonVariant.Text,
                                 compact = true,
-                                onClick = { viewModel.clearDraft() },
+                                onClick = { onClearDraft() },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -265,7 +320,7 @@ fun MessagesScreen(
                         isLoading = uiState.isParsing,
                         enabled = !uiState.isParsing && uiState.rawText.isNotBlank(),
                         fullWidth = true,
-                        onClick = { viewModel.parseMessage() }
+                        onClick = { onParseMessage(null, null) }
                     )
                 }
 
@@ -307,7 +362,7 @@ fun MessagesScreen(
 
                         OutlinedTextField(
                             value = draft.customer.name ?: "",
-                            onValueChange = { viewModel.updateCustomerName(it) },
+                            onValueChange = { onUpdateCustomerName(it) },
                             label = { Text("نام مشتری") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RestoShapes.small,
@@ -318,7 +373,7 @@ fun MessagesScreen(
 
                         OutlinedTextField(
                             value = draft.customer.phone ?: "",
-                            onValueChange = { viewModel.updateCustomerPhone(it) },
+                            onValueChange = { onUpdateCustomerPhone(it) },
                             label = { Text("شماره تماس") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RestoShapes.small,
@@ -329,7 +384,7 @@ fun MessagesScreen(
 
                         OutlinedTextField(
                             value = draft.customer.address ?: "",
-                            onValueChange = { viewModel.updateCustomerAddress(it) },
+                            onValueChange = { onUpdateCustomerAddress(it) },
                             label = { Text("آدرس تحویل") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RestoShapes.small,
@@ -390,9 +445,9 @@ fun MessagesScreen(
                                 ItemRowView(
                                     item = item,
                                     currency = currencyUnit,
-                                    onQuantityChange = { q -> viewModel.updateItemQuantity(index, q) },
-                                    onDelete = { viewModel.removeItem(index) },
-                                    onMatchClick = { viewModel.openProductMatchingDialog(index) }
+                                    onQuantityChange = { q -> onUpdateItemQuantity(index, q) },
+                                    onDelete = { onRemoveItem(index) },
+                                    onMatchClick = { onOpenProductMatchingDialog(index) }
                                 )
                                 if (index < draft.items.lastIndex) {
                                     HorizontalDivider(
@@ -411,7 +466,7 @@ fun MessagesScreen(
                             leadingIcon = Icons.Rounded.Add,
                             variant = RestoButtonVariant.Outlined,
                             fullWidth = true,
-                            onClick = { viewModel.openProductMatchingDialog(null) }
+                            onClick = { onOpenProductMatchingDialog(null) }
                         )
                     }
 
@@ -432,7 +487,7 @@ fun MessagesScreen(
                         WarehouseDropdown(
                             warehouses = warehouses,
                             selectedId = uiState.selectedWarehouseId,
-                            onSelect = { viewModel.setWarehouseId(it) }
+                            onSelect = { onSetWarehouseId(it) }
                         )
 
                         Spacer(modifier = Modifier.height(RestoSpacing.sm))
@@ -455,7 +510,7 @@ fun MessagesScreen(
                             ).forEach { (method, label) ->
                                 FilterChip(
                                     selected = uiState.selectedPaymentMethod == method,
-                                    onClick = { viewModel.setPaymentMethod(method) },
+                                    onClick = { onSetPaymentMethod(method) },
                                     label = { Text(label, style = MaterialTheme.typography.labelSmall) }
                                 )
                             }
@@ -570,7 +625,7 @@ fun MessagesScreen(
                             isLoading = uiState.isCheckingOut,
                             enabled = !uiState.isCheckingOut && !draft.hasUnmatchedItems && draft.items.isNotEmpty(),
                             fullWidth = true,
-                            onClick = { viewModel.confirmAndCheckout() }
+                            onClick = { onConfirmAndCheckout() }
                         )
 
                         Spacer(modifier = Modifier.height(RestoSpacing.xs))
@@ -579,7 +634,7 @@ fun MessagesScreen(
                             text = "انصراف و لغو پیش‌نویس",
                             variant = RestoButtonVariant.Text,
                             fullWidth = true,
-                            onClick = { viewModel.clearDraft() }
+                            onClick = { onClearDraft() }
                         )
                     }
                 }
@@ -593,14 +648,14 @@ fun MessagesScreen(
             ProductCatalogPickerDialog(
                 products = catalogProducts,
                 warehouseId = uiState.selectedWarehouseId,
-                onDismiss = { viewModel.closeProductMatchingDialog() },
+                onDismiss = { onCloseProductMatchingDialog() },
                 onSelectProduct = { selectedProd ->
                     val idx = uiState.matchingItemIndex
                     if (idx != null) {
-                        viewModel.matchProductToItem(idx, selectedProd)
+                        onMatchProductToItem(idx, selectedProd)
                     } else {
-                        viewModel.addProductToDraft(selectedProd)
-                        viewModel.closeProductMatchingDialog()
+                        onAddProductToDraft(selectedProd)
+                        onCloseProductMatchingDialog()
                     }
                 }
             )
@@ -609,7 +664,7 @@ fun MessagesScreen(
         // Order Success Dialog
         uiState.orderSuccessNumber?.let { orderNum ->
             AlertDialog(
-                onDismissRequest = { viewModel.dismissSuccess() },
+                onDismissRequest = { onDismissSuccess() },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -638,7 +693,7 @@ fun MessagesScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.dismissSuccess() }) {
+                    TextButton(onClick = { onDismissSuccess() }) {
                         Text("متوجه شدم")
                     }
                 }
@@ -927,4 +982,71 @@ private fun ProductCatalogPickerDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MessagesScreenPreview() {
+    RestoTheme {
+        MessagesScreenContent(
+            tenantState = TenantState(
+                userName = "علی رضایی",
+                language = "fa"
+            ),
+            uiState = MessagesUiState(
+                rawText = "سلام، سفارش ۲ عدد قهوه اسپرسو دارم.",
+                source = "INSTAGRAM",
+                selectedWarehouseId = "wh_1",
+                selectedPaymentMethod = PaymentMethod.CARD,
+                parsedDraft = ParsedOrderDraft(
+                    source = "INSTAGRAM",
+                    rawText = "سلام، سفارش ۲ عدد قهوه اسپرسو دارم.",
+                    customer = ParsedCustomer(
+                        name = "علی رضایی",
+                        phone = "09121234567",
+                        address = "تهران، خیابان آزادی، پلاک ۱۲",
+                        isNew = true
+                    ),
+                    items = listOf(
+                        ParsedItem(
+                            productId = "prod_1",
+                            productName = "قهوه اسپرسو",
+                            rawText = "۲ عدد قهوه اسپرسو",
+                            sku = "ESP-01",
+                            quantity = 2,
+                            unitLabel = "عدد",
+                            catalogPrice = 45000.0,
+                            isMatched = true
+                        )
+                    ),
+                    paymentMethod = PaymentMethod.CARD,
+                    warehouseId = "wh_1"
+                )
+            ),
+            catalogProducts = listOf(
+                Product(
+                    id = "prod_1",
+                    orgId = "org_1",
+                    sku = "ESP-01",
+                    barcode = "123456",
+                    name = "قهوه اسپرسو",
+                    price = 45000.0,
+                    costPrice = 30000.0,
+                    category = "نوشیدنی",
+                    unit = "عدد",
+                    stockQuantityByWarehouse = mapOf("wh_1" to 50)
+                )
+            ),
+            warehouses = listOf(
+                Warehouse(
+                    id = "wh_1",
+                    storeId = "store_1",
+                    orgId = "org_1",
+                    name = "انبار مرکزی",
+                    code = "WH01",
+                    address = "تهران"
+                )
+            )
+        )
+    }
 }

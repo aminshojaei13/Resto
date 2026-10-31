@@ -67,7 +67,8 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun InventoryScreen(
     viewModel: InventoryViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -104,8 +105,9 @@ fun InventoryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "مدیریت کالا و موجودی انبار" else "Inventory & Products",
-                subtitle = if (isPersian) "کنترل انبارها و ورود و خروج موجودی" else "Stock levels & catalog"
+                title = if (isPersian) "موجودی انبار" else "Inventory",
+                subtitle = if (isPersian) "کنترل انبارها و موجودی کالا" else "Stock levels & catalog",
+                onNavigationClick = onBackClick
             )
         },
         floatingActionButton = {
@@ -131,9 +133,10 @@ fun InventoryScreen(
                 }
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

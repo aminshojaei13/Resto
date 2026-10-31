@@ -64,7 +64,8 @@ fun SettingsScreen(
     authRepository: AuthRepository,
     syncManager: SyncManager? = null,
     onOpenTenantSwitcher: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by tenantRepository.getTenantState().collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
@@ -76,14 +77,16 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "تنظیمات و حساب کاربری" else "Settings & Profile",
-                subtitle = if (isPersian) "مدیریت کسب‌وکار و ترجیحات برنامه" else "Manage business and app preferences"
+                title = if (isPersian) "تنظیمات" else "Settings",
+                subtitle = if (isPersian) "مدیریت حساب کاربری و تنظیمات برنامه" else "Manage preferences",
+                onNavigationClick = onBackClick
             )
         },
         modifier = modifier.fillMaxSize()
-    ) { _ ->
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(RestoSpacing.md),
             contentPadding = PaddingValues(bottom = 80.dp),

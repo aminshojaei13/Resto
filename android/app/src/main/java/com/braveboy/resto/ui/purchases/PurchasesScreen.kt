@@ -76,7 +76,8 @@ import android.annotation.SuppressLint
 @Composable
 fun PurchasesScreen(
     viewModel: PurchasesViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val purchases by viewModel.purchases.collectAsState()
@@ -102,8 +103,9 @@ fun PurchasesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "خرید کالا و تحویل انبار" else "Purchasing & Receiving",
-                subtitle = if (isPersian) "ثبت فاکتورهای تامین، ورود کالا و بدهی به تامین‌کننده" else "Purchase orders, receiving & vendor payables"
+                title = if (isPersian) "خرید و تأمین" else "Purchases",
+                subtitle = if (isPersian) "ثبت فاکتورهای ورود کالا به انبار" else "Purchase orders & receiving",
+                onNavigationClick = onBackClick
             )
         },
         floatingActionButton = {
@@ -118,9 +120,10 @@ fun PurchasesScreen(
                 )
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {

@@ -65,7 +65,8 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun ExpensesScreen(
     viewModel: ExpensesViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -91,8 +92,9 @@ fun ExpensesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "هزینه‌های جاری کسب‌وکار" else "Operating Expenses",
-                subtitle = if (isPersian) "مخارج دفتری، اجاره، تبلیغات، حمل‌ونقل و حقوق" else "Rent, utilities, ads & other operating costs"
+                title = if (isPersian) "هزینه‌های جاری" else "Expenses",
+                subtitle = if (isPersian) "ثبت و پیگیری هزینه‌های عملیاتی" else "Track operating costs",
+                onNavigationClick = onBackClick
             )
         },
         floatingActionButton = {
@@ -107,9 +109,10 @@ fun ExpensesScreen(
                 )
             }
         }
-    ) { _ ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
         ) {
