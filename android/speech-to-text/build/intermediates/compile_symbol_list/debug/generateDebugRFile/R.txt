@@ -1,0 +1,6 @@
+int string speech_widget_error 0x0
+int string speech_widget_idle 0x0
+int string speech_widget_listening 0x0
+int string speech_widget_permission 0x0
+int string speech_widget_processing 0x0
+int string speech_widget_success 0x0

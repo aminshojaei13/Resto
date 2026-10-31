@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.braveboy.calcuapp.speechtotext" >
+
+    <uses-sdk android:minSdkVersion="24" />
+
+    <!-- مجوز دسترسی به میکروفون برای ضبط و تشخیص گفتار -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <!--
+      در Android 11 (API 30) و بالاتر، به دلیل قوانین Package Visibility،
+      تعریف این query در مانیفست الزامی است تا متد SpeechRecognizer.isRecognitionAvailable
+      و اتصال به سرویس تشخیص گفتار به درستی کار کند.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
+</manifest>

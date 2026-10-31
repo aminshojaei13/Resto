@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.braveboy.calcuapp.speechtotext.SpeechErrorMappingTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-28T08:10:07.817Z" hostname="AminShojaeis-MacBook-Pro-12.local" time="0.012">
+  <properties/>
+  <testcase name="speech errors are strongly typed" classname="com.braveboy.calcuapp.speechtotext.SpeechErrorMappingTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

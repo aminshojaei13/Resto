@@ -1,0 +1,8 @@
+R_DEF: Internal format may change without notice
+local
+string speech_widget_error
+string speech_widget_idle
+string speech_widget_listening
+string speech_widget_permission
+string speech_widget_processing
+string speech_widget_success

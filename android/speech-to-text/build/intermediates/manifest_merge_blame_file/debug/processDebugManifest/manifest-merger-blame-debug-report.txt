@@ -1,0 +1,36 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.braveboy.calcuapp.speechtotext" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+5-->INJECTED
+5-->INJECTED
+6
+7    <!-- مجوز دسترسی به میکروفون برای ضبط و تشخیص گفتار -->
+8    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+8-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:5:5-71
+8-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:5:22-68
+9
+10    <uses-feature
+10-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:7:5-9:36
+11        android:name="android.hardware.microphone"
+11-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:8:9-51
+12        android:required="false" />
+12-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:9:9-33
+13
+14    <!--
+15      در Android 11 (API 30) و بالاتر، به دلیل قوانین Package Visibility،
+16      تعریف این query در مانیفست الزامی است تا متد SpeechRecognizer.isRecognitionAvailable
+17      و اتصال به سرویس تشخیص گفتار به درستی کار کند.
+18    -->
+19    <queries>
+19-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:16:5-20:15
+20        <intent>
+20-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:17:9-19:18
+21            <action android:name="android.speech.RecognitionService" />
+21-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:18:13-72
+21-->/Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:18:21-69
+22        </intent>
+23    </queries>
+24
+25</manifest>

@@ -1,0 +1,480 @@
+package com.braveboy.resto.data.local.db.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.braveboy.resto.data.model.CartItem
+import com.braveboy.resto.data.model.Customer
+import com.braveboy.resto.data.model.Expense
+import com.braveboy.resto.data.model.FulfillmentStatus
+import com.braveboy.resto.data.model.LedgerCategory
+import com.braveboy.resto.data.model.LedgerEntry
+import com.braveboy.resto.data.model.LedgerType
+import com.braveboy.resto.data.model.OrderItem
+import com.braveboy.resto.data.model.Organization
+import com.braveboy.resto.data.model.PaymentMethod
+import com.braveboy.resto.data.model.PaymentStatus
+import com.braveboy.resto.data.model.Product
+import com.braveboy.resto.data.model.ProductVariant
+import com.braveboy.resto.data.model.Purchase
+import com.braveboy.resto.data.model.PurchaseItem
+import com.braveboy.resto.data.model.SalesOrder
+import com.braveboy.resto.data.model.Store
+import com.braveboy.resto.data.model.Supplier
+import com.braveboy.resto.data.model.Warehouse
+
+@Entity(tableName = "organizations")
+data class OrganizationEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val code: String,
+    val logoUrl: String,
+    val currencySymbol: String,
+    val currencyCode: String,
+    val subscriptionTier: String
+) {
+    fun toDomain(stores: List<Store> = emptyList()) = Organization(
+        id = id,
+        name = name,
+        code = code,
+        logoUrl = logoUrl,
+        currencySymbol = currencySymbol,
+        currencyCode = currencyCode,
+        subscriptionTier = subscriptionTier,
+        stores = stores
+    )
+}
+
+fun Organization.toEntity() = OrganizationEntity(
+    id = id,
+    name = name,
+    code = code,
+    logoUrl = logoUrl,
+    currencySymbol = currencySymbol,
+    currencyCode = currencyCode,
+    subscriptionTier = subscriptionTier
+)
+
+@Entity(tableName = "stores")
+data class StoreEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val name: String,
+    val code: String,
+    val address: String,
+    val phone: String
+) {
+    fun toDomain(warehouses: List<Warehouse> = emptyList()) = Store(
+        id = id,
+        orgId = orgId,
+        name = name,
+        code = code,
+        address = address,
+        phone = phone,
+        warehouses = warehouses
+    )
+}
+
+fun Store.toEntity() = StoreEntity(
+    id = id,
+    orgId = orgId,
+    name = name,
+    code = code,
+    address = address,
+    phone = phone
+)
+
+@Entity(tableName = "warehouses")
+data class WarehouseEntity(
+    @PrimaryKey val id: String,
+    val storeId: String,
+    val orgId: String,
+    val name: String,
+    val code: String,
+    val address: String
+) {
+    fun toDomain() = Warehouse(
+        id = id,
+        storeId = storeId,
+        orgId = orgId,
+        name = name,
+        code = code,
+        address = address
+    )
+}
+
+fun Warehouse.toEntity() = WarehouseEntity(
+    id = id,
+    storeId = storeId,
+    orgId = orgId,
+    name = name,
+    code = code,
+    address = address
+)
+
+@Entity(tableName = "products")
+data class ProductEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val sku: String,
+    val barcode: String,
+    val name: String,
+    val description: String,
+    val price: Double,
+    val costPrice: Double,
+    val category: String,
+    val imageUrl: String,
+    val unit: String,
+    val variants: List<ProductVariant>,
+    val stockQuantityByWarehouse: Map<String, Int>,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = Product(
+        id = id,
+        orgId = orgId,
+        sku = sku,
+        barcode = barcode,
+        name = name,
+        description = description,
+        price = price,
+        costPrice = costPrice,
+        category = category,
+        imageUrl = imageUrl,
+        unit = unit,
+        variants = variants,
+        stockQuantityByWarehouse = stockQuantityByWarehouse
+    )
+}
+
+fun Product.toEntity(isSynced: Boolean = true) = ProductEntity(
+    id = id,
+    orgId = orgId,
+    sku = sku,
+    barcode = barcode,
+    name = name,
+    description = description,
+    price = price,
+    costPrice = costPrice,
+    category = category,
+    imageUrl = imageUrl,
+    unit = unit,
+    variants = variants,
+    stockQuantityByWarehouse = stockQuantityByWarehouse,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "customers")
+data class CustomerEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val totalPurchases: Double,
+    val loyaltyPoints: Int,
+    val createdAt: Long,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = Customer(
+        id = id,
+        orgId = orgId,
+        name = name,
+        email = email,
+        phone = phone,
+        address = address,
+        totalPurchases = totalPurchases,
+        loyaltyPoints = loyaltyPoints,
+        createdAt = createdAt
+    )
+}
+
+fun Customer.toEntity(isSynced: Boolean = true) = CustomerEntity(
+    id = id,
+    orgId = orgId,
+    name = name,
+    email = email,
+    phone = phone,
+    address = address,
+    totalPurchases = totalPurchases,
+    loyaltyPoints = loyaltyPoints,
+    createdAt = createdAt,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "suppliers")
+data class SupplierEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val createdAt: Long,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = Supplier(
+        id = id,
+        orgId = orgId,
+        name = name,
+        email = email,
+        phone = phone,
+        address = address,
+        createdAt = createdAt
+    )
+}
+
+fun Supplier.toEntity(isSynced: Boolean = true) = SupplierEntity(
+    id = id,
+    orgId = orgId,
+    name = name,
+    email = email,
+    phone = phone,
+    address = address,
+    createdAt = createdAt,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "purchases")
+data class PurchaseEntity(
+    @PrimaryKey val id: String,
+    val purchaseNumber: String,
+    val orgId: String,
+    val storeId: String,
+    val warehouseId: String,
+    val supplierId: String,
+    val supplierName: String,
+    val items: List<PurchaseItem>,
+    val totalAmount: Double,
+    val status: String,
+    val paymentStatus: String,
+    val createdAt: Long,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = Purchase(
+        id = id,
+        purchaseNumber = purchaseNumber,
+        orgId = orgId,
+        storeId = storeId,
+        warehouseId = warehouseId,
+        supplierId = supplierId,
+        supplierName = supplierName,
+        items = items,
+        totalAmount = totalAmount,
+        status = status,
+        paymentStatus = paymentStatus,
+        createdAt = createdAt
+    )
+}
+
+fun Purchase.toEntity(isSynced: Boolean = true) = PurchaseEntity(
+    id = id,
+    purchaseNumber = purchaseNumber,
+    orgId = orgId,
+    storeId = storeId,
+    warehouseId = warehouseId,
+    supplierId = supplierId,
+    supplierName = supplierName,
+    items = items,
+    totalAmount = totalAmount,
+    status = status,
+    paymentStatus = paymentStatus,
+    createdAt = createdAt,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "expenses")
+data class ExpenseEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val storeId: String,
+    val category: String,
+    val amount: Double,
+    val paymentMethod: String,
+    val date: String,
+    val notes: String,
+    val userId: String?,
+    val createdAt: Long,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = Expense(
+        id = id,
+        orgId = orgId,
+        storeId = storeId,
+        category = category,
+        amount = amount,
+        paymentMethod = paymentMethod,
+        date = date,
+        notes = notes,
+        userId = userId,
+        createdAt = createdAt
+    )
+}
+
+fun Expense.toEntity(isSynced: Boolean = true) = ExpenseEntity(
+    id = id,
+    orgId = orgId,
+    storeId = storeId,
+    category = category,
+    amount = amount,
+    paymentMethod = paymentMethod,
+    date = date,
+    notes = notes,
+    userId = userId,
+    createdAt = createdAt,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "sales_orders")
+data class SalesOrderEntity(
+    @PrimaryKey val id: String,
+    val orderNumber: String,
+    val orgId: String,
+    val storeId: String,
+    val warehouseId: String,
+    val customerId: String?,
+    val customerName: String,
+    val items: List<OrderItem>,
+    val subtotal: Double,
+    val discountAmount: Double,
+    val taxAmount: Double,
+    val totalAmount: Double,
+    val paymentMethod: PaymentMethod,
+    val paymentStatus: PaymentStatus,
+    val fulfillmentStatus: FulfillmentStatus,
+    val notes: String,
+    val createdAt: Long,
+    val isSynced: Boolean = true
+) {
+    fun toDomain() = SalesOrder(
+        id = id,
+        orderNumber = orderNumber,
+        orgId = orgId,
+        storeId = storeId,
+        warehouseId = warehouseId,
+        customerId = customerId,
+        customerName = customerName,
+        items = items,
+        subtotal = subtotal,
+        discountAmount = discountAmount,
+        taxAmount = taxAmount,
+        totalAmount = totalAmount,
+        paymentMethod = paymentMethod,
+        paymentStatus = paymentStatus,
+        fulfillmentStatus = fulfillmentStatus,
+        notes = notes,
+        createdAt = createdAt
+    )
+}
+
+fun SalesOrder.toEntity(isSynced: Boolean = true) = SalesOrderEntity(
+    id = id,
+    orderNumber = orderNumber,
+    orgId = orgId,
+    storeId = storeId,
+    warehouseId = warehouseId,
+    customerId = customerId,
+    customerName = customerName,
+    items = items,
+    subtotal = subtotal,
+    discountAmount = discountAmount,
+    taxAmount = taxAmount,
+    totalAmount = totalAmount,
+    paymentMethod = paymentMethod,
+    paymentStatus = paymentStatus,
+    fulfillmentStatus = fulfillmentStatus,
+    notes = notes,
+    createdAt = createdAt,
+    isSynced = isSynced
+)
+
+@Entity(tableName = "ledger_entries")
+data class LedgerEntryEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val storeId: String,
+    val entryNumber: String,
+    val type: LedgerType,
+    val category: LedgerCategory,
+    val amount: Double,
+    val description: String,
+    val referenceId: String?,
+    val createdAt: Long
+) {
+    fun toDomain() = LedgerEntry(
+        id = id,
+        orgId = orgId,
+        storeId = storeId,
+        entryNumber = entryNumber,
+        type = type,
+        category = category,
+        amount = amount,
+        description = description,
+        referenceId = referenceId,
+        createdAt = createdAt
+    )
+}
+
+fun LedgerEntry.toEntity() = LedgerEntryEntity(
+    id = id,
+    orgId = orgId,
+    storeId = storeId,
+    entryNumber = entryNumber,
+    type = type,
+    category = category,
+    amount = amount,
+    description = description,
+    referenceId = referenceId,
+    createdAt = createdAt
+)
+
+@Entity(tableName = "cart_items")
+data class CartItemEntity(
+    @PrimaryKey val id: String,
+    val orgId: String,
+    val storeId: String,
+    val productId: String,
+    val variantId: String?,
+    val productName: String,
+    val variantName: String?,
+    val sku: String,
+    val barcode: String,
+    val price: Double,
+    val quantity: Int,
+    val discountPercent: Double,
+    val taxRate: Double,
+    val imageUrl: String
+) {
+    fun toDomain() = CartItem(
+        id = id,
+        orgId = orgId,
+        storeId = storeId,
+        productId = productId,
+        variantId = variantId,
+        productName = productName,
+        variantName = variantName,
+        sku = sku,
+        barcode = barcode,
+        price = price,
+        quantity = quantity,
+        discountPercent = discountPercent,
+        taxRate = taxRate,
+        imageUrl = imageUrl
+    )
+}
+
+fun CartItem.toEntity() = CartItemEntity(
+    id = id,
+    orgId = orgId,
+    storeId = storeId,
+    productId = productId,
+    variantId = variantId,
+    productName = productName,
+    variantName = variantName,
+    sku = sku,
+    barcode = barcode,
+    price = price,
+    quantity = quantity,
+    discountPercent = discountPercent,
+    taxRate = taxRate,
+    imageUrl = imageUrl
+)

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.braveboy.calcuapp.speechtotext.SpeechToTextConfigTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-28T08:10:07.841Z" hostname="AminShojaeis-MacBook-Pro-12.local" time="0.0">
+  <properties/>
+  <testcase name="custom config respects custom locale and parameters" classname="com.braveboy.calcuapp.speechtotext.SpeechToTextConfigTest" time="0.0"/>
+  <testcase name="default config uses Persian Iran locale" classname="com.braveboy.calcuapp.speechtotext.SpeechToTextConfigTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="speech_widget_error">خطا</string>
+    <string name="speech_widget_idle">اینجا لمس کنید و صحبت کنید</string>
+    <string name="speech_widget_listening">در حال گوش‌دهی…</string>
+    <string name="speech_widget_permission">دسترسی به میکروفون لازم است</string>
+    <string name="speech_widget_processing">در حال پردازش…</string>
+    <string name="speech_widget_success">انجام شد</string>
+</resources>

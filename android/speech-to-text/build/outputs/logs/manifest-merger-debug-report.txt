@@ -1,0 +1,34 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:2:1-22:12
+INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:2:1-22:12
+	package
+		INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.RECORD_AUDIO
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:5:5-71
+	android:name
+		ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:5:22-68
+uses-feature#android.hardware.microphone
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:7:5-9:36
+	android:required
+		ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:9:9-33
+	android:name
+		ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:8:9-51
+queries
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:16:5-20:15
+intent#action:name:android.speech.RecognitionService
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:17:9-19:18
+action#android.speech.RecognitionService
+ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:18:13-72
+	android:name
+		ADDED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml:18:21-69
+uses-sdk
+INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml
+INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/aminshojaei/AndroidStudioProjects/Calcuapp/android/speech-to-text/src/main/AndroidManifest.xml

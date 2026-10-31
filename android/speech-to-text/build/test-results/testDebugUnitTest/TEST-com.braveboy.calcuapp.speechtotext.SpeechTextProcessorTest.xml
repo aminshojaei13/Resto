@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-28T08:10:07.834Z" hostname="AminShojaeis-MacBook-Pro-12.local" time="0.006">
+  <properties/>
+  <testcase name="process preserves Persian digits and special characters" classname="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" time="0.005"/>
+  <testcase name="process with autoTrim trims leading and trailing whitespaces" classname="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" time="0.0"/>
+  <testcase name="process returns empty string for blank text" classname="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" time="0.0"/>
+  <testcase name="process without autoTrim preserves leading and trailing whitespaces" classname="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" time="0.0"/>
+  <testcase name="process with collapseWhitespace reduces multiple internal spaces" classname="com.braveboy.calcuapp.speechtotext.SpeechTextProcessorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

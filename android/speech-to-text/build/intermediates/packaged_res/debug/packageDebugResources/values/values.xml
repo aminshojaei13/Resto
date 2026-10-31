@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="speech_widget_error">Error</string>
+    <string name="speech_widget_idle">Tap to speak</string>
+    <string name="speech_widget_listening">Listening…</string>
+    <string name="speech_widget_permission">Microphone permission required</string>
+    <string name="speech_widget_processing">Processing…</string>
+    <string name="speech_widget_success">Done</string>
+</resources>

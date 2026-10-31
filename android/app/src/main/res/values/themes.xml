@@ -1,8 +1,8 @@
 <resources>
 
     <!-- Resto Warm Dark launch theme (P8.3): warm canvas + teal accent,
-         synchronized with Compose CalcuappTheme warm dark scheme. -->
-    <style name="Theme.Calcuapp" parent="Theme.MaterialComponents.NoActionBar">
+         synchronized with Compose RestoTheme warm dark scheme. -->
+    <style name="Theme.Resto" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@color/resto_warm_dark_background</item>
         <item name="android:statusBarColor">@color/resto_warm_dark_background</item>
         <item name="android:navigationBarColor">@color/resto_warm_dark_background</item>
