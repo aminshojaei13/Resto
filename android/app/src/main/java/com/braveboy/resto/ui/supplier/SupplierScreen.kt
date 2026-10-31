@@ -1,6 +1,9 @@
 package com.braveboy.resto.ui.supplier
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddBusiness
 import androidx.compose.material.icons.rounded.Domain
@@ -40,13 +44,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.braveboy.resto.data.model.Supplier
 import com.braveboy.resto.ui.components.RestoBottomSheet
 import com.braveboy.resto.ui.components.RestoButton
 import com.braveboy.resto.ui.components.RestoButtonVariant
-import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoEmptyState
 import com.braveboy.resto.ui.components.RestoSearchField
@@ -54,8 +60,6 @@ import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
-
-import android.annotation.SuppressLint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +89,7 @@ fun SupplierScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = Color(0xFFF8FAFC),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -96,8 +101,8 @@ fun SupplierScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openAddSupplierDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                containerColor = Color(0xFF0F172A),
+                contentColor = Color.White
             ) {
                 Icon(
                     imageVector = Icons.Rounded.AddBusiness,
@@ -135,16 +140,15 @@ fun SupplierScreen(
                 )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
-                    contentPadding = PaddingValues(bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(suppliers, key = { it.id }) { supplier ->
                         SupplierItemCard(
                             supplier = supplier,
                             isPersian = isPersian,
-                            onClick = { viewModel.selectSupplierForDetail(supplier) },
-                            onEditClick = { viewModel.openEditSupplier(supplier) }
+                            onClick = { viewModel.selectSupplierForDetail(supplier) }
                         )
                     }
                 }
@@ -198,12 +202,16 @@ fun SupplierScreen(
 fun SupplierItemCard(
     supplier: Supplier,
     isPersian: Boolean,
-    onClick: () -> Unit,
-    onEditClick: () -> Unit
+    onClick: () -> Unit
 ) {
-    RestoCard(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        onClick = onClick
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+            .padding(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -213,46 +221,54 @@ fun SupplierItemCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                    .background(Color(0xFFF1F5F9)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Domain,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = Color(0xFF0F172A),
                     modifier = Modifier.size(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(RestoSpacing.md))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = supplier.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color(0xFF0F172A),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 if (supplier.phone.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = if (isPersian) PersianFormatter.toPersianDigits(supplier.phone) else supplier.phone,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B),
                         maxLines = 1
                     )
                 }
             }
 
-            RestoButton(
-                text = if (isPersian) "جزئیات" else "View",
-                onClick = onClick,
-                variant = RestoButtonVariant.Outlined,
-                compact = true
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF1F5F9))
+                    .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (isPersian) "جزئیات" else "View",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+            }
         }
     }
 }

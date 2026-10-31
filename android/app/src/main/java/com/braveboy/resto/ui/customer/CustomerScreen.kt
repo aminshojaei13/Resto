@@ -2,6 +2,8 @@ package com.braveboy.resto.ui.customer
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.LocationOn
@@ -40,8 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.ui.components.RestoBottomSheet
 import com.braveboy.resto.ui.components.RestoButton
@@ -83,6 +89,7 @@ fun CustomerScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = Color(0xFFF8FAFC),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -94,8 +101,8 @@ fun CustomerScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openAddCustomerDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                containerColor = Color(0xFF0F172A),
+                contentColor = Color.White
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PersonAdd,
@@ -133,8 +140,8 @@ fun CustomerScreen(
                 )
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
-                    contentPadding = PaddingValues(bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(customers, key = { it.id }) { customer ->
@@ -142,8 +149,7 @@ fun CustomerScreen(
                             customer = customer,
                             isPersian = isPersian,
                             currencyUnit = currencyUnit,
-                            onClick = { viewModel.selectCustomerForDetail(customer) },
-                            onEditClick = { viewModel.openEditCustomer(customer) }
+                            onClick = { viewModel.selectCustomerForDetail(customer) }
                         )
                     }
                 }
@@ -198,8 +204,7 @@ fun CustomerItemCard(
     customer: Customer,
     isPersian: Boolean,
     currencyUnit: String,
-    onClick: () -> Unit,
-    onEditClick: () -> Unit
+    onClick: () -> Unit
 ) {
     val formattedSpent = if (isPersian) {
         "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
@@ -207,9 +212,14 @@ fun CustomerItemCard(
         "$${String.format("%.2f", customer.totalPurchases)}"
     }
 
-    RestoCard(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        onClick = onClick
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+            .padding(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -219,35 +229,35 @@ fun CustomerItemCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(Color(0xFFF1F5F9)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = customer.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = customer.name.trim().take(1).uppercase(),
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = Color(0xFF0F172A)
                 )
             }
 
-            Spacer(modifier = Modifier.width(RestoSpacing.md))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = customer.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color(0xFF0F172A),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 if (customer.phone.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = if (isPersian) PersianFormatter.toPersianDigits(customer.phone) else customer.phone,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B),
                         maxLines = 1
                     )
                 }
@@ -256,16 +266,16 @@ fun CustomerItemCard(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = formattedSpent,
-                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFF0F172A),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = if (isPersian) "مجموع خرید" else "Total spent",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8),
                     maxLines = 1
                 )
             }
