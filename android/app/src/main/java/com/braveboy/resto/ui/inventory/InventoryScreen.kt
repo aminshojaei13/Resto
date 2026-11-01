@@ -111,7 +111,6 @@ fun InventoryScreen(
             topBar = {
                 RestoTopBar(
                     title = if (isPersian) "موجودی انبار" else "Inventory",
-                    subtitle = if (isPersian) "کنترل انبارها و موجودی کالا" else "Stock levels & catalog",
                     onNavigationClick = onBackClick
                 )
             },

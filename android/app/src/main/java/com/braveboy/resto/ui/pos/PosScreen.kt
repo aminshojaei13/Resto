@@ -104,7 +104,6 @@ fun PosScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "صندوق فروش (POS)" else "Mobile POS",
-                subtitle = if (isPersian) "ثبت سریع سفارش و صدور فاکتور" else "Fast checkout & receipts",
                 onNavigationClick = onBackClick,
                 actions = {
                     IconButton(onClick = { viewModel.openBarcodeScanner() }) {

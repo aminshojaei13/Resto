@@ -94,7 +94,6 @@ fun CustomerScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "مدیریت مشتریان" else "Customers",
-                subtitle = if (isPersian) "لیست مشتریان و سابقه حساب" else "Contact info & history",
                 onNavigationClick = onBackClick
             )
         },

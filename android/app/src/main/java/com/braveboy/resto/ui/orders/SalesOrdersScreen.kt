@@ -98,7 +98,6 @@ fun SalesOrdersScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "سفارش‌ها" else "Orders",
-                subtitle = if (isPersian) "پیگیری سفارشات آنلاین و فروشگاهی" else "Track orders",
                 onNavigationClick = onBackClick
             )
         }

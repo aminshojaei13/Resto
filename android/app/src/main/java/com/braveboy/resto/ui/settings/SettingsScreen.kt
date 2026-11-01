@@ -81,7 +81,6 @@ fun SettingsScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "تنظیمات" else "Settings",
-                subtitle = if (isPersian) "مدیریت حساب کاربری و تنظیمات برنامه" else "Manage preferences",
                 onNavigationClick = onBackClick
             )
         },

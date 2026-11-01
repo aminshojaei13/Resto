@@ -105,7 +105,6 @@ fun PurchasesScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "خرید و تأمین" else "Purchases",
-                subtitle = if (isPersian) "ثبت فاکتورهای ورود کالا به انبار" else "Purchase orders & receiving",
                 onNavigationClick = onBackClick
             )
         },

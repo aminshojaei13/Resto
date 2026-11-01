@@ -55,10 +55,10 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = WarmLightBorder
 )
 
-/** Dark Theme — Exact Reverse of Light Theme (White primary on Black canvas). */
+/** Warm Dark — mirrors web tokens (warm neutral surfaces, teal primary). */
 private val DarkColorScheme = darkColorScheme(
-    // Brand (White Primary for dark mode contrast)
-    primary = PrimaryDark,
+    // Brand
+    primary = RestoTeal,
     onPrimary = OnPrimaryDark,
     primaryContainer = PrimaryContainerDark,
     onPrimaryContainer = OnPrimaryContainerDark,
@@ -75,28 +75,28 @@ private val DarkColorScheme = darkColorScheme(
     errorContainer = ErrorContainerDark,
     onErrorContainer = OnErrorContainerDark,
 
-    // Canvas & surfaces
-    background = BackgroundDark,
-    onBackground = OnBackgroundDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    surfaceDim = BackgroundDark,
-    surfaceBright = SurfaceVariantDark,
-    surfaceContainerLowest = BackgroundDark,
-    surfaceContainerLow = BackgroundDark,
-    surfaceContainer = SurfaceDark,
-    surfaceContainerHigh = SurfaceVariantDark,
-    surfaceContainerHighest = SurfaceVariantDark,
+    // Canvas & surfaces (warm, layered, NOT pure black)
+    background = WarmDarkBackground,
+    onBackground = WarmDarkTextPrimary,
+    surface = WarmDarkSurface,
+    onSurface = WarmDarkTextPrimary,
+    surfaceVariant = WarmDarkSurfaceElevated,
+    onSurfaceVariant = WarmDarkTextSecondary,
+    surfaceDim = WarmDarkBackgroundSecondary,
+    surfaceBright = WarmDarkSurfaceHover,
+    surfaceContainerLowest = WarmDarkBackground,
+    surfaceContainerLow = WarmDarkBackgroundSecondary,
+    surfaceContainer = WarmDarkSurface,
+    surfaceContainerHigh = WarmDarkSurfaceElevated,
+    surfaceContainerHighest = WarmDarkSurfaceHover,
 
     // Borders & dividers
-    outline = Color(0xFF475569),
-    outlineVariant = Color(0xFF334155),
+    outline = WarmDarkBorderStrong,
+    outlineVariant = WarmDarkBorder,
 
     // Extras
-    inverseSurface = Color(0xFFF8FAFC),
-    inverseOnSurface = Color(0xFF0F172A),
+    inverseSurface = Color(0xFFF5F1EA),
+    inverseOnSurface = Color(0xFF1D1A17),
     inversePrimary = PrimaryLight,
     scrim = Color(0xFF0A0806)
 )

@@ -200,7 +200,6 @@ fun MessagesScreenContent(
             topBar = {
                 RestoTopBar(
                     title = if (isPersian) "سفارش پیامکی" else "Social Orders",
-                    subtitle = if (isPersian) "پردازش هوشمند چت شبکه‌های اجتماعی" else "Process social chat messages",
                     onNavigationClick = onBackClick
                 )
             }

@@ -34,7 +34,7 @@ fun RestoStatCard(
     subtitle: String? = null,
     icon: ImageVector? = null,
     iconTint: Color = MaterialTheme.colorScheme.primary,
-    iconBackground: Color = MaterialTheme.colorScheme.primaryContainer,
+    iconBackground: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     badgeText: String? = null,
     badgeVariant: RestoBadgeVariant = RestoBadgeVariant.Info,
     onClick: (() -> Unit)? = null

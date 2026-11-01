@@ -94,7 +94,6 @@ fun ExpensesScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "هزینه‌های جاری" else "Expenses",
-                subtitle = if (isPersian) "ثبت و پیگیری هزینه‌های عملیاتی" else "Track operating costs",
                 onNavigationClick = onBackClick
             )
         },

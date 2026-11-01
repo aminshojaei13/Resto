@@ -1,5 +1,6 @@
 package com.braveboy.resto.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,17 +40,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.components.RestoButton
 import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoTextField
-import com.braveboy.resto.ui.icons.Resto
-import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 
@@ -90,18 +91,16 @@ fun BusinessSetupScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Resto Official Logo Icon
                     Surface(
                         shape = RestoShapes.large,
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(76.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Resto,
+                            Image(
+                                painter = painterResource(R.drawable.ic_resto),
                                 contentDescription = "Resto Logo",
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                modifier = Modifier.size(48.dp)
                             )
                         }
                     }

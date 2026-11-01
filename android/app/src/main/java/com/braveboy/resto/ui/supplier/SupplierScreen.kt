@@ -94,7 +94,6 @@ fun SupplierScreen(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "تأمین‌کنندگان" else "Suppliers",
-                subtitle = if (isPersian) "فهرست فروشندگان کالا و شرکت‌ها" else "Vendors & contact directory",
                 onNavigationClick = onBackClick
             )
         },
