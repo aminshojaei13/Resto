@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -42,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,6 +59,7 @@ import com.braveboy.resto.ui.components.RestoStatCard
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
+import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
 @Composable
@@ -101,7 +102,7 @@ fun InventoryScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFFF8FAFC),
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -112,8 +113,8 @@ fun InventoryScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openAddProductDialog() },
-                containerColor = Color(0xFF0F172A),
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = RestoSpacing.md),
@@ -311,15 +312,15 @@ fun InventoryItemCard(
     val isLowStock = totalStock in 1..9
 
     val stockBg = when {
-        isOutOfStock -> Color(0xFFFEE2E2)
-        isLowStock -> Color(0xFFFEF3C7)
-        else -> Color(0xFFDCFCE7)
+        isOutOfStock -> MaterialTheme.colorScheme.errorContainer
+        isLowStock -> RestoTheme.colors.warningContainer
+        else -> RestoTheme.colors.successContainer
     }
 
     val stockTextColor = when {
-        isOutOfStock -> Color(0xFFB91C1C)
-        isLowStock -> Color(0xFFD97706)
-        else -> Color(0xFF15803D)
+        isOutOfStock -> MaterialTheme.colorScheme.onErrorContainer
+        isLowStock -> RestoTheme.colors.onWarningContainer
+        else -> RestoTheme.colors.onSuccessContainer
     }
 
     val stockBadgeText = when {
@@ -338,8 +339,8 @@ fun InventoryItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(
@@ -359,13 +360,13 @@ fun InventoryItemCard(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFDCFCE7)),
+                            .background(RestoTheme.colors.successContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Inventory2,
                             contentDescription = null,
-                            tint = Color(0xFF16A34A),
+                            tint = RestoTheme.colors.success,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -377,13 +378,13 @@ fun InventoryItemCard(
                             text = product.name,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${stringResource(R.string.stock_code)} ${product.sku}  •  ${product.category}",
                             fontSize = 12.sp,
-                            color = Color(0xFF64748B)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -392,7 +393,7 @@ fun InventoryItemCard(
                     text = formattedPrice,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -424,7 +425,7 @@ fun InventoryItemCard(
                         Icon(
                             imageVector = Icons.Rounded.Edit,
                             contentDescription = stringResource(R.string.edit),
-                            tint = Color(0xFF475569),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -432,8 +433,8 @@ fun InventoryItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF1F5F9))
-                            .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                             .clickable { onAdjustStockClick() }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
@@ -441,7 +442,7 @@ fun InventoryItemCard(
                             text = stringResource(R.string.change_stock),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

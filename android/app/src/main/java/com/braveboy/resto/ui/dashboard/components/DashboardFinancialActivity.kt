@@ -319,7 +319,7 @@ fun DashboardFinancialActivityPreview() {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFF8FAFC))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(16.dp)
             ) {
                 DashboardFinancialActivity(

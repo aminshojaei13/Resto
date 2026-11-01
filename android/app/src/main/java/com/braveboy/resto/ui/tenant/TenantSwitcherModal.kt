@@ -80,67 +80,13 @@ fun TenantSwitcherModal(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (tenantState.language == "fa") "تنظیمات فروشگاه و زبان" else "Switch Tenant & Language",
+                            text = if (tenantState.language == "fa") "تنظیمات فروشگاه" else "Switch Tenant",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Language selection
-                Text(
-                    text = if (tenantState.language == "fa") "زبان برنامه (جهت چیدمان)" else "App Language (Layout Direction)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                tenantRepository.setLanguage("fa")
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (tenantState.language == "fa") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (tenantState.language == "fa") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Rounded.Language, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("فارسی (RTL)")
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                tenantRepository.setLanguage("en")
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (tenantState.language == "en") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (tenantState.language == "en") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Rounded.Language, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("English (LTR)")
-                        }
                     }
                 }
 

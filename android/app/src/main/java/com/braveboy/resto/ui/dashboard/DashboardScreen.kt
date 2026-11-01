@@ -124,7 +124,7 @@ fun DashboardScreenContent(
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFFF8FAFC),
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackBarHostState) },
     ) { _ ->
         LazyColumn(
@@ -230,6 +230,9 @@ fun DashboardScreenContent(
             item {
                 DashboardQuickActions(
                     isPersian = isPersian,
+                    onNewManualOrderClick = {
+                        onNavigateToDestination(MainDestination.POS, false)
+                    },
                     onAddProductClick = {
                         onNavigateToDestination(MainDestination.INVENTORY, true)
                     },

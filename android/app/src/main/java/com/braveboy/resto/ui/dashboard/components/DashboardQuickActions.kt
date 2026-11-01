@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -28,7 +29,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -96,6 +96,7 @@ fun DashboardQuickActionRow(
 fun DashboardQuickActions(
     modifier: Modifier = Modifier,
     isPersian: Boolean = false,
+    onNewManualOrderClick: () -> Unit = {},
     onAddProductClick: () -> Unit = {},
     onImportDropshippingClick: () -> Unit = {},
     onViewOrdersClick: () -> Unit = {},
@@ -109,6 +110,15 @@ fun DashboardQuickActions(
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
     ) {
         Column {
+            DashboardQuickActionRow(
+                title = if (isPersian) "ثبت سفارش دستی (POS)" else "New Manual Order (POS)",
+                icon = Icons.Rounded.PointOfSale,
+                onClick = onNewManualOrderClick,
+                isPersian = isPersian
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_add_product),
                 icon = Icons.Rounded.Add,
@@ -153,7 +163,7 @@ fun DashboardQuickActionsPreview() {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFF9FAFB))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(16.dp)
             ) {
                 DashboardQuickActions(isPersian = true)

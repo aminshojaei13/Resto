@@ -1,5 +1,6 @@
 package com.braveboy.resto.ui.settings
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,14 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Business
-import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,32 +33,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material.icons.rounded.CloudSync
-import androidx.compose.material.icons.rounded.CloudDone
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.AuthRepository
 import com.braveboy.resto.data.repository.TenantRepository
 import com.braveboy.resto.data.sync.SyncManager
 import com.braveboy.resto.data.sync.SyncStatus
-import com.braveboy.resto.ui.components.RestoButton
-import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoListItem
 import com.braveboy.resto.ui.components.RestoSection
-import android.annotation.SuppressLint
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import kotlinx.coroutines.launch
@@ -62,19 +56,24 @@ import kotlinx.coroutines.launch
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun SettingsScreen(
+    modifier: Modifier = Modifier,
     tenantRepository: TenantRepository,
     authRepository: AuthRepository,
     syncManager: SyncManager? = null,
     onOpenTenantSwitcher: () -> Unit,
-    modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
     val tenantState by tenantRepository.getTenantState().collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
     val scope = rememberCoroutineScope()
 
-    val syncStatus by syncManager?.syncState?.collectAsState() ?: remember { mutableStateOf(SyncStatus.IDLE) }
-    val unsyncedCount by syncManager?.unsyncedCount?.collectAsState(initial = 0) ?: remember { mutableStateOf(0) }
+    val syncStatus by syncManager?.syncState?.collectAsState() ?: remember {
+        mutableStateOf(
+            SyncStatus.IDLE
+        )
+    }
+    val unsyncedCount by syncManager?.unsyncedCount?.collectAsState(initial = 0)
+        ?: remember { mutableIntStateOf(0) }
 
     Scaffold(
         topBar = {
@@ -94,7 +93,6 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            // Profile Card
             item {
                 RestoCard(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -112,7 +110,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Offline & Synchronization Section
             item {
                 RestoSection(
                     title = if (isPersian) "همگام‌سازی و دیتابیس آفلاین" else "Offline Sync & Data"
@@ -184,7 +181,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Organization & Branch Section
             item {
                 RestoSection(
                     title = if (isPersian) "اطلاعات کسب‌وکار و شعب" else "Business & Branches"
@@ -202,7 +198,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Preferences Section
             item {
                 RestoSection(
                     title = if (isPersian) "ترجیحات برنامه" else "App Preferences"
@@ -210,7 +205,6 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(RestoSpacing.xs))
                 RestoCard {
                     Column {
-                        // Language toggle
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

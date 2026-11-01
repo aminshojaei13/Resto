@@ -253,8 +253,8 @@ fun PurchaseItemCard(
     } else {
         stringResource(R.string.pending_delivery)
     }
-    val statusBg = if (isReceived) Color(0xFFDCFCE7) else Color(0xFFFEF3C7)
-    val statusTextColor = if (isReceived) Color(0xFF15803D) else Color(0xFFD97706)
+    val statusBg = if (isReceived) com.braveboy.resto.ui.theme.RestoTheme.colors.successContainer else com.braveboy.resto.ui.theme.RestoTheme.colors.warningContainer
+    val statusTextColor = if (isReceived) com.braveboy.resto.ui.theme.RestoTheme.colors.onSuccessContainer else com.braveboy.resto.ui.theme.RestoTheme.colors.onWarningContainer
 
     val formattedAmount = if (isPersian) {
         "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
