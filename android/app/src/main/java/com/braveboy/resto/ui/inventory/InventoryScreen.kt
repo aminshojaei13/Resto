@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -105,7 +106,7 @@ fun InventoryScreen(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = Color(0xFFF8FAFC),
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 RestoTopBar(
@@ -117,8 +118,8 @@ fun InventoryScreen(
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { viewModel.openAddProductDialog() },
-                    containerColor = Color(0xFF0F172A),
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.spotlightTarget("inventory_fab", guideState)
                 ) {
                     Row(
@@ -352,8 +353,8 @@ fun InventoryItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(
@@ -373,13 +374,13 @@ fun InventoryItemCard(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFDCFCE7)),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Inventory2,
                             contentDescription = null,
-                            tint = Color(0xFF16A34A),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -391,13 +392,13 @@ fun InventoryItemCard(
                             text = product.name,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${if (isPersian) "کد:" else "SKU:"} ${product.sku}  •  ${product.category}",
                             fontSize = 12.sp,
-                            color = Color(0xFF64748B)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -406,7 +407,7 @@ fun InventoryItemCard(
                     text = formattedPrice,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -438,7 +439,7 @@ fun InventoryItemCard(
                         Icon(
                             imageVector = Icons.Rounded.Edit,
                             contentDescription = if (isPersian) "ویرایش کالا" else "Edit",
-                            tint = Color(0xFF475569),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -446,8 +447,8 @@ fun InventoryItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF1F5F9))
-                            .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                             .clickable { onAdjustStockClick() }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
@@ -455,7 +456,7 @@ fun InventoryItemCard(
                             text = if (isPersian) "تغییر موجودی" else "Adjust Stock",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

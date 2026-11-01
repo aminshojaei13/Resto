@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -59,7 +60,7 @@ fun DashboardRecentOrders(
                 text = if (isPersian) "سفارش‌های اخیر" else "Recent Orders",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF111827)
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             if (orders.isNotEmpty()) {
@@ -67,7 +68,7 @@ fun DashboardRecentOrders(
                     text = if (isPersian) "مشاهده همه" else "See All",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2563EB),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { onSeeAllClick() }
                 )
             }
@@ -79,8 +80,8 @@ fun DashboardRecentOrders(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -92,12 +93,12 @@ fun DashboardRecentOrders(
                         text = if (isPersian) "هنوز سفارشی ثبت نشده است" else "No orders recorded yet",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = if (isPersian) "پس از انجام ثبت سفارش جدید یا دریافت فاکتور، سفارشات در این بخش قرار می‌گیرند." else "Your recent sales orders will appear here.",
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -127,8 +128,8 @@ fun DashboardOrderItemCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
@@ -143,8 +144,8 @@ fun DashboardOrderItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFFFEF2F2))
-                            .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(20.dp))
+                            .background(RestoTheme.colors.warningContainer)
+                            .border(1.dp, RestoTheme.colors.warning.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Row(
@@ -155,13 +156,13 @@ fun DashboardOrderItemCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFDC2626))
+                                    .background(RestoTheme.colors.warning)
                             )
                             Text(
                                 text = if (isPersian) "احتمالاً فیک" else "Likely Fake",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFB91C1C)
+                                color = RestoTheme.colors.onWarningContainer
                             )
                         }
                     }
@@ -170,8 +171,8 @@ fun DashboardOrderItemCard(
                 if (order.paymentStatus.isNotBlank()) {
                     // Unpaid Pill
                     val isUnpaid = order.paymentStatus.equals("Unpaid", ignoreCase = true)
-                    val bg = if (isUnpaid) Color(0xFFFEE2E2) else Color(0xFFD1FAE5)
-                    val textClr = if (isUnpaid) Color(0xFFDC2626) else Color(0xFF059669)
+                    val bg = if (isUnpaid) MaterialTheme.colorScheme.errorContainer else RestoTheme.colors.successContainer
+                    val textClr = if (isUnpaid) MaterialTheme.colorScheme.onErrorContainer else RestoTheme.colors.onSuccessContainer
 
                     Box(
                         modifier = Modifier
@@ -195,14 +196,14 @@ fun DashboardOrderItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFFFEF3C7))
+                            .background(RestoTheme.colors.infoContainer)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = if (isPersian && order.orderTag == "New") "جدید" else order.orderTag,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFD97706)
+                            color = RestoTheme.colors.onInfoContainer
                         )
                     }
                 }
@@ -218,14 +219,14 @@ fun DashboardOrderItemCard(
                     text = if (isPersian) PersianFormatter.toPersianDigits(order.orderNumber) else order.orderNumber,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
                     text = order.amount,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }

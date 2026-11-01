@@ -34,20 +34,31 @@ private val LightColorScheme = lightColorScheme(
     onError = OnErrorLight,
     errorContainer = ErrorContainerLight,
     onErrorContainer = OnErrorContainerLight,
-    background = BackgroundLight,
-    onBackground = OnBackgroundLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
-    outline = Color(0xFFD1D5DB),
-    outlineVariant = Color(0xFFE5E7EB)
+
+    // Warm Light Canvas & Surfaces
+    background = WarmLightBackground,
+    onBackground = WarmLightTextPrimary,
+    surface = WarmLightSurface,
+    onSurface = WarmLightTextPrimary,
+    surfaceVariant = WarmLightSurfaceElevated,
+    onSurfaceVariant = WarmLightTextSecondary,
+    surfaceDim = WarmLightBackgroundSecondary,
+    surfaceBright = WarmLightSurfaceHover,
+    surfaceContainerLowest = WarmLightBackground,
+    surfaceContainerLow = WarmLightBackgroundSecondary,
+    surfaceContainer = WarmLightSurface,
+    surfaceContainerHigh = WarmLightSurfaceElevated,
+    surfaceContainerHighest = WarmLightSurfaceHover,
+
+    // Borders & Dividers
+    outline = WarmLightBorderStrong,
+    outlineVariant = WarmLightBorder
 )
 
-/** Warm Dark — mirrors web tokens (warm neutral surfaces, teal primary). */
+/** Dark Theme — Exact Reverse of Light Theme (White primary on Black canvas). */
 private val DarkColorScheme = darkColorScheme(
-    // Brand
-    primary = RestoTeal,
+    // Brand (White Primary for dark mode contrast)
+    primary = PrimaryDark,
     onPrimary = OnPrimaryDark,
     primaryContainer = PrimaryContainerDark,
     onPrimaryContainer = OnPrimaryContainerDark,
@@ -64,28 +75,28 @@ private val DarkColorScheme = darkColorScheme(
     errorContainer = ErrorContainerDark,
     onErrorContainer = OnErrorContainerDark,
 
-    // Canvas & surfaces (warm, layered, NOT pure black)
-    background = WarmDarkBackground,
-    onBackground = WarmDarkTextPrimary,
-    surface = WarmDarkSurface,
-    onSurface = WarmDarkTextPrimary,
-    surfaceVariant = WarmDarkSurfaceElevated,
-    onSurfaceVariant = WarmDarkTextSecondary,
-    surfaceDim = WarmDarkBackgroundSecondary,
-    surfaceBright = WarmDarkSurfaceHover,
-    surfaceContainerLowest = WarmDarkBackground,
-    surfaceContainerLow = WarmDarkBackgroundSecondary,
-    surfaceContainer = WarmDarkSurface,
-    surfaceContainerHigh = WarmDarkSurfaceElevated,
-    surfaceContainerHighest = WarmDarkSurfaceHover,
+    // Canvas & surfaces
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    surfaceDim = BackgroundDark,
+    surfaceBright = SurfaceVariantDark,
+    surfaceContainerLowest = BackgroundDark,
+    surfaceContainerLow = BackgroundDark,
+    surfaceContainer = SurfaceDark,
+    surfaceContainerHigh = SurfaceVariantDark,
+    surfaceContainerHighest = SurfaceVariantDark,
 
     // Borders & dividers
-    outline = WarmDarkBorderStrong,
-    outlineVariant = WarmDarkBorder,
+    outline = Color(0xFF475569),
+    outlineVariant = Color(0xFF334155),
 
     // Extras
-    inverseSurface = Color(0xFFF5F1EA),
-    inverseOnSurface = Color(0xFF1D1A17),
+    inverseSurface = Color(0xFFF8FAFC),
+    inverseOnSurface = Color(0xFF0F172A),
     inversePrimary = PrimaryLight,
     scrim = Color(0xFF0A0806)
 )
@@ -122,8 +133,8 @@ fun RestoTheme(
                 onInfo = Color(0xFF000000),
                 infoContainer = RestoSemanticColors.infoContainerDark,
                 onInfoContainer = Color(0xFFFFFFFF),
-                textMuted = Color(0xFFA1A1AA),
-                borderSubtle = Color(0xFF27272A)
+                textMuted = WarmDarkTextMuted,
+                borderSubtle = WarmDarkBorder
             )
         } else {
             RestoExtendedColors(
@@ -139,8 +150,8 @@ fun RestoTheme(
                 onInfo = Color(0xFFFFFFFF),
                 infoContainer = RestoSemanticColors.infoContainerLight,
                 onInfoContainer = Color(0xFF000000),
-                textMuted = Color(0xFF71717A),
-                borderSubtle = Color(0xFFE4E4E7)
+                textMuted = WarmLightTextMuted,
+                borderSubtle = WarmLightBorder
             )
         }
 

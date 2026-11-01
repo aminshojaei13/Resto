@@ -79,7 +79,7 @@ fun BusinessSetupScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color(0xFFF8FAFC))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(horizontal = RestoSpacing.lg),
                 contentAlignment = Alignment.Center
             ) {
@@ -93,7 +93,7 @@ fun BusinessSetupScreen(
                     // Resto Official Logo Icon
                     Surface(
                         shape = RestoShapes.large,
-                        color = Color(0xFFDCFCE7),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.size(76.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -101,7 +101,7 @@ fun BusinessSetupScreen(
                                 imageVector = Resto,
                                 contentDescription = "Resto Logo",
                                 modifier = Modifier.size(48.dp),
-                                tint = Color.Unspecified
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -112,7 +112,7 @@ fun BusinessSetupScreen(
                         text = "راه‌اندازی سریع کسب‌وکار",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
 
                     Spacer(modifier = Modifier.height(RestoSpacing.xs))
@@ -120,7 +120,7 @@ fun BusinessSetupScreen(
                     Text(
                         text = "بدون نیاز به اینترنت؛ نام فروشگاه خود را وارد کنید و بلافاصله کار خود را شروع کنید.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
 
@@ -131,7 +131,7 @@ fun BusinessSetupScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RestoShapes.large,
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {

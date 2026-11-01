@@ -100,7 +100,7 @@ fun PurchasesScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFFF8FAFC),
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -112,8 +112,8 @@ fun PurchasesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.openCreatePurchaseDialog() },
-                containerColor = Color(0xFF0F172A),
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
@@ -135,8 +135,8 @@ fun PurchasesScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                     .padding(14.dp)
             ) {
                 Row(
@@ -146,7 +146,7 @@ fun PurchasesScreen(
                     Icon(
                         imageVector = Icons.Rounded.Info,
                         contentDescription = null,
-                        tint = Color(0xFF2563EB),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -155,7 +155,7 @@ fun PurchasesScreen(
                             text = if (isPersian) "چرخه خرید و تامین کالا" else "Purchasing & Receiving Cycle",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = if (isPersian)
@@ -163,7 +163,7 @@ fun PurchasesScreen(
                             else
                                 "Purchase = Order placed | Receiving = Stock physically arrives.",
                             fontSize = 12.sp,
-                            color = Color(0xFF64748B)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -270,8 +270,8 @@ fun PurchaseItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
@@ -289,13 +289,13 @@ fun PurchaseItemCard(
                     fontSize = 16.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = formattedAmount,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -307,12 +307,12 @@ fun PurchaseItemCard(
                 Text(
                     text = "${if (isPersian) "تأمین‌کننده:" else "Supplier:"} ${purchase.supplierName}",
                     fontSize = 13.sp,
-                    color = Color(0xFF64748B)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = dateStr,
                     fontSize = 12.sp,
-                    color = Color(0xFF94A3B8)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -339,7 +339,7 @@ fun PurchaseItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0F172A))
+                            .background(MaterialTheme.colorScheme.primary)
                             .clickable { onReceive() }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
@@ -347,7 +347,7 @@ fun PurchaseItemCard(
                             text = if (isPersian) "ورود به انبار" else "Receive Stock",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }

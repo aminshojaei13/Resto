@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -69,12 +70,12 @@ fun DashboardFinancialActivity(
                     text = if (isPersian) "گردش مالی و تراکنش‌های اخیر" else "Recent Financial Activity",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = if (isPersian) "ثبت درآمدهای فروش و هزینه‌های عملیاتی" else "Sales income & operational expenses",
                     fontSize = 12.sp,
-                    color = Color(0xFF64748B)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -84,7 +85,7 @@ fun DashboardFinancialActivity(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF0F172A))
+                    .background(MaterialTheme.colorScheme.primary)
                     .clickable { onNewEntryClick() }
                     .padding(horizontal = 12.dp, vertical = 7.dp)
             ) {
@@ -95,14 +96,14 @@ fun DashboardFinancialActivity(
                     Icon(
                         imageVector = Icons.Rounded.Add,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = if (isPersian) "ثبت سند" else "New Entry",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -114,8 +115,8 @@ fun DashboardFinancialActivity(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -127,13 +128,13 @@ fun DashboardFinancialActivity(
                         modifier = Modifier
                             .size(54.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9)),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
                             contentDescription = null,
-                            tint = Color(0xFF475569),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -142,7 +143,7 @@ fun DashboardFinancialActivity(
                         text = if (isPersian) "هنوز تراکنشی ثبت نشده است" else "No transactions recorded yet",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
@@ -152,7 +153,7 @@ fun DashboardFinancialActivity(
                         else
                             "When you make your first sale or record an expense, activity will appear here.",
                         fontSize = 13.sp,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
@@ -162,7 +163,7 @@ fun DashboardFinancialActivity(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0F172A))
+                            .background(MaterialTheme.colorScheme.primary)
                             .clickable { onNewEntryClick() }
                             .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) {
@@ -170,7 +171,7 @@ fun DashboardFinancialActivity(
                             text = if (isPersian) "+ ثبت اولین سند" else "+ Record First Entry",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
@@ -226,8 +227,8 @@ fun ModernLedgerCardItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .padding(14.dp)
     ) {
@@ -239,13 +240,13 @@ fun ModernLedgerCardItem(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(if (isCredit) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)),
+                    .background(if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
                     contentDescription = null,
-                    tint = if (isCredit) Color(0xFF16A34A) else Color(0xFFDC2626),
+                    tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -262,12 +263,12 @@ fun ModernLedgerCardItem(
                         fontSize = 14.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     // Category Pill
-                    val badgeBg = if (isCredit) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)
-                    val badgeTextClr = if (isCredit) Color(0xFF15803D) else Color(0xFFB91C1C)
+                    val badgeBg = if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
+                    val badgeTextClr = if (isCredit) RestoTheme.colors.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer
 
                     Box(
                         modifier = Modifier
@@ -289,14 +290,14 @@ fun ModernLedgerCardItem(
                     Text(
                         text = entry.description,
                         fontSize = 13.sp,
-                        color = Color(0xFF475569)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Text(
                     text = dateStr,
                     fontSize = 11.sp,
-                    color = Color(0xFF94A3B8)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -306,7 +307,7 @@ fun ModernLedgerCardItem(
                 text = formattedAmount,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isCredit) Color(0xFF16A34A) else Color(0xFFDC2626)
+                color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error
             )
         }
     }

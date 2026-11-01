@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,13 +53,13 @@ fun RestoBottomNav(
         modifier = modifier
             .fillMaxWidth()
             .height(68.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(width = (0.5).dp, color = Color(0xFFE2E8F0))
+                .border(width = (0.5).dp, color = MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
                 modifier = Modifier
@@ -89,14 +90,14 @@ fun RestoBottomNav(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF0F172A))
+                        .background(MaterialTheme.colorScheme.primary)
                         .clickable { onCenterFabClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Add,
                         contentDescription = if (isPersian) "ثبت جدید" else "New Entry",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -136,8 +137,8 @@ private fun RestoNavItem(
     badgeCount: Int = 0,
     isPersian: Boolean = true
 ) {
-    val activeColor = Color(0xFF0F172A)
-    val inactiveColor = Color(0xFF64748B)
+    val activeColor = MaterialTheme.colorScheme.primary
+    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
         modifier = Modifier
@@ -160,12 +161,12 @@ private fun RestoNavItem(
                     modifier = Modifier
                         .size(14.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFEF4444)),
+                        .background(MaterialTheme.colorScheme.error),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = if (isPersian) PersianFormatter.toPersianDigits(badgeCount) else "$badgeCount",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onError,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold
                     )

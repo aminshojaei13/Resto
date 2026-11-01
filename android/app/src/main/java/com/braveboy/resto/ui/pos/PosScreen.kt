@@ -99,6 +99,7 @@ fun PosScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -110,14 +111,14 @@ fun PosScreen(
                         Icon(
                             imageVector = Icons.Rounded.QrCodeScanner,
                             contentDescription = if (isPersian) "اسکن بارکد" else "Scan Barcode",
-                            tint = Color(0xFF0F172A)
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onNavigateToTenantSwitch) {
                         Icon(
                             imageVector = Icons.Rounded.Storefront,
                             contentDescription = if (isPersian) "تغییر فروشگاه یا سازمان" else "Switch Store / Org",
-                            tint = Color(0xFF0F172A)
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

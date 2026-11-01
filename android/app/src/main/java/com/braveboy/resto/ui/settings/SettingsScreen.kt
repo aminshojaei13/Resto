@@ -85,6 +85,7 @@ fun SettingsScreen(
                 onNavigationClick = onBackClick
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         LazyColumn(

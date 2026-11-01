@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -61,14 +62,14 @@ fun DashboardHeader(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFDCFCE7))
-                    .border(1.dp, Color(0xFF86EFAC), RoundedCornerShape(12.dp)),
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Resto,
                     contentDescription = "Resto Logo",
-                    tint = Color.Unspecified,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -83,14 +84,14 @@ fun DashboardHeader(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFE2E8F0))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable { onProfileClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = displayName.take(1).uppercase(),
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 17.sp
                     )
                 }
@@ -100,14 +101,14 @@ fun DashboardHeader(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF1F5F9))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable { onNotificationClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = "Notifications",
-                        tint = Color(0xFF0F172A),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
 
@@ -118,12 +119,12 @@ fun DashboardHeader(
                                 .padding(top = 2.dp, end = 2.dp)
                                 .size(16.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFEF4444)),
+                                .background(MaterialTheme.colorScheme.error),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = if (isPersian) PersianFormatter.toPersianDigits(notificationCount) else notificationCount.toString(),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onError,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -141,7 +142,7 @@ fun DashboardHeader(
             text = greetingText,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF0F172A),
+            color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,7 +34,7 @@ fun DashboardRevenueCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xFF0A3C2F)) // Dark forest green background
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(20.dp)
     ) {
         Column(
@@ -45,7 +45,7 @@ fun DashboardRevenueCard(
                 text = if (isPersian) "درآمد کل" else "Total Revenue",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFFA7F3D0) // Light muted mint green
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
 
             // Amount and trend row
@@ -58,14 +58,14 @@ fun DashboardRevenueCard(
                     text = revenueValue,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
                 Text(
                     text = "↑ $trendText ${if (isPersian) "نسبت به ماه قبل" else "vs last month"}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF34D399), // Vibrant bright green
+                    color = RestoTheme.colors.success,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
