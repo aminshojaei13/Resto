@@ -69,10 +69,10 @@ fun CheckoutModal(
 ) {
     val totalAmount = cartItems.sumOf { it.total }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
-    var cashTenderedText by remember { mutableStateOf(if (isPersian) totalAmount.toLong().toString() else String.format("%.2f", totalAmount)) }
+    var cashTenderedText by remember { mutableStateOf(totalAmount.toLong().toString()) }
     var notesText by remember { mutableStateOf("") }
 
-    val cashTendered = cashTenderedText.toDoubleOrNull() ?: 0.0
+    val cashTendered = com.braveboy.resto.util.PersianFormatter.parsePrice(cashTenderedText)
     val changeDue = (cashTendered - totalAmount).coerceAtLeast(0.0)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -232,9 +232,10 @@ fun CheckoutModal(
 
                         OutlinedTextField(
                             value = cashTenderedText,
-                            onValueChange = { cashTenderedText = it },
+                            onValueChange = { cashTenderedText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                            visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                             label = { Text(if (isPersian) "مبلغ پرداختی مشتری ($currencyUnit)" else "Cash Tendered ($)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
@@ -248,7 +249,7 @@ fun CheckoutModal(
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    cashTenderedText = if (isPersian) totalAmount.toLong().toString() else String.format("%.2f", totalAmount)
+                                    cashTenderedText = totalAmount.toLong().toString()
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {

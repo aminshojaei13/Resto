@@ -44,7 +44,7 @@ fun RestoSplashScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(100.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.onPrimaryContainer),
                 contentAlignment = Alignment.Center
@@ -52,11 +52,11 @@ fun RestoSplashScreen(
                 Image(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_resto),
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(84.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = stringResource(R.string.app_name),

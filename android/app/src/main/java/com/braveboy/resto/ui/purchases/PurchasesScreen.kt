@@ -377,10 +377,10 @@ fun CreatePurchaseDialog(
     var productDropdownExpanded by remember { mutableStateOf(false) }
 
     var quantityText by remember { mutableStateOf("10") }
-    var unitCostText by remember { mutableStateOf(selectedProduct?.costPrice?.toString() ?: "0") }
+    var unitCostText by remember { mutableStateOf(selectedProduct?.costPrice?.let { it.toLong().toString() } ?: "0") }
 
     val qty = quantityText.toIntOrNull() ?: 0
-    val cost = unitCostText.toDoubleOrNull() ?: 0.0
+    val cost = PersianFormatter.parsePrice(unitCostText)
 
     RestoDialog(
         title = stringResource(R.string.new_purchase_invoice),
@@ -461,7 +461,7 @@ fun CreatePurchaseDialog(
                             text = { Text("${prod.name} (${prod.sku})") },
                             onClick = {
                                 selectedProduct = prod
-                                unitCostText = prod.costPrice.toString()
+                                unitCostText = prod.costPrice.toLong().toString()
                                 productDropdownExpanded = false
                             }
                         )
@@ -474,13 +474,16 @@ fun CreatePurchaseDialog(
                     value = quantityText,
                     onValueChange = { quantityText = it.filter { ch -> ch.isDigit() } },
                     label = stringResource(R.string.quantity_delta),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
 
                 RestoTextField(
                     value = unitCostText,
-                    onValueChange = { unitCostText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onValueChange = { unitCostText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }

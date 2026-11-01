@@ -514,8 +514,8 @@ fun EditProductDialog(
     var sku by remember { mutableStateOf(product.sku) }
     var barcode by remember { mutableStateOf(product.barcode) }
     var description by remember { mutableStateOf(product.description) }
-    var priceStr by remember { mutableStateOf(product.price.toString()) }
-    var costPriceStr by remember { mutableStateOf(product.costPrice.toString()) }
+    var priceStr by remember { mutableStateOf(if (product.price > 0) product.price.toLong().toString() else "") }
+    var costPriceStr by remember { mutableStateOf(if (product.costPrice > 0) product.costPrice.toLong().toString() else "") }
     var category by remember { mutableStateOf(product.category) }
     var unit by remember { mutableStateOf(product.unit) }
     var imageUrl by remember { mutableStateOf(product.imageUrl) }
@@ -542,8 +542,8 @@ fun EditProductDialog(
         confirmText = stringResource(R.string.save_changes),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val priceVal = priceStr.toDoubleOrNull() ?: product.price
-            val costVal = costPriceStr.toDoubleOrNull() ?: product.costPrice
+            val priceVal = PersianFormatter.parsePrice(priceStr)
+            val costVal = PersianFormatter.parsePrice(costPriceStr)
             if (name.isNotBlank() && sku.isNotBlank()) {
                 onSubmit(
                     product.copy(
@@ -639,14 +639,18 @@ fun EditProductDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 RestoTextField(
                     value = priceStr,
-                    onValueChange = { priceStr = it },
+                    onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = costPriceStr,
-                    onValueChange = { costPriceStr = it },
+                    onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -739,8 +743,8 @@ fun AddProductDialog(
         confirmText = stringResource(R.string.add_product_to_warehouse),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val priceVal = priceStr.toDoubleOrNull() ?: 0.0
-            val costVal = costPriceStr.toDoubleOrNull() ?: 0.0
+            val priceVal = PersianFormatter.parsePrice(priceStr)
+            val costVal = PersianFormatter.parsePrice(costPriceStr)
             val stockVal = initialStockStr.toIntOrNull() ?: 0
             if (name.isNotBlank() && sku.isNotBlank()) {
                 onSubmit(
@@ -840,14 +844,18 @@ fun AddProductDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 RestoTextField(
                     value = priceStr,
-                    onValueChange = { priceStr = it },
+                    onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = costPriceStr,
-                    onValueChange = { costPriceStr = it },
+                    onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }

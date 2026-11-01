@@ -321,12 +321,12 @@ private fun ModernRecordEntryDialog(
         confirmText = stringResource(R.string.record_final_btn),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val amt = amountText.toDoubleOrNull() ?: 0.0
+            val amt = PersianFormatter.parsePrice(amountText)
             if (amt > 0 && descriptionText.isNotBlank()) {
                 onSubmit(selectedType, selectedCategory, amt, descriptionText.trim())
             }
         },
-        confirmEnabled = (amountText.toDoubleOrNull() ?: 0.0) > 0 && descriptionText.isNotBlank(),
+        confirmEnabled = PersianFormatter.parsePrice(amountText) > 0 && descriptionText.isNotBlank(),
         onDismissRequest = onDismiss
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)) {
@@ -409,8 +409,10 @@ private fun ModernRecordEntryDialog(
             // Amount Input
             RestoTextField(
                 value = amountText,
-                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                 label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 placeholder = "0"
             )
 

@@ -28,12 +28,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -222,6 +222,9 @@ fun ModernLedgerCardItem(
         LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
     }
 
+    val badgeBg = if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
+    val badgeTextClr = if (isCredit) RestoTheme.colors.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -231,82 +234,90 @@ fun ModernLedgerCardItem(
             .clickable { onClick() }
             .padding(14.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer),
-                contentAlignment = Alignment.Center
+            // Top Row: Icon + Category Pill + Entry Number <---> Amount
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                    contentDescription = null,
-                    tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(entry.entryNumber) else entry.entryNumber,
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    // Category Pill
-                    val badgeBg = if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
-                    val badgeTextClr = if (isCredit) RestoTheme.colors.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer
-
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                            contentDescription = null,
+                            tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // Category Pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
                             .background(badgeBg)
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = categoryTitle,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = badgeTextClr
+                            fontWeight = FontWeight.Bold,
+                            color = badgeTextClr,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
-                }
 
-                if (entry.description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = entry.description,
+                        text = if (isPersian) PersianFormatter.toPersianDigits(entry.entryNumber) else entry.entryNumber,
                         fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
-                    text = dateStr,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = formattedAmount,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
+                    maxLines = 1
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            // Description & Date
+            if (entry.description.isNotBlank()) {
+                Text(
+                    text = entry.description,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             Text(
-                text = formattedAmount,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error
+                text = dateStr,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -315,6 +326,33 @@ fun ModernLedgerCardItem(
 @Preview(showBackground = true)
 @Composable
 fun DashboardFinancialActivityPreview() {
+    val sampleEntries = listOf(
+        LedgerEntry(
+            id = "1",
+            orgId = "org_1",
+            storeId = "store_1",
+            entryNumber = "LEDG-ORD-3206-1001",
+            type = LedgerType.CREDIT,
+            category = LedgerCategory.SALES,
+            amount = 22400000.0,
+            description = "Sales Order #ORD-3206-1001 via Cash",
+            referenceId = "ord_1",
+            createdAt = System.currentTimeMillis()
+        ),
+        LedgerEntry(
+            id = "2",
+            orgId = "org_1",
+            storeId = "store_1",
+            entryNumber = "INIT-833544",
+            type = LedgerType.CREDIT,
+            category = LedgerCategory.INVENTORY_ADJUSTMENT,
+            amount = 85000000.0,
+            description = "موجودی اولیه برای کابل vga (100 عدد)",
+            referenceId = "prod_2",
+            createdAt = System.currentTimeMillis()
+        )
+    )
+
     RestoTheme {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Box(
@@ -323,7 +361,7 @@ fun DashboardFinancialActivityPreview() {
                     .padding(16.dp)
             ) {
                 DashboardFinancialActivity(
-                    ledgerEntries = emptyList(),
+                    ledgerEntries = sampleEntries,
                     isPersian = true,
                     currencyUnit = "تومان",
                     onNewEntryClick = {}

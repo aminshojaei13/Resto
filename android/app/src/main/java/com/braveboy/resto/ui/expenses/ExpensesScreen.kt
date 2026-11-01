@@ -355,11 +355,11 @@ fun ExpenseFormDialog(
     var category by remember { mutableStateOf(initialExpense?.category ?: defaultCategories.first()) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    var amountText by remember { mutableStateOf(initialExpense?.amount?.toString() ?: "") }
+    var amountText by remember { mutableStateOf(initialExpense?.amount?.let { it.toLong().toString() } ?: "") }
     var paymentMethod by remember { mutableStateOf(initialExpense?.paymentMethod ?: "نقد / کارت") }
     var notes by remember { mutableStateOf(initialExpense?.notes ?: "") }
 
-    val amountVal = amountText.toDoubleOrNull() ?: 0.0
+    val amountVal = PersianFormatter.parsePrice(amountText)
 
     RestoDialog(
         title = title,
@@ -409,8 +409,10 @@ fun ExpenseFormDialog(
             // Amount input
             RestoTextField(
                 value = amountText,
-                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
+                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
                 label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 placeholder = "0"
             )
 

@@ -1,5 +1,9 @@
 package com.braveboy.resto.util
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Calendar
@@ -38,6 +42,31 @@ object PersianFormatter {
     fun formatCurrency(amount: Double, currencySymbol: String = "تومان", isPersian: Boolean = true): String {
         val formattedNumber = formatNumber(amount, isPersian)
         return if (isPersian) "$formattedNumber $currencySymbol" else "$currencySymbol$formattedNumber"
+    }
+
+    /**
+     * Formats raw numeric text entry into 3-digit comma separated price string (e.g. "1,000,000" or "۱,۰۰۰,۰۰۰").
+     */
+    fun formatPriceInput(input: String, isPersian: Boolean = true): String {
+        val cleanDigits = input.filter { it.isDigit() || it in '۰'..'۹' }
+        if (cleanDigits.isEmpty()) return ""
+        val englishDigits = cleanDigits.map { ch ->
+            if (ch in '۰'..'۹') '0' + (ch - '۰') else ch
+        }.joinToString("")
+        val number = englishDigits.toLongOrNull() ?: return ""
+        return formatNumber(number.toDouble(), isPersian)
+    }
+
+    /**
+     * Parses formatted 3-digit comma separated price string back to Double.
+     */
+    fun parsePrice(input: String): Double {
+        val cleanDigits = input.filter { it.isDigit() || it in '۰'..'۹' }
+        if (cleanDigits.isEmpty()) return 0.0
+        val englishDigits = cleanDigits.map { ch ->
+            if (ch in '۰'..'۹') '0' + (ch - '۰') else ch
+        }.joinToString("")
+        return englishDigits.toDoubleOrNull() ?: 0.0
     }
 
     /**
@@ -81,5 +110,61 @@ object PersianFormatter {
         val jm = if (days < 186) 1 + (days / 31) else 7 + ((days - 186) / 30)
         val jd = 1 + if (days < 186) (days % 31) else ((days - 186) % 30)
         return Triple(jy, jm, jd)
+    }
+}
+
+/**
+ * VisualTransformation that formats raw digits (e.g. "1000000") with 3-digit thousands separators
+ * (e.g. "۱,۰۰۰,۰۰۰" or "1,000,000") for text fields without altering raw numeric state value or cursor position.
+ */
+class ThousandsSeparatorVisualTransformation(
+    private val isPersian: Boolean = true
+) : VisualTransformation {
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val originalText = text.text
+        if (originalText.isEmpty()) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
+
+        val cleanDigits = originalText.filter { it.isDigit() || it in '۰'..'۹' }
+        if (cleanDigits.isEmpty()) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
+
+        val englishDigits = cleanDigits.map { ch ->
+            if (ch in '۰'..'۹') '0' + (ch - '۰') else ch
+        }.joinToString("")
+
+        val number = englishDigits.toLongOrNull() ?: return TransformedText(text, OffsetMapping.Identity)
+        val formattedText = PersianFormatter.formatNumber(number.toDouble(), isPersian)
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                val clampedOffset = offset.coerceIn(0, originalText.length)
+                if (clampedOffset == 0) return 0
+
+                val rawSub = originalText.substring(0, clampedOffset).filter { it.isDigit() || it in '۰'..'۹' }
+                if (rawSub.isEmpty()) return 0
+
+                val subEnglish = rawSub.map { ch -> if (ch in '۰'..'۹') '0' + (ch - '۰') else ch }.joinToString("")
+                val subNum = subEnglish.toLongOrNull() ?: return clampedOffset
+                val subFormatted = PersianFormatter.formatNumber(subNum.toDouble(), isPersian)
+
+                return subFormatted.length.coerceAtMost(formattedText.length)
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                val clampedOffset = offset.coerceIn(0, formattedText.length)
+                if (clampedOffset == 0) return 0
+
+                val formattedSub = formattedText.substring(0, clampedOffset)
+                val digitsCount = formattedSub.count { it.isDigit() || it in '۰'..'۹' }
+
+                return digitsCount.coerceAtMost(originalText.length)
+            }
+        }
+
+        return TransformedText(AnnotatedString(formattedText), offsetMapping)
     }
 }
