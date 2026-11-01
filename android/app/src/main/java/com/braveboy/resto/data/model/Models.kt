@@ -44,6 +44,7 @@ data class TenantState(
     val userId: String = "",
     val userName: String = "",
     val userRole: String = "",
+    val userAvatarUrl: String = "",
     val language: String = "fa",
     val isLoggedIn: Boolean = false
 )

@@ -137,15 +137,9 @@ fun DashboardScreenContent(
             item {
                 DashboardHeader(
                     userName = tenantState.userName,
+                    userAvatarUrl = tenantState.userAvatarUrl,
                     notificationCount = metrics.lowStockCount,
                     isPersian = isPersian,
-                    onNotificationClick = {
-                        if (metrics.lowStockCount > 0) {
-                            onNavigateToDestination(MainDestination.INVENTORY, false)
-                        } else {
-                            onNavigateToDestination(MainDestination.MESSAGES, false)
-                        }
-                    },
                     onProfileClick = {
                         onNavigateToDestination(MainDestination.SETTINGS, false)
                     }
@@ -229,7 +223,7 @@ fun DashboardScreenContent(
             // 4. Quick Actions
             item {
                 DashboardQuickActions(
-                    isPersian = isPersian,
+                    isPersian = false,
                     onNewManualOrderClick = {
                         onNavigateToDestination(MainDestination.POS, false)
                     },

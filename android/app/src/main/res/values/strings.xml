@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">کلکو‌اپ</string>
+    <string name="app_name">Resto</string>
     <string name="pos_title">صندوق فروشگاهی (POS)</string>
     <string name="inventory_title">انبار و کالاها</string>
 
@@ -88,6 +88,9 @@
     <string name="close">بستن</string>
     <string name="close_details">بستن جزئیات</string>
     <string name="edit">ویرایش</string>
+    <string name="delete">حذف</string>
+    <string name="delete_product_title">حذف محصول</string>
+    <string name="delete_product_confirm_message">آیا از حذف محصول «%1$s» اطمینان دارید؟ این عمل غیرقابل بازگشت است.</string>
     <string name="edit_profile">ویرایش اطلاعات</string>
     <string name="edit_details">ویرایش اطلاعات</string>
     <string name="save_info">ذخیره اطلاعات</string>
@@ -212,7 +215,7 @@
     <string name="cash_in_cat">ورود نقدینگی</string>
     <string name="cash_out_cat">برداشت نقدینگی</string>
     <string name="customer_refund_cat">مرجوعی مشتری</string>
-    <string name="quick_new_manual_order">New Manual Order (POS)</string>
+    <string name="quick_new_manual_order">ثبت سفارش دستی</string>
     <string name="quick_add_product">افزودن محصول</string>
     <string name="quick_import_dropshipping">ثبت سفارش پیامکی</string>
     <string name="quick_view_orders">مشاهده سفارشات</string>

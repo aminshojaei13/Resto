@@ -104,6 +104,9 @@ class InventoryViewModel(
     private val _selectedProductForEdit = MutableStateFlow<Product?>(null)
     val selectedProductForEdit: StateFlow<Product?> = _selectedProductForEdit.asStateFlow()
 
+    private val _selectedProductForDelete = MutableStateFlow<Product?>(null)
+    val selectedProductForDelete: StateFlow<Product?> = _selectedProductForDelete.asStateFlow()
+
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
@@ -125,7 +128,8 @@ class InventoryViewModel(
         unit: String,
         description: String,
         initialStock: Int,
-        warehouseId: String
+        warehouseId: String,
+        imageUrl: String = ""
     ) {
         viewModelScope.launch {
             _isSaving.value = true
@@ -141,7 +145,8 @@ class InventoryViewModel(
                     price = price,
                     costPrice = costPrice,
                     category = category.trim().ifBlank { "عمومی" },
-                    unit = unit.trim().ifBlank { "عدد" }
+                    unit = unit.trim().ifBlank { "عدد" },
+                    imageUrl = imageUrl.trim()
                 )
                 val targetWarehouseId = warehouseId.ifBlank { state.activeWarehouseId }
                 productRepository.addProduct(
@@ -193,6 +198,29 @@ class InventoryViewModel(
                 _selectedProductForEdit.value = null
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در بروزرسانی کالا: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    fun openDeleteProduct(product: Product) {
+        _selectedProductForDelete.value = product
+    }
+
+    fun closeDeleteProduct() {
+        _selectedProductForDelete.value = null
+    }
+
+    fun deleteProduct(product: Product) {
+        viewModelScope.launch {
+            _isSaving.value = true
+            try {
+                productRepository.deleteProduct(product.id)
+                _snackbarMessage.value = "کالای '${product.name}' با موفقیت حذف شد"
+                _selectedProductForDelete.value = null
+            } catch (e: Exception) {
+                _snackbarMessage.value = "خطا در حذف کالا: ${e.localizedMessage}"
             } finally {
                 _isSaving.value = false
             }

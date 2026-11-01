@@ -72,6 +72,9 @@ interface ProductDao {
 
     @Query("UPDATE products SET isSynced = 1 WHERE id = :id")
     suspend fun markProductSynced(id: String)
+
+    @Query("DELETE FROM products WHERE id = :id")
+    suspend fun deleteProductById(id: String)
 }
 
 @Dao

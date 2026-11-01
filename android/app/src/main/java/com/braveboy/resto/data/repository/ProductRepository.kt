@@ -36,6 +36,7 @@ interface ProductRepository {
         storeId: String = ""
     )
     suspend fun updateProduct(product: Product)
+    suspend fun deleteProduct(productId: String)
     suspend fun refreshProducts(orgId: String)
 }
 
@@ -235,6 +236,19 @@ class ProductRepositoryImpl(
             }
             if (response != null && response.isSuccessful) {
                 productDao.markProductSynced(product.id)
+            }
+        } catch (_: Exception) {
+            // Offline fallback
+        }
+    }
+
+    override suspend fun deleteProduct(productId: String) {
+        // Delete locally first so UI updates instantly
+        productDao.deleteProductById(productId)
+
+        try {
+            withTimeoutOrNull(2000L) {
+                apiService.deleteProduct(productId)
             }
         } catch (_: Exception) {
             // Offline fallback

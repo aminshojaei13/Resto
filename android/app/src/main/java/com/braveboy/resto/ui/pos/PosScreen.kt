@@ -106,7 +106,7 @@ fun PosScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "نقطه فروش (POS)" else "Point of Sale",
+                title = if (isPersian) "کاتالوگ فروش" else "Point of Sale",
                 onNavigationClick = onBackClick,
                 actions = {
                     IconButton(onClick = { viewModel.openBarcodeScanner() }) {

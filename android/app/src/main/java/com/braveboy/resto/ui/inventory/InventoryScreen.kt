@@ -1,5 +1,8 @@
 package com.braveboy.resto.ui.inventory
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +24,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AddAPhoto
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.Inventory2
@@ -43,10 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.Warehouse
@@ -60,6 +68,7 @@ import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
+import com.braveboy.resto.util.ImageStorageManager
 import com.braveboy.resto.util.PersianFormatter
 
 @Composable
@@ -75,6 +84,7 @@ fun InventoryScreen(
     val warehouses by viewModel.warehouses.collectAsState()
     val selectedProductForAdjustment by viewModel.selectedProductForAdjustment.collectAsState()
     val selectedProductForEdit by viewModel.selectedProductForEdit.collectAsState()
+    val selectedProductForDelete by viewModel.selectedProductForDelete.collectAsState()
     val isAddProductDialogOpen by viewModel.isAddProductDialogOpen.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -235,6 +245,7 @@ fun InventoryScreen(
                             isPersian = isPersian,
                             currencyUnit = currencyUnit,
                             onEditProductClick = { viewModel.openEditProduct(product) },
+                            onDeleteProductClick = { viewModel.openDeleteProduct(product) },
                             onAdjustStockClick = { viewModel.openStockAdjustment(product) }
                         )
                     }
@@ -249,7 +260,7 @@ fun InventoryScreen(
             warehouses = warehouses,
             activeWarehouseId = tenantState.activeWarehouseId,
             confirmLoading = isSaving,
-            onSubmit = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId ->
+            onSubmit = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId, imageUrl ->
                 viewModel.addProduct(
                     name = name,
                     sku = sku,
@@ -260,7 +271,8 @@ fun InventoryScreen(
                     unit = unit,
                     description = description,
                     initialStock = initialStock,
-                    warehouseId = warehouseId
+                    warehouseId = warehouseId,
+                    imageUrl = imageUrl
                 )
             },
             onDismiss = { viewModel.closeAddProductDialog() },
@@ -297,6 +309,25 @@ fun InventoryScreen(
             currencyUnit = currencyUnit
         )
     }
+
+    // Delete Product Confirmation Dialog
+    selectedProductForDelete?.let { product ->
+        RestoDialog(
+            title = stringResource(R.string.delete_product_title),
+            confirmText = stringResource(R.string.delete),
+            confirmLoading = isSaving,
+            onConfirm = {
+                viewModel.deleteProduct(product)
+            },
+            onDismissRequest = { viewModel.closeDeleteProduct() }
+        ) {
+            Text(
+                text = String.format(stringResource(R.string.delete_product_confirm_message), product.name),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
 }
 
 @Composable
@@ -305,6 +336,7 @@ fun InventoryItemCard(
     isPersian: Boolean,
     currencyUnit: String,
     onEditProductClick: () -> Unit,
+    onDeleteProductClick: () -> Unit,
     onAdjustStockClick: () -> Unit
 ) {
     val totalStock = product.getTotalStock()
@@ -363,12 +395,21 @@ fun InventoryItemCard(
                             .background(RestoTheme.colors.successContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Inventory2,
-                            contentDescription = null,
-                            tint = RestoTheme.colors.success,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        if (product.imageUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = product.imageUrl,
+                                contentDescription = product.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Inventory2,
+                                contentDescription = null,
+                                tint = RestoTheme.colors.success,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -430,6 +471,15 @@ fun InventoryItemCard(
                         )
                     }
 
+                    IconButton(onClick = onDeleteProductClick, modifier = Modifier.size(34.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.DeleteOutline,
+                            contentDescription = stringResource(R.string.delete),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -468,6 +518,24 @@ fun EditProductDialog(
     var costPriceStr by remember { mutableStateOf(product.costPrice.toString()) }
     var category by remember { mutableStateOf(product.category) }
     var unit by remember { mutableStateOf(product.unit) }
+    var imageUrl by remember { mutableStateOf(product.imageUrl) }
+
+    val context = LocalContext.current
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val savedPath = ImageStorageManager.saveImageLocally(
+                context = context,
+                uri = uri,
+                folderName = "product_images",
+                fileName = "prod_${System.currentTimeMillis()}"
+            )
+            if (!savedPath.isNullOrBlank()) {
+                imageUrl = savedPath
+            }
+        }
+    }
 
     RestoDialog(
         title = stringResource(R.string.edit_product_title),
@@ -486,7 +554,8 @@ fun EditProductDialog(
                         price = priceVal,
                         costPrice = costVal,
                         category = category.trim(),
-                        unit = unit.trim()
+                        unit = unit.trim(),
+                        imageUrl = imageUrl.trim()
                     )
                 )
             }
@@ -495,6 +564,57 @@ fun EditProductDialog(
         onDismissRequest = onDismiss
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            // Product Image Picker Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { imagePickerLauncher.launch("image/*") }
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.AddAPhoto,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = if (imageUrl.isNotBlank()) (if (isPersian) "تصویر کالا انتخاب شد" else "Image Selected") else (if (isPersian) "افزودن تصویر کالا" else "Add Product Image"),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (isPersian) "لمس کنید تا عکس کالا را تغییر دهید" else "Tap to change photo",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -571,7 +691,8 @@ fun AddProductDialog(
         unit: String,
         description: String,
         initialStock: Int,
-        warehouseId: String
+        warehouseId: String,
+        imageUrl: String
     ) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true,
@@ -587,6 +708,24 @@ fun AddProductDialog(
     var unit by remember { mutableStateOf("عدد") }
     var description by remember { mutableStateOf("") }
     var initialStockStr by remember { mutableStateOf("10") }
+    var imageUrl by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val savedPath = ImageStorageManager.saveImageLocally(
+                context = context,
+                uri = uri,
+                folderName = "product_images",
+                fileName = "prod_${System.currentTimeMillis()}"
+            )
+            if (!savedPath.isNullOrBlank()) {
+                imageUrl = savedPath
+            }
+        }
+    }
 
     val selectedWarehouseId = remember {
         mutableStateOf(
@@ -614,7 +753,8 @@ fun AddProductDialog(
                     unit.trim(),
                     description.trim(),
                     stockVal,
-                    selectedWarehouseId.value
+                    selectedWarehouseId.value,
+                    imageUrl.trim()
                 )
             }
         },
@@ -625,6 +765,57 @@ fun AddProductDialog(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
         ) {
+            // Product Image Picker Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { imagePickerLauncher.launch("image/*") }
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.AddAPhoto,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = if (imageUrl.isNotBlank()) (if (isPersian) "تصویر کالا انتخاب شد" else "Image Selected") else (if (isPersian) "افزودن تصویر کالا" else "Add Product Image"),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (isPersian) "لمس کنید تا عکس کالا را انتخاب کنید" else "Tap to choose photo from gallery",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },

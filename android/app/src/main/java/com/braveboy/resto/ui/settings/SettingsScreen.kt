@@ -1,7 +1,12 @@
 package com.braveboy.resto.ui.settings
 
 import android.annotation.SuppressLint
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,24 +16,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,8 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.AuthRepository
 import com.braveboy.resto.data.repository.TenantRepository
@@ -51,9 +62,10 @@ import com.braveboy.resto.ui.components.RestoListItem
 import com.braveboy.resto.ui.components.RestoSection
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
+import com.braveboy.resto.ui.theme.RestoTheme
+import com.braveboy.resto.util.ImageStorageManager
 import kotlinx.coroutines.launch
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -61,25 +73,79 @@ fun SettingsScreen(
     authRepository: AuthRepository,
     syncManager: SyncManager? = null,
     onOpenTenantSwitcher: () -> Unit,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
 ) {
     val tenantState by tenantRepository.getTenantState().collectAsState(initial = TenantState())
-    val isPersian = tenantState.language == "fa"
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val savedPath = ImageStorageManager.saveImageLocally(
+                context = context,
+                uri = uri,
+                folderName = "user_avatars",
+                fileName = "profile_${System.currentTimeMillis()}"
+            )
+            if (!savedPath.isNullOrBlank()) {
+                scope.launch {
+                    tenantRepository.setUserAvatarUrl(savedPath)
+                }
+            }
+        }
+    }
 
     val syncStatus by syncManager?.syncState?.collectAsState() ?: remember {
-        mutableStateOf(
-            SyncStatus.IDLE
-        )
+        mutableStateOf(SyncStatus.IDLE)
     }
     val unsyncedCount by syncManager?.unsyncedCount?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
+
+    SettingsScreenContent(
+        tenantState = tenantState,
+        syncStatus = syncStatus,
+        unsyncedCount = unsyncedCount,
+        onTriggerSync = {
+            scope.launch {
+                syncManager?.triggerSync(tenantState.activeOrgId)
+            }
+        },
+        onLogout = {
+            scope.launch {
+                authRepository.logout()
+            }
+        },
+        onAvatarClick = {
+            avatarPickerLauncher.launch("image/*")
+        },
+        onOpenTenantSwitcher = onOpenTenantSwitcher,
+        modifier = modifier,
+        onBackClick = onBackClick,
+    )
+}
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun SettingsScreenContent(
+    tenantState: TenantState,
+    syncStatus: SyncStatus,
+    unsyncedCount: Int,
+    onTriggerSync: () -> Unit,
+    onLogout: () -> Unit,
+    onAvatarClick: () -> Unit = {},
+    onOpenTenantSwitcher: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {},
+) {
+    val isPersian = tenantState.language == "fa"
 
     Scaffold(
         topBar = {
             RestoTopBar(
                 title = if (isPersian) "تنظیمات" else "Settings",
-                onNavigationClick = onBackClick
+                onNavigationClick = onBackClick,
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -95,16 +161,66 @@ fun SettingsScreen(
         ) {
             item {
                 RestoCard(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    onClick = onAvatarClick
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(RestoSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        RestoListItem(
-                            title = tenantState.userName.ifBlank { if (isPersian) "مدیر سیستم" else "Manager" },
-                            subtitle = "${if (isPersian) "نقش:" else "Role:"} ${tenantState.userRole}",
-                            leadingText = tenantState.userName.ifBlank { "M" }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (tenantState.userAvatarUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = tenantState.userAvatarUrl,
+                                        contentDescription = "Avatar",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Text(
+                                        text = tenantState.userName.ifBlank { "M" }.take(1).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = tenantState.userName.ifBlank { if (isPersian) "مدیر سیستم" else "Manager" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${if (isPersian) "نقش:" else "Role:"} ${tenantState.userRole}  •  ${if (isPersian) "لمس برای تغییر تصویر" else "Tap to change photo"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Rounded.CameraAlt,
+                            contentDescription = "Change Photo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -167,11 +283,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(RestoSpacing.md))
 
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    syncManager?.triggerSync(tenantState.activeOrgId)
-                                }
-                            },
+                            onClick = onTriggerSync,
                             enabled = syncStatus != SyncStatus.SYNCING,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -205,50 +317,6 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(RestoSpacing.xs))
                 RestoCard {
                     Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = RestoSpacing.md, vertical = RestoSpacing.sm),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Language,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.padding(start = RestoSpacing.md))
-                                Column {
-                                    Text(
-                                        text = if (isPersian) "زبان فارسی (راست‌چین)" else "Persian Language (RTL)",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = if (isPersian) "استفاده از تقویم و ارقام فارسی" else "Use Persian calendar & digits",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            Switch(
-                                checked = isPersian,
-                                onCheckedChange = { checked ->
-                                    scope.launch {
-                                        tenantRepository.setLanguage(if (checked) "fa" else "en")
-                                    }
-                                }
-                            )
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = RestoSpacing.md),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-
-                        // Currency info
                         RestoListItem(
                             title = if (isPersian) "واحد پولی پیش‌فرض" else "Default Currency",
                             subtitle = if (isPersian) "تومان (محاسبات دقیق مالی)" else "USD / Precision Monetary",
@@ -277,9 +345,6 @@ fun SettingsScreen(
 
             // Account & Sign Out Section
             item {
-                RestoSection(
-                    title = if (isPersian) "حساب کاربری و امنیت" else "Account & Security"
-                )
                 Spacer(modifier = Modifier.height(RestoSpacing.xs))
                 RestoCard {
                     Column {
@@ -287,15 +352,32 @@ fun SettingsScreen(
                             title = if (isPersian) "خروج از حساب کاربری" else "Sign Out",
                             subtitle = if (isPersian) "اتمام نشست فعلی و خروج امن از سیستم" else "Terminate active session",
                             leadingIcon = Icons.AutoMirrored.Rounded.Logout,
-                            onClick = {
-                                scope.launch {
-                                    authRepository.logout()
-                                }
-                            }
+                            onClick = onLogout
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    RestoTheme {
+        SettingsScreenContent(
+            tenantState = TenantState(
+                userName = "مدیر سیستم",
+                userRole = "ADMIN",
+                activeOrgId = "org_1",
+                activeStoreId = "شعبه مرکزی",
+                language = "fa"
+            ),
+            syncStatus = SyncStatus.IDLE,
+            unsyncedCount = 0,
+            onTriggerSync = {},
+            onLogout = {},
+            onOpenTenantSwitcher = {},
+        )
     }
 }

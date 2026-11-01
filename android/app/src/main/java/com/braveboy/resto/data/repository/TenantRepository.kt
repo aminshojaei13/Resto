@@ -19,6 +19,7 @@ interface TenantRepository {
     suspend fun setActiveStore(storeId: String, warehouseId: String)
     suspend fun setActiveWarehouse(warehouseId: String)
     suspend fun setLanguage(language: String)
+    suspend fun setUserAvatarUrl(avatarUrl: String)
     suspend fun seedInitialData()
     val isOnboardingDismissed: Flow<Boolean>
     suspend fun setOnboardingDismissed(dismissed: Boolean)
@@ -72,6 +73,10 @@ class TenantRepositoryImpl(
 
     override suspend fun setLanguage(language: String) {
         tenantPreferences.setLanguage(language)
+    }
+
+    override suspend fun setUserAvatarUrl(avatarUrl: String) {
+        tenantPreferences.setUserAvatarUrl(avatarUrl)
     }
 
     override suspend fun seedInitialData() {

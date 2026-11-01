@@ -16,12 +16,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.resto.data.intake.PendingImportManager
-import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.ui.MainAppScreen
 import com.braveboy.resto.ui.auth.BusinessSetupScreen
 import com.braveboy.resto.ui.auth.BusinessSetupViewModel
 import com.braveboy.resto.ui.auth.LoginScreen
 import com.braveboy.resto.ui.auth.LoginViewModel
+import com.braveboy.resto.ui.components.RestoSplashScreen
 import com.braveboy.resto.ui.theme.RestoTheme
 
 class MainActivity : ComponentActivity() {
@@ -36,8 +36,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RestoTheme {
-                val isSignedIn by appContainer.sessionStore.isSignedIn.collectAsState(initial = false)
-                val tenantState by appContainer.tenantPreferences.tenantState.collectAsState(initial = TenantState())
+                val isSignedInState = appContainer.sessionStore.isSignedIn.collectAsState(initial = null)
+                val tenantStateNullable = appContainer.tenantPreferences.tenantState.collectAsState(initial = null)
                 val pendingImport by PendingImportManager.pendingImportFlow.collectAsState()
 
                 var isOnlineLoginRequested by remember { mutableStateOf(false) }
@@ -46,37 +46,44 @@ class MainActivity : ComponentActivity() {
                     appContainer.authRepository.restoreSession()
                 }
 
-                val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
-
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    if (hasActiveWorkspace && !isOnlineLoginRequested) {
-                        MainAppScreen(
-                            appContainer = appContainer,
-                            initialSharedText = pendingImport?.rawText
-                        )
-                    } else if (isOnlineLoginRequested) {
-                        val loginViewModel: LoginViewModel = viewModel(
-                            factory = LoginViewModel.Factory(appContainer.authRepository)
-                        )
-                        LoginScreen(
-                            viewModel = loginViewModel,
-                            onLoginSuccess = {
-                                isOnlineLoginRequested = false
-                            }
-                        )
+                    val isSignedIn = isSignedInState.value
+                    val tenantState = tenantStateNullable.value
+
+                    if (isSignedIn == null || tenantState == null) {
+                        RestoSplashScreen()
                     } else {
-                        val setupViewModel: BusinessSetupViewModel = viewModel(
-                            factory = BusinessSetupViewModel.Factory(appContainer.authRepository)
-                        )
-                        BusinessSetupScreen(
-                            viewModel = setupViewModel,
-                            onSetupSuccess = {
-                                // Workspace created; reacts automatically
-                            },
-                            onOpenOnlineLogin = {
-                                isOnlineLoginRequested = true
-                            }
-                        )
+                        val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
+
+                        if (hasActiveWorkspace && !isOnlineLoginRequested) {
+                            MainAppScreen(
+                                appContainer = appContainer,
+                                initialSharedText = pendingImport?.rawText
+                            )
+                        } else if (isOnlineLoginRequested) {
+                            val loginViewModel: LoginViewModel = viewModel(
+                                factory = LoginViewModel.Factory(appContainer.authRepository)
+                            )
+                            LoginScreen(
+                                viewModel = loginViewModel,
+                                onLoginSuccess = {
+                                    isOnlineLoginRequested = false
+                                }
+                            )
+                        } else {
+                            val setupViewModel: BusinessSetupViewModel = viewModel(
+                                factory = BusinessSetupViewModel.Factory(appContainer.authRepository)
+                            )
+                            BusinessSetupScreen(
+                                viewModel = setupViewModel,
+                                onSetupSuccess = {
+                                    // Workspace created; reacts automatically
+                                },
+                                onOpenOnlineLogin = {
+                                    isOnlineLoginRequested = true
+                                }
+                            )
+                        }
                     }
                 }
             }

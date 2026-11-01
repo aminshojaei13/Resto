@@ -46,7 +46,7 @@ fun DashboardQuickActionRow(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isPersian: Boolean = false
+    isPersian: Boolean = true
 ) {
     Row(
         modifier = modifier
@@ -111,7 +111,7 @@ fun DashboardQuickActions(
     ) {
         Column {
             DashboardQuickActionRow(
-                title = if (isPersian) "ثبت سفارش دستی (POS)" else "New Manual Order (POS)",
+                title = stringResource(R.string.quick_new_manual_order),
                 icon = Icons.Rounded.PointOfSale,
                 onClick = onNewManualOrderClick,
                 isPersian = isPersian

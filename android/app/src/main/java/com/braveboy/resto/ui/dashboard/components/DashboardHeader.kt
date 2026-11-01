@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,10 +43,11 @@ import com.braveboy.resto.util.PersianFormatter
 
 @Composable
 fun DashboardHeader(
+    modifier: Modifier = Modifier,
     userName: String = "",
+    userAvatarUrl: String = "",
     notificationCount: Int = 0,
     isPersian: Boolean = true,
-    modifier: Modifier = Modifier,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
@@ -82,7 +84,7 @@ fun DashboardHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // User Avatar Placeholder
+                // User Avatar Placeholder or AsyncImage
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -91,47 +93,20 @@ fun DashboardHeader(
                         .clickable { onProfileClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = displayName.take(1).uppercase(),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 17.sp
-                    )
-                }
-
-                // Notification Bell with Red Badge
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { onNotificationClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Notifications",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(20.dp)
-                    )
-
-                    if (notificationCount > 0) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 2.dp, end = 2.dp)
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isPersian) PersianFormatter.toPersianDigits(notificationCount) else notificationCount.toString(),
-                                color = MaterialTheme.colorScheme.onError,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    if (userAvatarUrl.isNotBlank()) {
+                        coil.compose.AsyncImage(
+                            model = userAvatarUrl,
+                            contentDescription = "User Avatar",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text(
+                            text = displayName.take(1).uppercase(),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 17.sp
+                        )
                     }
                 }
             }

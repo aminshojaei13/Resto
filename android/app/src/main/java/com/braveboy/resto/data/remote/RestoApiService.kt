@@ -67,6 +67,9 @@ interface RestoApiService {
     @PUT("products/{id}")
     suspend fun updateProduct(@Path("id") id: String, @Body product: ProductDto): Response<ProductDto>
 
+    @DELETE("products/{id}")
+    suspend fun deleteProduct(@Path("id") id: String): Response<Map<String, Any>>
+
     @POST("inventory/adjust")
     suspend fun adjustStock(@Body request: StockAdjustRequestDto): Response<Map<String, Any>>
 

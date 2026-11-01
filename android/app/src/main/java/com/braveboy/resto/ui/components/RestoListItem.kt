@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,14 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
+import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
 fun RestoListItem(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String,
     subtitle: String? = null,
     leadingIcon: ImageVector? = null,
     leadingText: String? = null,
@@ -96,6 +100,42 @@ fun RestoListItem(
         trailingContent?.let {
             Spacer(modifier = Modifier.width(RestoSpacing.sm))
             it()
+        }
+    }
+}
+
+@Preview(name = "Resto List Item Preview", showBackground = true)
+@Composable
+fun RestoListItemPreview() {
+    RestoTheme {
+        Column(
+            modifier = Modifier.padding(RestoSpacing.md)
+        ) {
+            RestoListItem(
+                title = "رضا محمدی",
+                subtitle = "مشتری VIP • ۰۹۱۲۳۴۵۶۷۸۹",
+                leadingIcon = Icons.Rounded.Person,
+                trailingContent = {
+                    Text(
+                        text = "۱۲,۵۰۰,۰۰۰ تومان",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            )
+            RestoListItem(
+                title = "محصول شماره ۱",
+                subtitle = "دسته‌بندی: نوشیدنی",
+                leadingText = "ن",
+                trailingContent = {
+                    Text(
+                        text = "موجود",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            )
         }
     }
 }

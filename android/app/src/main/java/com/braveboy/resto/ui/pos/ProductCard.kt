@@ -1,6 +1,8 @@
 package com.braveboy.resto.ui.pos
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,18 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddShoppingCart
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,12 +27,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
+import com.braveboy.resto.ui.theme.RestoTheme
+import com.braveboy.resto.util.PersianFormatter
 
+/**
+ * Shopify POS Style Product Card (Proposal 2).
+ * Optimized for narrow 2-column mobile grids. Features clean vertical
+ * typography stack and a full-width tactile bottom action bar (+ افزودن به سبد)
+ * that eliminates line-wrapping issues.
+ */
 @Composable
 fun ProductCard(
     product: Product,
@@ -42,165 +52,196 @@ fun ProductCard(
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier,
     isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     val stockInWarehouse = product.getStockForWarehouse(activeWarehouseId)
     val totalStock = product.getTotalStock()
     val isLowStock = totalStock in 1..9
     val isOutOfStock = totalStock == 0
 
+    val statusContainerColor = when {
+        isOutOfStock -> MaterialTheme.colorScheme.errorContainer
+        isLowStock -> RestoTheme.colors.warningContainer
+        else -> RestoTheme.colors.successContainer
+    }
+
+    val statusDotColor = when {
+        isOutOfStock -> MaterialTheme.colorScheme.error
+        isLowStock -> RestoTheme.colors.warning
+        else -> RestoTheme.colors.success
+    }
+
+    val statusTextColor = when {
+        isOutOfStock -> MaterialTheme.colorScheme.onErrorContainer
+        isLowStock -> RestoTheme.colors.onWarningContainer
+        else -> RestoTheme.colors.onSuccessContainer
+    }
+
+    val statusText = when {
+        isOutOfStock -> if (isPersian) "ناموجود" else "Out of Stock"
+        isLowStock -> if (isPersian) "کمبود (${PersianFormatter.toPersianDigits(totalStock)})" else "Low ($totalStock)"
+        else -> if (isPersian) "موجود (${PersianFormatter.toPersianDigits(totalStock)})" else "In Stock ($totalStock)"
+    }
+
     Card(
         onClick = { onProductClick(product) },
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(110.dp)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center
-            ) {
-                if (product.imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = product.imageUrl,
-                        contentDescription = product.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize()
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.Inventory2,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-
-                // Category Tag overlay
+        Column {
+            Column(modifier = Modifier.padding(10.dp)) {
+                // Image Box
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                            shape = CircleShape
-                        )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = product.category,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
-                    )
-                }
-
-                // Stock Badge overlay
-                if (isOutOfStock || isLowStock) {
-                    val stockBadgeText = if (isOutOfStock) {
-                        if (isPersian) "ناموجود" else "Out of Stock"
+                    if (product.imageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = product.imageUrl,
+                            contentDescription = product.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
                     } else {
-                        if (isPersian) "${com.braveboy.resto.util.PersianFormatter.toPersianDigits(totalStock)} عدد باقی‌مانده" else "$totalStock left"
+                        Icon(
+                            imageVector = Icons.Rounded.Inventory2,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            modifier = Modifier.size(38.dp)
+                        )
                     }
+
+                    // Stock Status Pill Overlay (Top Right)
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
-                            .background(
-                                color = if (isOutOfStock) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer,
-                                shape = CircleShape
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .clip(CircleShape)
+                            .background(statusContainerColor)
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Rounded.Warning,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = if (isOutOfStock) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(statusDotColor)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = stockBadgeText,
-                                style = MaterialTheme.typography.labelSmall,
+                                text = statusText,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOutOfStock) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
+                                color = statusTextColor,
                                 maxLines = 1
                             )
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = product.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 Text(
-                    text = if (isPersian) "کد: ${product.sku}" else "SKU: ${product.sku}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-                Text(
-                    text = if (isPersian) "موجودی: ${com.braveboy.resto.util.PersianFormatter.toPersianDigits(stockInWarehouse)}" else "WH Stock: $stockInWarehouse",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(product.price)} $currencyUnit" else "$${String.format("%.2f", product.price)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = product.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                FilledTonalIconButton(
-                    onClick = { onProductClick(product) },
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isPersian) "موجودی: ${PersianFormatter.toPersianDigits(stockInWarehouse)}" else "WH: $stockInWarehouse",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
+                    Text(
+                        text = product.category,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = if (isPersian) "${PersianFormatter.formatTomans(product.price)} $currencyUnit" else "$${String.format("%.2f", product.price)}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+            }
+
+            // Full-Width Bottom Touch Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (isOutOfStock) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.primaryContainer)
+                    .clickable(enabled = !isOutOfStock) { onProductClick(product) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.AddShoppingCart,
-                        contentDescription = if (isPersian) "افزودن به سبد" else "Add to Cart"
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = null,
+                        tint = if (isOutOfStock) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (isOutOfStock) (if (isPersian) "اتمام موجودی" else "Out of Stock") else (if (isPersian) "افزودن به سبد" else "Add to Cart"),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isOutOfStock) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProductCardPreview() {
+    RestoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ProductCard(
+                product = Product(
+                    id = "1",
+                    orgId = "org1",
+                    sku = "PRD-1001",
+                    barcode = "123456789",
+                    name = "اسپرسو سینگل",
+                    description = "قهوه اسپرسو ۱۰۰٪ عربیکا",
+                    price = 45000.0,
+                    costPrice = 20000.0,
+                    category = "نوشیدنی",
+                    unit = "عدد",
+                    stockQuantityByWarehouse = mapOf("w1" to 15)
+                ),
+                activeWarehouseId = "w1",
+                onProductClick = {}
+            )
         }
     }
 }

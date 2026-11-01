@@ -29,6 +29,7 @@ class TenantPreferences(private val context: Context) {
         val USER_ID = stringPreferencesKey("user_id")
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_ROLE = stringPreferencesKey("user_role")
+        val USER_AVATAR_URL = stringPreferencesKey("user_avatar_url")
         val LANGUAGE = stringPreferencesKey("language")
         val ONBOARDING_DISMISSED = booleanPreferencesKey("onboarding_dismissed")
         val ONBOARDING_STEP_SUPPLIERS_SKIPPED = booleanPreferencesKey("onboarding_step_suppliers_skipped")
@@ -45,9 +46,16 @@ class TenantPreferences(private val context: Context) {
             userId = userId,
             userName = prefs[PreferenceKeys.USER_NAME] ?: "",
             userRole = prefs[PreferenceKeys.USER_ROLE] ?: "",
+            userAvatarUrl = prefs[PreferenceKeys.USER_AVATAR_URL] ?: "",
             language = prefs[PreferenceKeys.LANGUAGE] ?: "fa",
             isLoggedIn = userId.isNotBlank() || orgId.isNotBlank()
         )
+    }
+
+    suspend fun setUserAvatarUrl(avatarUrl: String) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.USER_AVATAR_URL] = avatarUrl
+        }
     }
 
     suspend fun setUserInfo(userId: String, userName: String, userRole: String) {
