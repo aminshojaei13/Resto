@@ -28,11 +28,24 @@ class CustomerViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    customerRepository.refreshCustomers(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        customerRepository.refreshCustomers(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -89,6 +102,7 @@ class CustomerViewModel(
 
     fun addCustomer(name: String, email: String, phone: String, address: String) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 val customer = Customer(
@@ -99,23 +113,28 @@ class CustomerViewModel(
                     address = address
                 )
                 customerRepository.addCustomer(customer)
-                _snackbarMessage.value = "Added customer '$name'"
+                _snackbarMessage.value = "مشتری '$name' با موفقیت ثبت شد"
                 _isAddCustomerDialogOpen.value = false
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to add customer: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در افزودن مشتری: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun updateCustomer(customer: Customer) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 customerRepository.updateCustomer(customer)
-                _snackbarMessage.value = "Updated profile for '${customer.name}'"
+                _snackbarMessage.value = "اطلاعات '${customer.name}' به روز شد"
                 _selectedCustomerForEdit.value = null
                 _selectedCustomerForDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to update customer: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ویرایش مشتری: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
@@ -138,3 +157,4 @@ class CustomerViewModel(
         }
     }
 }
+

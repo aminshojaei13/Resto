@@ -23,6 +23,7 @@ import com.braveboy.resto.data.remote.dto.CheckoutRequestDto
 import com.braveboy.resto.data.remote.dto.OrderDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 interface SalesOrderRepository {
@@ -63,8 +64,8 @@ class SalesOrderRepositoryImpl(
     override suspend fun refreshOrders(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getOrders(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getOrders(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val orders = dtos.map { dto ->
                     SalesOrder(
@@ -129,34 +130,36 @@ class SalesOrderRepositoryImpl(
         // Sync with remote API with Idempotency protection; fallback gracefully if offline
         var isSynced = true
         val remoteOrder: OrderDto? = try {
-            val response = apiService.checkout(
-                request = CheckoutRequestDto(
-                    orgId = orgId,
-                    storeId = storeId,
-                    warehouseId = warehouseId,
-                    customerId = customer?.id,
-                    customerName = customer?.name ?: "مشتری حضوری",
-                    paymentMethod = paymentMethod.name,
-                    notes = notes,
-                    source = source,
-                    paymentStatus = paymentStatus.name,
-                    fulfillmentStatus = fulfillmentStatus.name,
-                    items = validCartItems.map {
-                        CheckoutItemDto(
-                            productId = it.productId,
-                            variantId = it.variantId,
-                            productName = it.productName,
-                            sku = it.sku,
-                            price = it.price,
-                            quantity = it.quantity,
-                            discountPercent = it.discountPercent,
-                            taxRate = it.taxRate
-                        )
-                    }
-                ),
-                idempotencyKey = idempotencyKey
-            )
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) {
+                apiService.checkout(
+                    request = CheckoutRequestDto(
+                        orgId = orgId,
+                        storeId = storeId,
+                        warehouseId = warehouseId,
+                        customerId = customer?.id,
+                        customerName = customer?.name ?: "مشتری حضوری",
+                        paymentMethod = paymentMethod.name,
+                        notes = notes,
+                        source = source,
+                        paymentStatus = paymentStatus.name,
+                        fulfillmentStatus = fulfillmentStatus.name,
+                        items = validCartItems.map {
+                            CheckoutItemDto(
+                                productId = it.productId,
+                                variantId = it.variantId,
+                                productName = it.productName,
+                                sku = it.sku,
+                                price = it.price,
+                                quantity = it.quantity,
+                                discountPercent = it.discountPercent,
+                                taxRate = it.taxRate
+                            )
+                        }
+                    ),
+                    idempotencyKey = idempotencyKey
+                )
+            }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 response.body()
             } else {
                 isSynced = false
@@ -267,3 +270,4 @@ class SalesOrderRepositoryImpl(
         salesOrderDao.insertSalesOrder(updated)
     }
 }
+

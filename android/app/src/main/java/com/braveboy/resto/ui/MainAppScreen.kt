@@ -213,7 +213,6 @@ fun MainAppScreen(
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(
                             viewModel = dashboardViewModel,
-                            guidePreferences = appContainer.guidePreferences,
                             onNavigateToDestination = { destination, openAddProduct ->
                                 if (openAddProduct) {
                                     inventoryViewModel.openAddProductDialog()
@@ -231,7 +230,6 @@ fun MainAppScreen(
                     MainDestination.INVENTORY -> {
                         InventoryScreen(
                             viewModel = inventoryViewModel,
-                            guidePreferences = appContainer.guidePreferences,
                             onBackClick = { currentDestination = MainDestination.ACCOUNTING }
                         )
                     }

@@ -82,4 +82,144 @@
     <string name="persian">فارسی (راست‌چین)</string>
     <string name="english">English (LTR)</string>
     <string name="currency_unit">تومان</string>
+
+    <!-- Additional Common Actions -->
+    <string name="cancel">انصراف</string>
+    <string name="close">بستن</string>
+    <string name="close_details">بستن جزئیات</string>
+    <string name="edit">ویرایش</string>
+    <string name="edit_profile">ویرایش اطلاعات</string>
+    <string name="edit_details">ویرایش اطلاعات</string>
+    <string name="save_info">ذخیره اطلاعات</string>
+
+    <!-- Additional Inventory -->
+    <string name="add_product_title">ثبت کالای جدید</string>
+    <string name="add_product_btn">ثبت کالا</string>
+    <string name="add_product_to_warehouse">ثبت و افزودن به انبار</string>
+    <string name="edit_product_title">ویرایش اطلاعات کالا</string>
+    <string name="save_changes">ذخیره تغییرات</string>
+    <string name="product_name_label">نام کالا *</string>
+    <string name="sku_label">شناسه SKU *</string>
+    <string name="barcode_label">بارکد</string>
+    <string name="selling_price_label">قیمت فروش *</string>
+    <string name="cost_price_label">قیمت خرید</string>
+    <string name="initial_stock_label">موجودی اولیه</string>
+    <string name="unit_label">واحد (عدد، بسته...)</string>
+    <string name="category_label">دسته‌بندی کالا</string>
+    <string name="description_optional_label">توضیحات اختیاری</string>
+    <string name="active_items">کالای فعال</string>
+    <string name="empty_items">ناموجود</string>
+    <string name="low_stock_warning">هشدار کسری</string>
+    <string name="all_categories_chip">همه دسته‌ها</string>
+    <string name="no_products_title">هنوز کالایی ثبت نشده است</string>
+    <string name="no_products_desc">برای شروع صدور فاکتور و کنترل موجودی انبار، اولین کالای خود را اضافه کنید.</string>
+    <string name="add_first_product">ثبت اولین کالا</string>
+    <string name="change_stock">تغییر موجودی</string>
+    <string name="stock_code">کد:</string>
+    <string name="adjust_stock_title">تغییر موجودی انبار</string>
+    <string name="save_stock_adjustment">ثبت تغییر موجودی</string>
+    <string name="loading_inventory">در حال بارگذاری لیست کالاها...</string>
+
+    <!-- Additional Customers -->
+    <string name="customers_title">مدیریت مشتریان</string>
+    <string name="add_new_customer">افزودن مشتری جدید</string>
+    <string name="edit_customer_title">ویرایش اطلاعات مشتری</string>
+    <string name="full_name_label">نام و نام خانوادگی *</string>
+    <string name="phone_number_label">شماره تماس</string>
+    <string name="email_address_label">آدرس ایمیل</string>
+    <string name="address_label">آدرس پستی</string>
+    <string name="customer_profile">پروفایل مشتری</string>
+    <string name="total_purchases">مجموع خرید مشتری</string>
+    <string name="loyalty_points_balance">امتیاز وفاداری</string>
+    <string name="no_customers_title">هیچ مشتری ثبت نشده است</string>
+    <string name="no_customers_desc">با افزودن اولین مشتری، سوابق سفارشات و اطلاعات تماس او ثبت خواهد شد.</string>
+    <string name="loading_customers">در حال بارگذاری اطلاعات مشتریان...</string>
+
+    <!-- Additional Expenses -->
+    <string name="expenses_title">هزینه‌های جاری</string>
+    <string name="record_new_expense">ثبت هزینه جدید</string>
+    <string name="edit_expense_title">ویرایش اطلاعات هزینه</string>
+    <string name="save_expense">ثبت هزینه</string>
+    <string name="operating_expenses_def">تعریف هزینه‌های جاری:</string>
+    <string name="operating_expenses_desc">مخارجی مثل اجاره، بسته بندی، تبلیغات، اینترنت، حقوق و ارسال. (توجه: خرید کالای انبار در بخش «خرید و تامین» ثبت می‌شود).</string>
+    <string name="no_expenses_title">هیچ هزینه‌ای ثبت نشده است</string>
+    <string name="no_expenses_desc">برای محاسبه دقیق سود و زیان کسب‌وکار، مخارج و هزینه‌های روزمره را ثبت کنید.</string>
+    <string name="expense_amount_label">مبلغ هزینه *</string>
+    <string name="payment_method_label">روش پرداخت (کارت، نقد، شبا...)</string>
+    <string name="notes_description_label">توضیحات و بابت</string>
+    <string name="expense_record_subtitle">رسید سند هزینه جاری</string>
+    <string name="loading_expenses">در حال بارگذاری لیست هزینه‌ها...</string>
+
+    <!-- Additional Suppliers &amp; Purchases -->
+    <string name="suppliers_title">تأمین‌کنندگان</string>
+    <string name="add_supplier_title">افزودن تأمین‌کننده جدید</string>
+    <string name="edit_supplier_title">ویرایش اطلاعات تأمین‌کننده</string>
+    <string name="save_supplier">ذخیره تأمین‌کننده</string>
+    <string name="company_supplier_label">نام شرکت یا فروشنده *</string>
+    <string name="no_suppliers_title">هیچ تأمین‌کننده‌ای ثبت نشده است</string>
+    <string name="no_suppliers_desc">تأمین‌کنندگان را برای ثبت خریدهای انبار و ردیابی فاکتورها اضافه کنید.</string>
+    <string name="supplier_profile">مشخصات و نشانی تأمین‌کننده</string>
+    <string name="loading_suppliers">در حال بارگذاری لیست تأمین‌کنندگان...</string>
+
+    <string name="purchases_title">خرید و تأمین</string>
+    <string name="new_purchase_invoice">ثبت فاکتور خرید کالا</string>
+    <string name="submit_purchase_order">ثبت سفارش خرید</string>
+    <string name="purchasing_cycle_title">چرخه خرید و تامین کالا</string>
+    <string name="purchasing_cycle_desc">خرید = فاکتور سفارش | ورود به انبار = دریافت فیزیکی کالا و شارژ موجودی.</string>
+    <string name="no_purchases_title">هنوز خریدی ثبت نشده است</string>
+    <string name="no_purchases_desc">با ثبت فاکتور خرید از تامین‌کننده، کالاهای سفارش‌داده‌شده را دریافت کرده و موجودی انبار را شارژ کنید.</string>
+    <string name="receive_stock">ورود به انبار</string>
+    <string name="confirm_delivery">تأیید تحویل و افزایش موجودی انبار</string>
+    <string name="received_in_warehouse">دریافت شده در انبار</string>
+    <string name="pending_delivery">در انتظار تحویل</string>
+    <string name="purchased_items">کالاهای این فاکتور</string>
+    <string name="total_purchase_amount">مبلغ کل فاکتور خرید</string>
+    <string name="loading_purchases">در حال بارگذاری لیست خریدها...</string>
+
+    <!-- Additional Orders -->
+    <string name="orders_screen_title">سفارش‌ها</string>
+    <string name="all_orders_chip">همه سفارش‌ها</string>
+    <string name="paid_chip">پرداخت شده</string>
+    <string name="pending_payment_chip">در انتظار پرداخت</string>
+    <string name="completed_chip">تکمیل شده</string>
+    <string name="processing_chip">در صف ارسال</string>
+    <string name="no_orders_title">هنوز سفارشی ثبت نشده است</string>
+    <string name="no_orders_desc">وقتی مشتریان سفارش ثبت کنند یا از بخش فروش ثبت سفارش کنید، اینجا نمایش داده می‌شود.</string>
+    <string name="order_details_title">جزئیات سفارش</string>
+    <string name="order_items">اقلام سفارش</string>
+    <string name="start_processing">شروع آماده‌سازی سفارش (پردازش)</string>
+    <string name="complete_and_ship">تکمیل و ارسال سفارش به مشتری</string>
+    <string name="mark_as_paid">ثبت تسویه حساب (پرداخت شد)</string>
+    <string name="order_completed_notice">این سفارش با موفقیت ارسال و تکمیل شده است.</string>
+    <string name="fulfillment_workflow">مراحل آماده‌سازی و پردازش</string>
+    <string name="subtotal_label">جمع اقلام:</string>
+    <string name="discount_label">تخفیف:</string>
+    <string name="tax_label">مالیات بر ارزش افزوده:</string>
+    <string name="total_amount_payable">مبلغ کل قابل پرداخت:</string>
+    <string name="loading_orders">در حال بارگذاری لیست سفارش‌ها...</string>
+
+    <!-- Additional Financial &amp; Dashboard -->
+    <string name="record_financial_doc">ثبت سند مالی</string>
+    <string name="recent_financial_activity">گردش مالی و تراکنش‌های اخیر</string>
+    <string name="sales_and_expenses_sub">ثبت درآمدهای فروش و هزینه‌های عملیاتی</string>
+    <string name="record_transaction_title">ثبت سند مالی جدید</string>
+    <string name="record_final_btn">ثبت نهایی</string>
+    <string name="income_inflow">+ درآمد / دریافتی</string>
+    <string name="expense_outflow">- هزینه / پرداختی</string>
+    <string name="sales_income_cat">درآمد فروش</string>
+    <string name="stock_adjustment_cat">اصلاح موجودی</string>
+    <string name="operating_expense_cat">هزینه‌های جاری</string>
+    <string name="cash_in_cat">ورود نقدینگی</string>
+    <string name="cash_out_cat">برداشت نقدینگی</string>
+    <string name="customer_refund_cat">مرجوعی مشتری</string>
+    <string name="quick_add_product">افزودن محصول</string>
+    <string name="quick_import_dropshipping">ثبت سفارش پیامکی</string>
+    <string name="quick_view_orders">مشاهده سفارشات</string>
+    <string name="quick_record_financial_doc">ثبت سند مالی</string>
+    <string name="recent_orders_title">سفارش‌های اخیر</string>
+    <string name="see_all">مشاهده همه</string>
+    <string name="no_transactions_yet">هنوز تراکنشی ثبت نشده است</string>
+    <string name="no_transactions_desc">پس از انجام اولین فروش یا ثبت هزینه، تاریخچه تراکنش‌ها در اینجا نمایش داده می‌شود.</string>
+    <string name="record_first_entry">+ ثبت اولین سند</string>
+    <string name="low_stock_warning_banner">هشدار موجودی کالا</string>
 </resources>

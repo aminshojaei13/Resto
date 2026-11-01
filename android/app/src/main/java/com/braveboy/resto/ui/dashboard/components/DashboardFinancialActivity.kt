@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.LedgerCategory
 import com.braveboy.resto.data.model.LedgerEntry
 import com.braveboy.resto.data.model.LedgerType
@@ -67,13 +69,13 @@ fun DashboardFinancialActivity(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isPersian) "گردش مالی و تراکنش‌های اخیر" else "Recent Financial Activity",
+                    text = stringResource(R.string.recent_financial_activity),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = if (isPersian) "ثبت درآمدهای فروش و هزینه‌های عملیاتی" else "Sales income & operational expenses",
+                    text = stringResource(R.string.sales_and_expenses_sub),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -100,7 +102,7 @@ fun DashboardFinancialActivity(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = if (isPersian) "ثبت سند" else "New Entry",
+                        text = stringResource(R.string.new_entry),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -140,7 +142,7 @@ fun DashboardFinancialActivity(
                     }
 
                     Text(
-                        text = if (isPersian) "هنوز تراکنشی ثبت نشده است" else "No transactions recorded yet",
+                        text = stringResource(R.string.no_transactions_yet),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -148,10 +150,7 @@ fun DashboardFinancialActivity(
                     )
 
                     Text(
-                        text = if (isPersian)
-                            "پس از انجام اولین فروش یا ثبت هزینه، تاریخچه تراکنش‌ها در اینجا نمایش داده می‌شود."
-                        else
-                            "When you make your first sale or record an expense, activity will appear here.",
+                        text = stringResource(R.string.no_transactions_desc),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -168,7 +167,7 @@ fun DashboardFinancialActivity(
                             .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) {
                         Text(
-                            text = if (isPersian) "+ ثبت اولین سند" else "+ Record First Entry",
+                            text = stringResource(R.string.record_first_entry),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
@@ -215,12 +214,12 @@ fun ModernLedgerCardItem(
     }
 
     val categoryTitle = when (entry.category) {
-        LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
-        LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
-        LedgerCategory.EXPENSE -> if (isPersian) "هزینه جاری" else "Operating Expense"
-        LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
-        LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
-        LedgerCategory.REFUND -> if (isPersian) "مرجوعی مشتری" else "Refund"
+        LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+        LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
+        LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
+        LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
+        LedgerCategory.CASH_OUT -> stringResource(R.string.cash_out_cat)
+        LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
     }
 
     Box(

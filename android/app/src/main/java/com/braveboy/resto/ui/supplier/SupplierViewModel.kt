@@ -28,11 +28,24 @@ class SupplierViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    supplierRepository.refreshSuppliers(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        supplierRepository.refreshSuppliers(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -93,6 +106,7 @@ class SupplierViewModel(
 
     fun addSupplier(name: String, email: String, phone: String, address: String) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 val supplier = Supplier(
@@ -103,35 +117,43 @@ class SupplierViewModel(
                     address = address
                 )
                 supplierRepository.addSupplier(supplier)
-                _snackbarMessage.value = "Added supplier '$name'"
+                _snackbarMessage.value = "تأمین‌کننده '$name' با موفقیت ثبت شد"
                 _isAddSupplierDialogOpen.value = false
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to add supplier: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ثبت تأمین‌کننده: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun updateSupplier(supplier: Supplier) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 supplierRepository.updateSupplier(supplier)
-                _snackbarMessage.value = "Updated supplier '${supplier.name}'"
+                _snackbarMessage.value = "تأمین‌کننده '${supplier.name}' به روز شد"
                 _selectedSupplierForEdit.value = null
                 _selectedSupplierForDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to update supplier: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در به روز رسانی تأمین‌کننده: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun deleteSupplier(supplier: Supplier) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 supplierRepository.deleteSupplier(supplier.id)
-                _snackbarMessage.value = "Deleted supplier '${supplier.name}'"
+                _snackbarMessage.value = "تأمین‌کننده '${supplier.name}' حذف شد"
                 _selectedSupplierForDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to delete supplier: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در حذف تأمین‌کننده: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

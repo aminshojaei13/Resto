@@ -8,6 +8,7 @@ import com.braveboy.resto.data.remote.RestoApiService
 import com.braveboy.resto.data.remote.NetworkModule
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 interface PurchaseRepository {
@@ -34,8 +35,8 @@ class PurchaseRepositoryImpl(
     override suspend fun refreshPurchases(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getPurchases(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getPurchases(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val purchases = dtos.map { dto ->
                     Purchase(
@@ -93,54 +94,62 @@ class PurchaseRepositoryImpl(
             paymentStatus = "UNPAID"
         )
 
-        var isSynced = true
+        // Save locally first for instant UI response
+        purchaseDao.insertPurchase(purchase.toEntity(isSynced = false))
+
         try {
-            val response = apiService.createPurchase(
-                payload = mapOf(
-                    "store_id" to storeId,
-                    "warehouse_id" to warehouseId,
-                    "supplier_id" to supplierId,
-                    "items" to items.map {
-                        mapOf(
-                            "product_id" to it.productId,
-                            "quantity" to it.quantity,
-                            "unit_cost" to it.unitCost
-                        )
-                    }
+            val response = withTimeoutOrNull(2000L) {
+                apiService.createPurchase(
+                    payload = mapOf(
+                        "store_id" to storeId,
+                        "warehouse_id" to warehouseId,
+                        "supplier_id" to supplierId,
+                        "items" to items.map {
+                            mapOf(
+                                "product_id" to it.productId,
+                                "quantity" to it.quantity,
+                                "unit_cost" to it.unitCost
+                            )
+                        }
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                purchaseDao.markPurchaseSynced(purchase.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // SyncManager will handle background push
         }
-
-        purchaseDao.insertPurchase(purchase.toEntity(isSynced = isSynced))
     }
 
     override suspend fun receivePurchase(purchase: Purchase) {
         val updated = purchase.copy(status = "RECEIVED")
+        purchaseDao.insertPurchase(updated.toEntity())
+
         try {
-            apiService.receivePurchase(purchase.id)
+            withTimeoutOrNull(2000L) {
+                apiService.receivePurchase(purchase.id)
+            }
         } catch (_: Exception) {
             // Offline fallback
         }
-        purchaseDao.insertPurchase(updated.toEntity())
     }
 
     override suspend fun payPurchase(purchaseId: String, amount: Double, method: String) {
-        try {
-            apiService.payPurchase(purchaseId, amount, method)
-        } catch (_: Exception) {
-            // Offline fallback
-        }
-
         val existing = purchaseDao.getPurchaseByIdDirect(purchaseId)
         if (existing != null) {
             val domain = existing.toDomain()
             val updated = domain.copy(paymentStatus = "PAID")
             purchaseDao.insertPurchase(updated.toEntity())
         }
+
+        try {
+            withTimeoutOrNull(2000L) {
+                apiService.payPurchase(purchaseId, amount, method)
+            }
+        } catch (_: Exception) {
+            // Offline fallback
+        }
     }
 }
+

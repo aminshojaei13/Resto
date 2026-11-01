@@ -82,4 +82,144 @@
     <string name="persian">Persian (RTL)</string>
     <string name="english">English (LTR)</string>
     <string name="currency_unit">USD</string>
+
+    <!-- Additional Common Actions -->
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="close_details">Close Details</string>
+    <string name="edit">Edit</string>
+    <string name="edit_profile">Edit Profile</string>
+    <string name="edit_details">Edit Details</string>
+    <string name="save_info">Save Information</string>
+
+    <!-- Additional Inventory -->
+    <string name="add_product_title">Add New Product</string>
+    <string name="add_product_btn">Add Product</string>
+    <string name="add_product_to_warehouse">Add Product &amp; Restock</string>
+    <string name="edit_product_title">Edit Product Details</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="product_name_label">Product Name *</string>
+    <string name="sku_label">SKU *</string>
+    <string name="barcode_label">Barcode</string>
+    <string name="selling_price_label">Selling Price *</string>
+    <string name="cost_price_label">Cost Price</string>
+    <string name="initial_stock_label">Initial Stock</string>
+    <string name="unit_label">Unit</string>
+    <string name="category_label">Category</string>
+    <string name="description_optional_label">Description</string>
+    <string name="active_items">Active Items</string>
+    <string name="empty_items">Out of Stock Items</string>
+    <string name="low_stock_warning">Low Stock Warning</string>
+    <string name="all_categories_chip">All Categories</string>
+    <string name="no_products_title">No products found</string>
+    <string name="no_products_desc">Add your first product to start inventory tracking and invoicing.</string>
+    <string name="add_first_product">Add First Product</string>
+    <string name="change_stock">Adjust Stock</string>
+    <string name="stock_code">SKU:</string>
+    <string name="adjust_stock_title">Adjust Stock Level</string>
+    <string name="save_stock_adjustment">Save Adjustment</string>
+    <string name="loading_inventory">Loading inventory...</string>
+
+    <!-- Additional Customers -->
+    <string name="customers_title">Customers</string>
+    <string name="add_new_customer">Add New Customer</string>
+    <string name="edit_customer_title">Edit Customer Profile</string>
+    <string name="full_name_label">Full Name *</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="email_address_label">Email Address</string>
+    <string name="address_label">Address</string>
+    <string name="customer_profile">Customer Profile</string>
+    <string name="total_purchases">Total Purchases</string>
+    <string name="loyalty_points_balance">Loyalty Points</string>
+    <string name="no_customers_title">No customers found</string>
+    <string name="no_customers_desc">When you add customers or checkout orders, customer profiles will appear here.</string>
+    <string name="loading_customers">Loading customers...</string>
+
+    <!-- Additional Expenses -->
+    <string name="expenses_title">Expenses</string>
+    <string name="record_new_expense">Record New Expense</string>
+    <string name="edit_expense_title">Edit Expense</string>
+    <string name="save_expense">Save Expense</string>
+    <string name="operating_expenses_def">What are Operating Expenses?</string>
+    <string name="operating_expenses_desc">Non-inventory costs such as rent, ads, internet, packaging and salaries.</string>
+    <string name="no_expenses_title">No expenses recorded</string>
+    <string name="no_expenses_desc">Record your ongoing business expenses to keep your operating profit accurate.</string>
+    <string name="expense_amount_label">Expense Amount *</string>
+    <string name="payment_method_label">Payment Method</string>
+    <string name="notes_description_label">Notes / Description</string>
+    <string name="expense_record_subtitle">Operating Expense Record</string>
+    <string name="loading_expenses">Loading expenses...</string>
+
+    <!-- Additional Suppliers &amp; Purchases -->
+    <string name="suppliers_title">Suppliers</string>
+    <string name="add_supplier_title">Add New Supplier</string>
+    <string name="edit_supplier_title">Edit Supplier Details</string>
+    <string name="save_supplier">Save Supplier</string>
+    <string name="company_supplier_label">Company / Supplier Name *</string>
+    <string name="no_suppliers_title">No suppliers found</string>
+    <string name="no_suppliers_desc">Add vendors and distributors to record inventory purchases and track payables.</string>
+    <string name="supplier_profile">Supplier Profile</string>
+    <string name="loading_suppliers">Loading suppliers...</string>
+
+    <string name="purchases_title">Purchases</string>
+    <string name="new_purchase_invoice">New Purchase Order</string>
+    <string name="submit_purchase_order">Submit Order</string>
+    <string name="purchasing_cycle_title">Purchasing &amp; Receiving Cycle</string>
+    <string name="purchasing_cycle_desc">Purchase = Order placed | Receiving = Stock physically arrives.</string>
+    <string name="no_purchases_title">No purchases recorded</string>
+    <string name="no_purchases_desc">When you purchase products from suppliers, purchase orders and receiving records will appear here.</string>
+    <string name="receive_stock">Receive Stock</string>
+    <string name="confirm_delivery">Confirm Delivery &amp; Update Stock</string>
+    <string name="received_in_warehouse">Received in Warehouse</string>
+    <string name="pending_delivery">Pending Delivery</string>
+    <string name="purchased_items">Purchased Items</string>
+    <string name="total_purchase_amount">Total Purchase Amount</string>
+    <string name="loading_purchases">Loading purchases...</string>
+
+    <!-- Additional Orders -->
+    <string name="orders_screen_title">Orders</string>
+    <string name="all_orders_chip">All Orders</string>
+    <string name="paid_chip">Paid</string>
+    <string name="pending_payment_chip">Pending Payment</string>
+    <string name="completed_chip">Completed</string>
+    <string name="processing_chip">Processing</string>
+    <string name="no_orders_title">No orders found</string>
+    <string name="no_orders_desc">Orders created through the store or imported from social media will appear here.</string>
+    <string name="order_details_title">Order Details</string>
+    <string name="order_items">Order Items</string>
+    <string name="start_processing">Start Processing</string>
+    <string name="complete_and_ship">Complete &amp; Ship Order</string>
+    <string name="mark_as_paid">Mark as Paid</string>
+    <string name="order_completed_notice">This order has been completed.</string>
+    <string name="fulfillment_workflow">Order Fulfillment &amp; Status</string>
+    <string name="subtotal_label">Subtotal:</string>
+    <string name="discount_label">Discount:</string>
+    <string name="tax_label">Tax:</string>
+    <string name="total_amount_payable">Total Amount:</string>
+    <string name="loading_orders">Loading orders...</string>
+
+    <!-- Additional Financial &amp; Dashboard -->
+    <string name="record_financial_doc">Record Financial Entry</string>
+    <string name="recent_financial_activity">Recent Financial Activity</string>
+    <string name="sales_and_expenses_sub">Sales income &amp; operational expenses</string>
+    <string name="record_transaction_title">Record New Transaction</string>
+    <string name="record_final_btn">Record</string>
+    <string name="income_inflow">+ Income / Inflow</string>
+    <string name="expense_outflow">- Expense / Outflow</string>
+    <string name="sales_income_cat">Sales Income</string>
+    <string name="stock_adjustment_cat">Stock Adjustment</string>
+    <string name="operating_expense_cat">Operating Expense</string>
+    <string name="cash_in_cat">Cash In</string>
+    <string name="cash_out_cat">Cash Out</string>
+    <string name="customer_refund_cat">Customer Refund</string>
+    <string name="quick_add_product">Add Product</string>
+    <string name="quick_import_dropshipping">Import Dropshipping</string>
+    <string name="quick_view_orders">View Orders</string>
+    <string name="quick_record_financial_doc">Record Entry</string>
+    <string name="recent_orders_title">Recent Orders</string>
+    <string name="see_all">See All</string>
+    <string name="no_transactions_yet">No transactions recorded yet</string>
+    <string name="no_transactions_desc">When you make your first sale or record an expense, activity will appear here.</string>
+    <string name="record_first_entry">+ Record First Entry</string>
+    <string name="low_stock_warning_banner">Low Stock Warning</string>
 </resources>

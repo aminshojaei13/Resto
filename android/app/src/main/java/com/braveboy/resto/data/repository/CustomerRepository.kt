@@ -8,6 +8,7 @@ import com.braveboy.resto.data.remote.NetworkModule
 import com.braveboy.resto.data.remote.dto.CustomerDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
 interface CustomerRepository {
     fun getCustomers(orgId: String): Flow<List<Customer>>
@@ -26,8 +27,8 @@ class CustomerRepositoryImpl(
     override suspend fun refreshCustomers(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getCustomers(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getCustomers(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val customers = dtos.map { dto ->
                     Customer(
@@ -66,51 +67,57 @@ class CustomerRepositoryImpl(
     }
 
     override suspend fun addCustomer(customer: Customer) {
-        var isSynced = true
+        // Save locally first for instant UI response
+        customerDao.insertCustomer(customer.toEntity(isSynced = false))
+
         try {
-            val response = apiService.addCustomer(
-                CustomerDto(
-                    id = customer.id,
-                    organizationId = customer.orgId,
-                    name = customer.name,
-                    email = customer.email,
-                    phone = customer.phone,
-                    address = customer.address,
-                    totalPurchases = customer.totalPurchases,
-                    loyaltyPoints = customer.loyaltyPoints
+            val response = withTimeoutOrNull(2000L) {
+                apiService.addCustomer(
+                    CustomerDto(
+                        id = customer.id,
+                        organizationId = customer.orgId,
+                        name = customer.name,
+                        email = customer.email,
+                        phone = customer.phone,
+                        address = customer.address,
+                        totalPurchases = customer.totalPurchases,
+                        loyaltyPoints = customer.loyaltyPoints
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                customerDao.markCustomerSynced(customer.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // SyncManager will handle offline push
         }
-        customerDao.insertCustomer(customer.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateCustomer(customer: Customer) {
-        var isSynced = true
+        customerDao.insertCustomer(customer.toEntity(isSynced = false))
+
         try {
-            val response = apiService.updateCustomer(
-                id = customer.id,
-                customer = CustomerDto(
+            val response = withTimeoutOrNull(2000L) {
+                apiService.updateCustomer(
                     id = customer.id,
-                    organizationId = customer.orgId,
-                    name = customer.name,
-                    email = customer.email,
-                    phone = customer.phone,
-                    address = customer.address,
-                    totalPurchases = customer.totalPurchases,
-                    loyaltyPoints = customer.loyaltyPoints
+                    customer = CustomerDto(
+                        id = customer.id,
+                        organizationId = customer.orgId,
+                        name = customer.name,
+                        email = customer.email,
+                        phone = customer.phone,
+                        address = customer.address,
+                        totalPurchases = customer.totalPurchases,
+                        loyaltyPoints = customer.loyaltyPoints
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                customerDao.markCustomerSynced(customer.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // Offline fallback
         }
-        customerDao.insertCustomer(customer.toEntity(isSynced = isSynced))
     }
 }
+

@@ -13,6 +13,7 @@ import com.braveboy.resto.data.remote.dto.ProductDto
 import com.braveboy.resto.data.remote.dto.StockAdjustRequestDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
 interface ProductRepository {
     fun getProducts(orgId: String): Flow<List<Product>>
@@ -47,8 +48,8 @@ class ProductRepositoryImpl(
     override suspend fun refreshProducts(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getProducts(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getProducts(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val products = dtos.map { dto ->
                     Product(
@@ -101,23 +102,6 @@ class ProductRepositoryImpl(
         orgId: String,
         storeId: String
     ) {
-        // Try calling remote API if available
-        try {
-            apiService.adjustStock(
-                StockAdjustRequestDto(
-                    orgId = orgId,
-                    warehouseId = warehouseId,
-                    productId = productId,
-                    variantId = null,
-                    delta = delta,
-                    reason = reason,
-                    referenceId = null
-                )
-            )
-        } catch (e: Exception) {
-            // Offline fallback - update local Room DB directly
-        }
-
         val existingEntity = productDao.getProductByIdDirect(productId) ?: return
         val existingProduct = existingEntity.toDomain()
 
@@ -143,6 +127,25 @@ class ProductRepositoryImpl(
             referenceId = productId
         )
         ledgerDao.insertLedgerEntry(ledgerEntry.toEntity())
+
+        // Try calling remote API asynchronously with timeout
+        try {
+            withTimeoutOrNull(2000L) {
+                apiService.adjustStock(
+                    StockAdjustRequestDto(
+                        orgId = orgId,
+                        warehouseId = warehouseId,
+                        productId = productId,
+                        variantId = null,
+                        delta = delta,
+                        reason = reason,
+                        referenceId = null
+                    )
+                )
+            }
+        } catch (_: Exception) {
+            // Offline fallback
+        }
     }
 
     override suspend fun upsertProduct(product: Product) {
@@ -162,31 +165,8 @@ class ProductRepositoryImpl(
         }
         val productWithStock = product.copy(stockQuantityByWarehouse = stockMap)
 
-        var isSynced = true
-        try {
-            val response = apiService.addProduct(
-                ProductDto(
-                    id = productWithStock.id,
-                    organizationId = productWithStock.orgId,
-                    sku = productWithStock.sku,
-                    barcode = productWithStock.barcode,
-                    name = productWithStock.name,
-                    description = productWithStock.description,
-                    price = productWithStock.price,
-                    costPrice = productWithStock.costPrice,
-                    category = productWithStock.category,
-                    unit = productWithStock.unit,
-                    imageUrl = productWithStock.imageUrl
-                )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
-            }
-        } catch (_: Exception) {
-            isSynced = false
-        }
-
-        productDao.insertProduct(productWithStock.toEntity(isSynced = isSynced))
+        // Save locally first so UI updates instantly
+        productDao.insertProduct(productWithStock.toEntity(isSynced = false))
 
         if (initialStock > 0 && warehouseId.isNotBlank()) {
             val value = initialStock * productWithStock.costPrice
@@ -202,33 +182,63 @@ class ProductRepositoryImpl(
             )
             ledgerDao.insertLedgerEntry(ledgerEntry.toEntity())
         }
+
+        // Attempt network sync with timeout
+        try {
+            val response = withTimeoutOrNull(2000L) {
+                apiService.addProduct(
+                    ProductDto(
+                        id = productWithStock.id,
+                        organizationId = productWithStock.orgId,
+                        sku = productWithStock.sku,
+                        barcode = productWithStock.barcode,
+                        name = productWithStock.name,
+                        description = productWithStock.description,
+                        price = productWithStock.price,
+                        costPrice = productWithStock.costPrice,
+                        category = productWithStock.category,
+                        unit = productWithStock.unit,
+                        imageUrl = productWithStock.imageUrl
+                    )
+                )
+            }
+            if (response != null && response.isSuccessful) {
+                productDao.markProductSynced(productWithStock.id)
+            }
+        } catch (_: Exception) {
+            // Offline fallback - sync manager will handle
+        }
     }
 
     override suspend fun updateProduct(product: Product) {
-        var isSynced = true
+        // Save locally first
+        productDao.insertProduct(product.toEntity(isSynced = false))
+
         try {
-            val response = apiService.updateProduct(
-                id = product.id,
-                product = ProductDto(
+            val response = withTimeoutOrNull(2000L) {
+                apiService.updateProduct(
                     id = product.id,
-                    organizationId = product.orgId,
-                    sku = product.sku,
-                    barcode = product.barcode,
-                    name = product.name,
-                    description = product.description,
-                    price = product.price,
-                    costPrice = product.costPrice,
-                    category = product.category,
-                    unit = product.unit,
-                    imageUrl = product.imageUrl
+                    product = ProductDto(
+                        id = product.id,
+                        organizationId = product.orgId,
+                        sku = product.sku,
+                        barcode = product.barcode,
+                        name = product.name,
+                        description = product.description,
+                        price = product.price,
+                        costPrice = product.costPrice,
+                        category = product.category,
+                        unit = product.unit,
+                        imageUrl = product.imageUrl
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                productDao.markProductSynced(product.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // Offline fallback
         }
-        productDao.insertProduct(product.toEntity(isSynced = isSynced))
     }
 }
+

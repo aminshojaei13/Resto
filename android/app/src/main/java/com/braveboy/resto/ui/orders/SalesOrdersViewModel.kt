@@ -31,11 +31,24 @@ class SalesOrdersViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    salesOrderRepository.refreshOrders(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        salesOrderRepository.refreshOrders(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -106,6 +119,7 @@ class SalesOrdersViewModel(
         fulfillmentStatus: FulfillmentStatus? = null
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 salesOrderRepository.updateOrderStatus(orderId, paymentStatus, fulfillmentStatus)
                 _snackbarMessage.value = "وضعیت سفارش به‌روزرسانی شد"
@@ -119,6 +133,8 @@ class SalesOrdersViewModel(
                 }
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در تغییر وضعیت: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

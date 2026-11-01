@@ -20,8 +20,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.Warehouse
 import com.braveboy.resto.ui.components.RestoBadge
@@ -42,7 +44,8 @@ fun StockAdjustmentDialog(
     activeWarehouseId: String,
     onSubmitAdjustment: (productId: String, warehouseId: String, delta: Int, reason: String) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true
+    isPersian: Boolean = true,
+    confirmLoading: Boolean = false
 ) {
     // If only one warehouse exists or active warehouse matches, auto pre-select
     var selectedWarehouse by remember {
@@ -81,8 +84,9 @@ fun StockAdjustmentDialog(
     val delta = if (isAddingStock) qtyValue else -qtyValue
 
     RestoDialog(
-        title = if (isPersian) "تغییر موجودی انبار" else "Adjust Stock Level",
-        confirmText = if (isPersian) "ثبت تغییر موجودی" else "Save Adjustment",
+        title = stringResource(R.string.adjust_stock_title),
+        confirmText = stringResource(R.string.save_stock_adjustment),
+        confirmLoading = confirmLoading,
         onConfirm = {
             val whId = selectedWarehouse?.id ?: return@RestoDialog
             if (qtyValue > 0) {
@@ -104,7 +108,7 @@ fun StockAdjustmentDialog(
                 Spacer(modifier = Modifier.height(RestoSpacing.xxs))
                 Row {
                     Text(
-                        text = "${if (isPersian) "کد کالا:" else "SKU:"} ${product.sku}  •  ",
+                        text = "${stringResource(R.string.stock_code)} ${product.sku}  •  ",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -145,7 +149,7 @@ fun StockAdjustmentDialog(
                         value = warehouseLabel,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(if (isPersian) "انبار مقصد" else "Target Warehouse") },
+                        label = { Text(stringResource(R.string.target_warehouse)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = warehouseDropdownExpanded) },
                         shape = RestoShapes.medium,
                         modifier = Modifier
@@ -182,14 +186,14 @@ fun StockAdjustmentDialog(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
                 RestoButton(
-                    text = if (isPersian) "+ ورود / افزایش موجودی" else "+ Add Stock",
+                    text = stringResource(R.string.add_stock),
                     onClick = { isAddingStock = true },
                     variant = if (isAddingStock) RestoButtonVariant.Primary else RestoButtonVariant.Outlined,
                     modifier = Modifier.weight(1f)
                 )
 
                 RestoButton(
-                    text = if (isPersian) "- خروج / کسر موجودی" else "- Reduce Stock",
+                    text = stringResource(R.string.reduce_stock),
                     onClick = { isAddingStock = false },
                     variant = if (!isAddingStock) RestoButtonVariant.Destructive else RestoButtonVariant.Outlined,
                     modifier = Modifier.weight(1f)
@@ -200,7 +204,7 @@ fun StockAdjustmentDialog(
             RestoTextField(
                 value = quantityText,
                 onValueChange = { quantityText = it.filter { ch -> ch.isDigit() } },
-                label = if (isPersian) "تعداد تغییر (${product.unit})" else "Quantity Delta (${product.unit})",
+                label = "${stringResource(R.string.quantity_delta)} (${product.unit})",
                 placeholder = "1",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -214,7 +218,7 @@ fun StockAdjustmentDialog(
                     value = selectedReason,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(if (isPersian) "علت تغییر موجودی" else "Reason") },
+                    label = { Text(stringResource(R.string.adjustment_reason)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reasonDropdownExpanded) },
                     shape = RestoShapes.medium,
                     modifier = Modifier

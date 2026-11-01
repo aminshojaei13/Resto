@@ -25,11 +25,9 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -45,29 +43,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.Warehouse
 import com.braveboy.resto.ui.components.RestoChip
 import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoEmptyState
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoStatCard
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
-import com.braveboy.resto.ui.guide.GuidePreferences
-import com.braveboy.resto.ui.guide.ScreenGuideHost
-import com.braveboy.resto.ui.guide.rememberGuideState
-import com.braveboy.resto.ui.guide.spotlightTarget
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 
 @Composable
 fun InventoryScreen(
     viewModel: InventoryViewModel,
-    guidePreferences: GuidePreferences? = null,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
@@ -80,12 +76,12 @@ fun InventoryScreen(
     val selectedProductForEdit by viewModel.selectedProductForEdit.collectAsState()
     val isAddProductDialogOpen by viewModel.isAddProductDialogOpen.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val guideState = rememberGuideState()
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
@@ -103,159 +99,146 @@ fun InventoryScreen(
         products.map { it.category }.distinct().sorted()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                RestoTopBar(
-                    title = if (isPersian) "موجودی انبار" else "Inventory",
-                    onNavigationClick = onBackClick
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { viewModel.openAddProductDialog() },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.spotlightTarget("inventory_fab", guideState)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = RestoSpacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = if (isPersian) "ثبت کالا" else "Add Product"
-                        )
-                        Text(
-                            text = if (isPersian) "ثبت کالای جدید" else "Add Product",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(top = innerPadding.calculateTopPadding())
-                    .fillMaxSize()
-                    .padding(horizontal = RestoSpacing.md)
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color(0xFFF8FAFC),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            RestoTopBar(
+                title = stringResource(R.string.inventory_title),
+                onNavigationClick = onBackClick
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.openAddProductDialog() },
+                containerColor = Color(0xFF0F172A),
+                contentColor = Color.White
             ) {
-                Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-                // STATS ROW
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .spotlightTarget("inventory_stats", guideState),
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+                    modifier = Modifier.padding(horizontal = RestoSpacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                 ) {
-                    RestoStatCard(
-                        title = if (isPersian) "تعداد اقلام" else "Total SKUs",
-                        value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
-                        subtitle = if (isPersian) "کالای فعال" else "Active items",
-                        icon = Icons.Rounded.Inventory,
-                        modifier = Modifier.weight(1f)
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.add_product_title)
                     )
-
-                    RestoStatCard(
-                        title = if (isPersian) "موجودی کل" else "Total Units",
-                        value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
-                        subtitle = if (isPersian) "عدد در انبارها" else "Units in stock",
-                        icon = Icons.Rounded.Inventory2,
-                        modifier = Modifier.weight(1f)
+                    Text(
+                        text = stringResource(R.string.add_product_title),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
                     )
-
-                    if (lowStockCount > 0 || outOfStockCount > 0) {
-                        val alertTotal = lowStockCount + outOfStockCount
-                        RestoStatCard(
-                            title = if (isPersian) "هشدار کسری" else "Low Stock",
-                            value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
-                            subtitle = if (isPersian) "$outOfStockCount ناموجود" else "$outOfStockCount empty",
-                            icon = Icons.Rounded.Warning,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-                // SEARCH
-                RestoSearchField(
-                    query = searchQuery,
-                    onQueryChange = { viewModel.setSearchQuery(it) },
-                    placeholder = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search by name, SKU, barcode...",
-                    modifier = Modifier.spotlightTarget("inventory_search", guideState)
-                )
-
-                Spacer(modifier = Modifier.height(RestoSpacing.xs))
-
-                // CATEGORY CHIPS
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    item {
-                        RestoChip(
-                            text = if (isPersian) "همه دسته‌ها" else "All",
-                            selected = selectedCategory == null,
-                            onClick = { viewModel.selectCategory(null) }
-                        )
-                    }
-                    items(categories) { category ->
-                        RestoChip(
-                            text = category,
-                            selected = selectedCategory == category,
-                            onClick = { viewModel.selectCategory(category) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
-                // PRODUCT LIST
-                if (products.isEmpty()) {
-                    RestoEmptyState(
-                        title = if (isPersian) "هنوز کالایی ثبت نشده است" else "No products found",
-                        description = if (isPersian)
-                            "برای شروع صدور فاکتور و کنترل موجودی انبار، اولین کالای خود را اضافه کنید."
-                        else
-                            "Add your first product to start inventory tracking and invoicing.",
-                        actionText = if (isPersian) "ثبت اولین کالا" else "Add First Product",
-                        onActionClick = { viewModel.openAddProductDialog() },
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(products, key = { it.id }) { product ->
-                            InventoryItemCard(
-                                product = product,
-                                isPersian = isPersian,
-                                currencyUnit = currencyUnit,
-                                onEditProductClick = { viewModel.openEditProduct(product) },
-                                onAdjustStockClick = { viewModel.openStockAdjustment(product) }
-                            )
-                        }
-                    }
                 }
             }
         }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
+                .fillMaxSize()
+                .padding(horizontal = RestoSpacing.md)
+        ) {
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-        if (guidePreferences != null) {
-            ScreenGuideHost(
-                screenId = "inventory",
-                guideState = guideState,
-                guidePreferences = guidePreferences,
-                isPersian = isPersian
+            // STATS ROW
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
+            ) {
+                RestoStatCard(
+                    title = stringResource(R.string.total_skus),
+                    value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
+                    subtitle = stringResource(R.string.active_items),
+                    icon = Icons.Rounded.Inventory,
+                    modifier = Modifier.weight(1f)
+                )
+
+                RestoStatCard(
+                    title = stringResource(R.string.units_in_stock),
+                    value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
+                    subtitle = stringResource(R.string.units_in_stock),
+                    icon = Icons.Rounded.Inventory2,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (lowStockCount > 0 || outOfStockCount > 0) {
+                    val alertTotal = lowStockCount + outOfStockCount
+                    RestoStatCard(
+                        title = stringResource(R.string.low_stock_warning),
+                        value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
+                        subtitle = if (isPersian) "$outOfStockCount ${stringResource(R.string.empty_items)}" else "$outOfStockCount empty",
+                        icon = Icons.Rounded.Warning,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            // SEARCH
+            RestoSearchField(
+                query = searchQuery,
+                onQueryChange = { viewModel.setSearchQuery(it) },
+                placeholder = stringResource(R.string.search_product_hint)
             )
+
+            Spacer(modifier = Modifier.height(RestoSpacing.xs))
+
+            // CATEGORY CHIPS
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    RestoChip(
+                        text = stringResource(R.string.all_categories_chip),
+                        selected = selectedCategory == null,
+                        onClick = { viewModel.selectCategory(null) }
+                    )
+                }
+                items(categories) { category ->
+                    RestoChip(
+                        text = category,
+                        selected = selectedCategory == category,
+                        onClick = { viewModel.selectCategory(category) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+            // PRODUCT LIST / LOADING / EMPTY STATE
+            if (isLoading && products.isEmpty()) {
+                RestoLoadingState(
+                    modifier = Modifier.weight(1f),
+                    message = stringResource(R.string.loading_inventory)
+                )
+            } else if (products.isEmpty()) {
+                RestoEmptyState(
+                    title = stringResource(R.string.no_products_title),
+                    description = stringResource(R.string.no_products_desc),
+                    actionText = stringResource(R.string.add_first_product),
+                    onActionClick = { viewModel.openAddProductDialog() },
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(products, key = { it.id }) { product ->
+                        InventoryItemCard(
+                            product = product,
+                            isPersian = isPersian,
+                            currencyUnit = currencyUnit,
+                            onEditProductClick = { viewModel.openEditProduct(product) },
+                            onAdjustStockClick = { viewModel.openStockAdjustment(product) }
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -264,6 +247,7 @@ fun InventoryScreen(
         AddProductDialog(
             warehouses = warehouses,
             activeWarehouseId = tenantState.activeWarehouseId,
+            confirmLoading = isSaving,
             onSubmit = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId ->
                 viewModel.addProduct(
                     name = name,
@@ -290,6 +274,7 @@ fun InventoryScreen(
             product = product,
             warehouses = warehouses,
             activeWarehouseId = tenantState.activeWarehouseId,
+            confirmLoading = isSaving,
             onSubmitAdjustment = { productId, warehouseId, delta, reason ->
                 viewModel.submitStockAdjustment(productId, warehouseId, delta, reason)
             },
@@ -302,6 +287,7 @@ fun InventoryScreen(
     selectedProductForEdit?.let { product ->
         EditProductDialog(
             product = product,
+            confirmLoading = isSaving,
             onSubmit = { updatedProduct ->
                 viewModel.updateProduct(updatedProduct)
             },
@@ -337,7 +323,7 @@ fun InventoryItemCard(
     }
 
     val stockBadgeText = when {
-        isOutOfStock -> if (isPersian) "اتمام موجودی" else "Out of stock"
+        isOutOfStock -> stringResource(R.string.out_of_stock)
         isLowStock -> if (isPersian) "کمبود موجودی (${PersianFormatter.toPersianDigits(totalStock)})" else "Low ($totalStock)"
         else -> if (isPersian) "${PersianFormatter.toPersianDigits(totalStock)} ${product.unit}" else "$totalStock ${product.unit}"
     }
@@ -352,8 +338,8 @@ fun InventoryItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(
@@ -373,13 +359,13 @@ fun InventoryItemCard(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(Color(0xFFDCFCE7)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Inventory2,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = Color(0xFF16A34A),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -391,13 +377,13 @@ fun InventoryItemCard(
                             text = product.name,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color(0xFF0F172A)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${if (isPersian) "کد:" else "SKU:"} ${product.sku}  •  ${product.category}",
+                            text = "${stringResource(R.string.stock_code)} ${product.sku}  •  ${product.category}",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF64748B)
                         )
                     }
                 }
@@ -406,7 +392,7 @@ fun InventoryItemCard(
                     text = formattedPrice,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color(0xFF0F172A)
                 )
             }
 
@@ -437,8 +423,8 @@ fun InventoryItemCard(
                     IconButton(onClick = onEditProductClick, modifier = Modifier.size(34.dp)) {
                         Icon(
                             imageVector = Icons.Rounded.Edit,
-                            contentDescription = if (isPersian) "ویرایش کالا" else "Edit",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = stringResource(R.string.edit),
+                            tint = Color(0xFF475569),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -446,16 +432,16 @@ fun InventoryItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF1F5F9))
+                            .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(12.dp))
                             .clickable { onAdjustStockClick() }
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = if (isPersian) "تغییر موجودی" else "Adjust Stock",
+                            text = stringResource(R.string.change_stock),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color(0xFF0F172A)
                         )
                     }
                 }
@@ -470,7 +456,8 @@ fun EditProductDialog(
     onSubmit: (updatedProduct: Product) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit),
+    confirmLoading: Boolean = false
 ) {
     var name by remember { mutableStateOf(product.name) }
     var sku by remember { mutableStateOf(product.sku) }
@@ -482,8 +469,9 @@ fun EditProductDialog(
     var unit by remember { mutableStateOf(product.unit) }
 
     RestoDialog(
-        title = if (isPersian) "ویرایش اطلاعات کالا" else "Edit Product Details",
-        confirmText = if (isPersian) "ذخیره تغییرات" else "Save Changes",
+        title = stringResource(R.string.edit_product_title),
+        confirmText = stringResource(R.string.save_changes),
+        confirmLoading = confirmLoading,
         onConfirm = {
             val priceVal = priceStr.toDoubleOrNull() ?: product.price
             val costVal = costPriceStr.toDoubleOrNull() ?: product.costPrice
@@ -509,20 +497,20 @@ fun EditProductDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = if (isPersian) "نام کالا *" else "Product Name *"
+                label = stringResource(R.string.product_name_label)
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 RestoTextField(
                     value = sku,
                     onValueChange = { sku = it },
-                    label = if (isPersian) "کد شناسایی SKU *" else "SKU *",
+                    label = stringResource(R.string.sku_label),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = barcode,
                     onValueChange = { barcode = it },
-                    label = if (isPersian) "بارکد" else "Barcode",
+                    label = stringResource(R.string.barcode_label),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -531,13 +519,13 @@ fun EditProductDialog(
                 RestoTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it },
-                    label = if (isPersian) "قیمت فروش ($currencyUnit) *" else "Selling Price *",
+                    label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = costPriceStr,
                     onValueChange = { costPriceStr = it },
-                    label = if (isPersian) "قیمت خرید ($currencyUnit)" else "Cost Price",
+                    label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -546,13 +534,13 @@ fun EditProductDialog(
                 RestoTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = if (isPersian) "دسته‌بندی" else "Category",
+                    label = stringResource(R.string.category_label),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = unit,
                     onValueChange = { unit = it },
-                    label = if (isPersian) "واحد (عدد، کیلوگرم...)" else "Unit",
+                    label = stringResource(R.string.unit_label),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -560,7 +548,7 @@ fun EditProductDialog(
             RestoTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = if (isPersian) "توضیحات اختیاری" else "Description",
+                label = stringResource(R.string.description_optional_label),
                 singleLine = false,
                 maxLines = 2
             )
@@ -586,7 +574,8 @@ fun AddProductDialog(
     ) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit),
+    confirmLoading: Boolean = false
 ) {
     var name by remember { mutableStateOf("") }
     var sku by remember { mutableStateOf("PRD-${System.currentTimeMillis().toString().takeLast(5)}") }
@@ -606,8 +595,9 @@ fun AddProductDialog(
     }
 
     RestoDialog(
-        title = if (isPersian) "ثبت کالای جدید" else "Add New Product",
-        confirmText = if (isPersian) "ثبت و افزودن به انبار" else "Add Product",
+        title = stringResource(R.string.add_product_title),
+        confirmText = stringResource(R.string.add_product_to_warehouse),
+        confirmLoading = confirmLoading,
         onConfirm = {
             val priceVal = priceStr.toDoubleOrNull() ?: 0.0
             val costVal = costPriceStr.toDoubleOrNull() ?: 0.0
@@ -637,20 +627,20 @@ fun AddProductDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = if (isPersian) "نام کالا *" else "Product Name *"
+                label = stringResource(R.string.product_name_label)
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 RestoTextField(
                     value = sku,
                     onValueChange = { sku = it },
-                    label = if (isPersian) "شناسه SKU *" else "SKU *",
+                    label = stringResource(R.string.sku_label),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = barcode,
                     onValueChange = { barcode = it },
-                    label = if (isPersian) "بارکد" else "Barcode",
+                    label = stringResource(R.string.barcode_label),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -659,13 +649,13 @@ fun AddProductDialog(
                 RestoTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it },
-                    label = if (isPersian) "قیمت فروش ($currencyUnit) *" else "Selling Price *",
+                    label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = costPriceStr,
                     onValueChange = { costPriceStr = it },
-                    label = if (isPersian) "قیمت خرید ($currencyUnit)" else "Cost Price",
+                    label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -674,13 +664,13 @@ fun AddProductDialog(
                 RestoTextField(
                     value = initialStockStr,
                     onValueChange = { initialStockStr = it },
-                    label = if (isPersian) "موجودی اولیه" else "Initial Stock",
+                    label = stringResource(R.string.initial_stock_label),
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
                     value = unit,
                     onValueChange = { unit = it },
-                    label = if (isPersian) "واحد (عدد، بسته...)" else "Unit",
+                    label = stringResource(R.string.unit_label),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -688,13 +678,13 @@ fun AddProductDialog(
             RestoTextField(
                 value = category,
                 onValueChange = { category = it },
-                label = if (isPersian) "دسته‌بندی کالا" else "Category"
+                label = stringResource(R.string.category_label)
             )
 
             RestoTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = if (isPersian) "توضیحات اختیاری" else "Description",
+                label = stringResource(R.string.description_optional_label),
                 singleLine = false,
                 maxLines = 2
             )

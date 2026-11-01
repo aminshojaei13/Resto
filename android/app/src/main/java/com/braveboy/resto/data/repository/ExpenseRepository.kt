@@ -8,6 +8,7 @@ import com.braveboy.resto.data.remote.NetworkModule
 import com.braveboy.resto.data.remote.dto.ExpenseDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
 interface ExpenseRepository {
     fun getExpenses(orgId: String): Flow<List<Expense>>
@@ -26,8 +27,8 @@ class ExpenseRepositoryImpl(
     override suspend fun refreshExpenses(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getExpenses(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getExpenses(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val expenses = dtos.map { dto ->
                     Expense(
@@ -59,27 +60,30 @@ class ExpenseRepositoryImpl(
     }
 
     override suspend fun addExpense(expense: Expense) {
-        var isSynced = true
+        // Save locally first for instant response
+        expenseDao.insertExpense(expense.toEntity(isSynced = false))
+
         try {
-            val response = apiService.addExpense(
-                ExpenseDto(
-                    id = expense.id,
-                    organizationId = expense.orgId,
-                    storeId = expense.storeId,
-                    category = expense.category,
-                    amount = expense.amount,
-                    paymentMethod = expense.paymentMethod,
-                    date = expense.date,
-                    notes = expense.notes
+            val response = withTimeoutOrNull(2000L) {
+                apiService.addExpense(
+                    ExpenseDto(
+                        id = expense.id,
+                        organizationId = expense.orgId,
+                        storeId = expense.storeId,
+                        category = expense.category,
+                        amount = expense.amount,
+                        paymentMethod = expense.paymentMethod,
+                        date = expense.date,
+                        notes = expense.notes
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                expenseDao.markExpenseSynced(expense.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // SyncManager handles background sync
         }
-        expenseDao.insertExpense(expense.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateExpense(expense: Expense) {
@@ -90,3 +94,4 @@ class ExpenseRepositoryImpl(
         expenseDao.deleteExpense(id)
     }
 }
+

@@ -36,6 +36,12 @@ class DashboardViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val metricsSummary: StateFlow<MetricsSummary> = tenantState.flatMapLatest { state ->
         ledgerRepository.getMetricsSummary(state.activeOrgId, state.activeStoreId)
@@ -75,6 +81,7 @@ class DashboardViewModel(
         description: String
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 val entryNumber = "MAN-${System.currentTimeMillis().toString().takeLast(6)}"
@@ -88,10 +95,12 @@ class DashboardViewModel(
                     description = description
                 )
                 ledgerRepository.recordEntry(entry)
-                _snackbarMessage.value = "Recorded entry $entryNumber"
+                _snackbarMessage.value = "تراکنش $entryNumber ثبت شد"
                 _isRecordEntryDialogOpen.value = false
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to record entry: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ثبت تراکنش: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

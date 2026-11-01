@@ -34,13 +34,26 @@ class PurchasesViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    purchaseRepository.refreshPurchases(state.activeOrgId)
-                    supplierRepository.refreshSuppliers(state.activeOrgId)
-                    productRepository.refreshProducts(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        purchaseRepository.refreshPurchases(state.activeOrgId)
+                        supplierRepository.refreshSuppliers(state.activeOrgId)
+                        productRepository.refreshProducts(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -101,6 +114,7 @@ class PurchasesViewModel(
         items: List<PurchaseItem>
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 purchaseRepository.createPurchase(
@@ -111,34 +125,42 @@ class PurchasesViewModel(
                     supplierName = supplierName,
                     items = items
                 )
-                _snackbarMessage.value = "Purchase Order created successfully"
+                _snackbarMessage.value = "فاکتور خرید با موفقیت ثبت شد"
                 _isCreatePurchaseDialogOpen.value = false
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to create PO: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ثبت فاکتور خرید: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun receiveGoods(purchase: Purchase) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 purchaseRepository.receivePurchase(purchase)
-                _snackbarMessage.value = "Goods received into warehouse and stock updated!"
+                _snackbarMessage.value = "کالاها تحویل انبار شدند و موجودی افزایش یافت!"
                 _selectedPurchaseDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to receive goods: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در تحویل کالا: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun paySupplier(purchaseId: String, amount: Double, method: String) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 purchaseRepository.payPurchase(purchaseId, amount, method)
-                _snackbarMessage.value = "Supplier payment recorded!"
+                _snackbarMessage.value = "پرداخت به تأمین‌کننده ثبت شد!"
                 _selectedPurchaseDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to record payment: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ثبت پرداخت: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

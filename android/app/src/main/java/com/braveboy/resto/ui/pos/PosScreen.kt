@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.braveboy.resto.data.model.Customer
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoTopBar
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -78,6 +79,8 @@ fun PosScreen(
     val isBarcodeScannerOpen by viewModel.isBarcodeScannerOpen.collectAsState()
     val lastCompletedOrder by viewModel.lastCompletedOrder.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isCheckingOut by viewModel.isCheckingOut.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var isMobileCartSheetOpen by remember { mutableStateOf(false) }
@@ -88,7 +91,7 @@ fun PosScreen(
 
     val windowInfo = currentWindowAdaptiveInfo()
     val isExpandedWidth =
-        windowInfo.windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+        windowInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
@@ -103,20 +106,21 @@ fun PosScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "صندوق فروش (POS)" else "Mobile POS",
+                title = if (isPersian) "نقطه فروش (POS)" else "Point of Sale",
                 onNavigationClick = onBackClick,
                 actions = {
                     IconButton(onClick = { viewModel.openBarcodeScanner() }) {
                         Icon(
                             imageVector = Icons.Rounded.QrCodeScanner,
-                            contentDescription = if (isPersian) "اسکن بارکد" else "Scan Barcode",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            contentDescription = if (isPersian) "اسکن بارکد" else "Barcode Scanner",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
+
                     IconButton(onClick = onNavigateToTenantSwitch) {
                         Icon(
                             imageVector = Icons.Rounded.Storefront,
-                            contentDescription = if (isPersian) "تغییر فروشگاه یا سازمان" else "Switch Store / Org",
+                            contentDescription = if (isPersian) "تغییر شعبه / فروشگاه" else "Switch Store",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -226,8 +230,15 @@ fun PosScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Product Grid
-                if (products.isEmpty()) {
+                // Product Grid / Loading / Empty
+                if (isLoading && products.isEmpty()) {
+                    RestoLoadingState(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        message = if (isPersian) "در حال دریافت محصولات..." else "Loading products..."
+                    )
+                } else if (products.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -353,7 +364,8 @@ fun PosScreen(
             onProcessCheckout = { method, notes -> viewModel.processCheckout(method, notes) },
             onDismiss = { viewModel.closeCheckoutModal() },
             isPersian = isPersian,
-            currencyUnit = currencyUnit
+            currencyUnit = currencyUnit,
+            isCheckingOut = isCheckingOut
         )
     }
 

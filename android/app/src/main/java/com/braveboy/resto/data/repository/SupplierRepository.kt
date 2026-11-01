@@ -8,6 +8,7 @@ import com.braveboy.resto.data.remote.NetworkModule
 import com.braveboy.resto.data.remote.dto.SupplierDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
 interface SupplierRepository {
     fun getSuppliers(orgId: String): Flow<List<Supplier>>
@@ -27,8 +28,8 @@ class SupplierRepositoryImpl(
     override suspend fun refreshSuppliers(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = apiService.getSuppliers(orgId = orgId)
-            if (response.isSuccessful && response.body() != null) {
+            val response = withTimeoutOrNull(2500L) { apiService.getSuppliers(orgId = orgId) }
+            if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val suppliers = dtos.map { dto ->
                     Supplier(
@@ -65,56 +66,65 @@ class SupplierRepositoryImpl(
     }
 
     override suspend fun addSupplier(supplier: Supplier) {
-        var isSynced = true
+        // Save locally first for instant response
+        supplierDao.insertSupplier(supplier.toEntity(isSynced = false))
+
         try {
-            val response = apiService.addSupplier(
-                SupplierDto(
-                    id = supplier.id,
-                    organizationId = supplier.orgId,
-                    name = supplier.name,
-                    email = supplier.email,
-                    phone = supplier.phone,
-                    address = supplier.address
+            val response = withTimeoutOrNull(2000L) {
+                apiService.addSupplier(
+                    SupplierDto(
+                        id = supplier.id,
+                        organizationId = supplier.orgId,
+                        name = supplier.name,
+                        email = supplier.email,
+                        phone = supplier.phone,
+                        address = supplier.address
+                    )
                 )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
+            }
+            if (response != null && response.isSuccessful) {
+                supplierDao.markSupplierSynced(supplier.id)
             }
         } catch (_: Exception) {
-            isSynced = false
+            // SyncManager will handle offline push
         }
-        supplierDao.insertSupplier(supplier.toEntity(isSynced = isSynced))
     }
 
     override suspend fun updateSupplier(supplier: Supplier) {
-        var isSynced = true
-        try {
-            val response = apiService.updateSupplier(
-                id = supplier.id,
-                supplier = SupplierDto(
-                    id = supplier.id,
-                    organizationId = supplier.orgId,
-                    name = supplier.name,
-                    email = supplier.email,
-                    phone = supplier.phone,
-                    address = supplier.address
-                )
-            )
-            if (!response.isSuccessful) {
-                isSynced = false
-            }
-        } catch (_: Exception) {
-            isSynced = false
-        }
-        supplierDao.insertSupplier(supplier.toEntity(isSynced = isSynced))
-    }
+        supplierDao.insertSupplier(supplier.toEntity(isSynced = false))
 
-    override suspend fun deleteSupplier(id: String) {
         try {
-            apiService.deleteSupplier(id)
+            val response = withTimeoutOrNull(2000L) {
+                apiService.updateSupplier(
+                    id = supplier.id,
+                    supplier = SupplierDto(
+                        id = supplier.id,
+                        organizationId = supplier.orgId,
+                        name = supplier.name,
+                        email = supplier.email,
+                        phone = supplier.phone,
+                        address = supplier.address
+                    )
+                )
+            }
+            if (response != null && response.isSuccessful) {
+                supplierDao.markSupplierSynced(supplier.id)
+            }
         } catch (_: Exception) {
             // Offline fallback
         }
+    }
+
+    override suspend fun deleteSupplier(id: String) {
         supplierDao.deleteSupplier(id)
+
+        try {
+            withTimeoutOrNull(2000L) {
+                apiService.deleteSupplier(id)
+            }
+        } catch (_: Exception) {
+            // Offline fallback
+        }
     }
 }
+

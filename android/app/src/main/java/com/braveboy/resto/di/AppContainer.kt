@@ -46,10 +46,6 @@ class AppContainer(private val context: Context) {
         TenantPreferences(context)
     }
 
-    val guidePreferences: com.braveboy.resto.ui.guide.GuidePreferences by lazy {
-        com.braveboy.resto.ui.guide.GuidePreferences(context)
-    }
-
     val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(
             apiService = NetworkModule.apiService,

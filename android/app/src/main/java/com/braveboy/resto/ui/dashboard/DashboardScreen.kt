@@ -2,7 +2,6 @@ package com.braveboy.resto.ui.dashboard
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,13 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,9 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.LedgerCategory
 import com.braveboy.resto.data.model.LedgerEntry
 import com.braveboy.resto.data.model.LedgerType
@@ -59,11 +58,6 @@ import com.braveboy.resto.ui.dashboard.components.DashboardQuickActions
 import com.braveboy.resto.ui.dashboard.components.DashboardRecentOrders
 import com.braveboy.resto.ui.dashboard.components.DashboardRevenueCard
 import com.braveboy.resto.ui.dashboard.components.DashboardStatCardsRow
-import com.braveboy.resto.ui.guide.GuidePreferences
-import com.braveboy.resto.ui.guide.GuideState
-import com.braveboy.resto.ui.guide.ScreenGuideHost
-import com.braveboy.resto.ui.guide.rememberGuideState
-import com.braveboy.resto.ui.guide.spotlightTarget
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
@@ -72,58 +66,44 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    guidePreferences: GuidePreferences,
     modifier: Modifier = Modifier,
-    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
-    isReplayGuideRequested: Boolean = false,
-    onReplayGuideHandled: () -> Unit = {}
+    onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> }
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val metrics by viewModel.metricsSummary.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
     val snackBarMessage by viewModel.snackbarMessage.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
-    val guideState = rememberGuideState()
-
-    Box(modifier = modifier.fillMaxSize()) {
-        DashboardScreenContent(
-            tenantState = tenantState,
-            metrics = metrics,
-            ledgerEntries = ledgerEntries,
-            isRecordEntryDialogOpen = isRecordEntryDialogOpen,
-            snackBarMessage = snackBarMessage,
-            guideState = guideState,
-            onNavigateToDestination = onNavigateToDestination,
-            onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
-            onOpenRecordEntryDialog = { viewModel.openRecordEntryDialog() },
-            onCloseRecordEntryDialog = { viewModel.closeRecordEntryDialog() },
-            onRecordLedgerEntry = { type, category, amount, description ->
-                viewModel.recordLedgerEntry(type, category, amount, description)
-            }
-        )
-
-        ScreenGuideHost(
-            screenId = "dashboard",
-            guideState = guideState,
-            guidePreferences = guidePreferences,
-            isPersian = tenantState.language == "fa",
-            isReplayRequested = isReplayGuideRequested,
-            onReplayHandled = onReplayGuideHandled
-        )
-    }
+    DashboardScreenContent(
+        tenantState = tenantState,
+        metrics = metrics,
+        ledgerEntries = ledgerEntries,
+        isRecordEntryDialogOpen = isRecordEntryDialogOpen,
+        snackBarMessage = snackBarMessage,
+        isSaving = isSaving,
+        modifier = modifier,
+        onNavigateToDestination = onNavigateToDestination,
+        onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
+        onOpenRecordEntryDialog = { viewModel.openRecordEntryDialog() },
+        onCloseRecordEntryDialog = { viewModel.closeRecordEntryDialog() },
+        onRecordLedgerEntry = { type, category, amount, description ->
+            viewModel.recordLedgerEntry(type, category, amount, description)
+        }
+    )
 }
 
 @SuppressLint("DefaultLocale")
 @Composable
 fun DashboardScreenContent(
+    modifier: Modifier = Modifier,
     tenantState: TenantState,
     metrics: MetricsSummary,
     ledgerEntries: List<LedgerEntry>,
     isRecordEntryDialogOpen: Boolean,
     snackBarMessage: String?,
-    guideState: GuideState,
-    modifier: Modifier = Modifier,
+    isSaving: Boolean = false,
     onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
     onClearSnackbarMessage: () -> Unit = {},
     onOpenRecordEntryDialog: () -> Unit = {},
@@ -131,7 +111,7 @@ fun DashboardScreenContent(
     onRecordLedgerEntry: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit = { _, _, _, _ -> }
 ) {
     val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
     val snackBarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackBarMessage) {
@@ -144,20 +124,8 @@ fun DashboardScreenContent(
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color(0xFFF8FAFC),
         snackbarHost = { SnackbarHost(snackBarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onOpenRecordEntryDialog,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = if (isPersian) "ثبت سند مالی" else "Record Entry"
-                )
-            }
-        }
     ) { _ ->
         LazyColumn(
             modifier = Modifier
@@ -180,8 +148,7 @@ fun DashboardScreenContent(
                     },
                     onProfileClick = {
                         onNavigateToDestination(MainDestination.SETTINGS, false)
-                    },
-                    modifier = Modifier.spotlightTarget("dashboard_header", guideState)
+                    }
                 )
             }
 
@@ -203,7 +170,7 @@ fun DashboardScreenContent(
                             Spacer(modifier = Modifier.width(RestoSpacing.sm))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (isPersian) "هشدار موجودی کالا" else "Low Stock Alert",
+                                    text = stringResource(R.string.low_stock_warning_banner),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = RestoTheme.colors.warning
@@ -222,7 +189,6 @@ fun DashboardScreenContent(
                 }
             }
 
-            // 2. Stat Cards Row (Net Profit & Total Orders)
             item {
                 val formattedNetProfit = if (isPersian) {
                     "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
@@ -241,8 +207,7 @@ fun DashboardScreenContent(
                     netProfitTrend = if (metrics.netProfit > 0) "+12%" else "۰٪",
                     totalOrdersValue = formattedOrdersCount,
                     totalOrdersTrend = if (metrics.todaySalesCount > 0) "+5%" else "۰٪",
-                    isPersian = isPersian,
-                    modifier = Modifier.spotlightTarget("dashboard_stats", guideState)
+                    isPersian = isPersian
                 )
             }
 
@@ -257,8 +222,7 @@ fun DashboardScreenContent(
                 DashboardRevenueCard(
                     revenueValue = formattedTodayRevenue,
                     trendText = if (metrics.todayRevenue > 0) "+8%" else "۰٪",
-                    isPersian = isPersian,
-                    modifier = Modifier.spotlightTarget("dashboard_revenue", guideState)
+                    isPersian = isPersian
                 )
             }
 
@@ -275,8 +239,7 @@ fun DashboardScreenContent(
                     onViewOrdersClick = {
                         onNavigateToDestination(MainDestination.ORDERS, false)
                     },
-                    onWithdrawMoneyClick = onOpenRecordEntryDialog,
-                    modifier = Modifier.spotlightTarget("dashboard_actions", guideState)
+                    onWithdrawMoneyClick = onOpenRecordEntryDialog
                 )
             }
 
@@ -320,8 +283,7 @@ fun DashboardScreenContent(
                     ledgerEntries = ledgerEntries,
                     isPersian = isPersian,
                     currencyUnit = currencyUnit,
-                    onNewEntryClick = onOpenRecordEntryDialog,
-                    modifier = Modifier.spotlightTarget("dashboard_activity", guideState)
+                    onNewEntryClick = onOpenRecordEntryDialog
                 )
             }
         }
@@ -333,7 +295,8 @@ fun DashboardScreenContent(
             onSubmit = onRecordLedgerEntry,
             onDismiss = onCloseRecordEntryDialog,
             isPersian = isPersian,
-            currencyUnit = currencyUnit
+            currencyUnit = currencyUnit,
+            confirmLoading = isSaving
         )
     }
 }
@@ -344,7 +307,8 @@ private fun ModernRecordEntryDialog(
     onSubmit: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean,
-    currencyUnit: String
+    currencyUnit: String,
+    confirmLoading: Boolean = false
 ) {
     var selectedType by remember { mutableStateOf(LedgerType.DEBIT) }
     var selectedCategory by remember { mutableStateOf(LedgerCategory.EXPENSE) }
@@ -356,8 +320,9 @@ private fun ModernRecordEntryDialog(
     val categories = LedgerCategory.entries
 
     RestoDialog(
-        title = if (isPersian) "ثبت سند مالی جدید" else "Record New Transaction",
-        confirmText = if (isPersian) "ثبت نهایی" else "Record",
+        title = stringResource(R.string.record_transaction_title),
+        confirmText = stringResource(R.string.record_final_btn),
+        confirmLoading = confirmLoading,
         onConfirm = {
             val amt = amountText.toDoubleOrNull() ?: 0.0
             if (amt > 0 && descriptionText.isNotBlank()) {
@@ -374,7 +339,7 @@ private fun ModernRecordEntryDialog(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
                 RestoButton(
-                    text = if (isPersian) "+ درآمد / دریافتی" else "+ Income / Inflow",
+                    text = stringResource(R.string.income_inflow),
                     onClick = {
                         selectedType = LedgerType.CREDIT
                         selectedCategory = LedgerCategory.CASH_IN
@@ -384,7 +349,7 @@ private fun ModernRecordEntryDialog(
                 )
 
                 RestoButton(
-                    text = if (isPersian) "- هزینه / پرداختی" else "- Expense / Outflow",
+                    text = stringResource(R.string.expense_outflow),
                     onClick = {
                         selectedType = LedgerType.DEBIT
                         selectedCategory = LedgerCategory.EXPENSE
@@ -400,19 +365,19 @@ private fun ModernRecordEntryDialog(
                 onExpandedChange = { categoryDropdownExpanded = it }
             ) {
                 val categoryName = when (selectedCategory) {
-                    LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
-                    LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
-                    LedgerCategory.EXPENSE -> if (isPersian) "هزینه‌های جاری" else "Operating Expense"
-                    LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
-                    LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
-                    LedgerCategory.REFUND -> if (isPersian) "مرجوعی مشتری" else "Customer Refund"
+                    LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+                    LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
+                    LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
+                    LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
+                    LedgerCategory.CASH_OUT -> stringResource(R.string.cash_out_cat)
+                    LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
                 }
 
                 OutlinedTextField(
                     value = categoryName,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(if (isPersian) "دسته‌بندی سند" else "Category") },
+                    label = { Text(stringResource(R.string.category_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                     shape = RestoShapes.medium,
                     modifier = Modifier
@@ -426,12 +391,12 @@ private fun ModernRecordEntryDialog(
                 ) {
                     categories.forEach { cat ->
                         val catLabel = when (cat) {
-                            LedgerCategory.SALES -> if (isPersian) "درآمد فروش" else "Sales Income"
-                            LedgerCategory.INVENTORY_ADJUSTMENT -> if (isPersian) "اصلاح موجودی" else "Stock Adjustment"
-                            LedgerCategory.EXPENSE -> if (isPersian) "هزینه‌های جاری" else "Operating Expense"
-                            LedgerCategory.CASH_IN -> if (isPersian) "ورود نقدینگی" else "Cash In"
-                            LedgerCategory.CASH_OUT -> if (isPersian) "برداشت نقدینگی" else "Cash Out"
-                            LedgerCategory.REFUND -> if (isPersian) "مرجوعی مشتری" else "Customer Refund"
+                            LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+                            LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
+                            LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
+                            LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
+                            LedgerCategory.CASH_OUT -> stringResource(R.string.cash_out_cat)
+                            LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
                         }
                         DropdownMenuItem(
                             text = { Text(catLabel) },
@@ -448,7 +413,7 @@ private fun ModernRecordEntryDialog(
             RestoTextField(
                 value = amountText,
                 onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                label = if (isPersian) "مبلغ ($currencyUnit)" else "Amount ($currencyUnit)",
+                label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
                 placeholder = "0"
             )
 
@@ -456,7 +421,7 @@ private fun ModernRecordEntryDialog(
             RestoTextField(
                 value = descriptionText,
                 onValueChange = { descriptionText = it },
-                label = if (isPersian) "شرح سند / بابت" else "Description / Notes",
+                label = stringResource(R.string.notes_description_label),
                 placeholder = if (isPersian) "مثال: پرداخت قبض اینترنت دفتر" else "e.g. Office internet bill",
                 singleLine = false,
                 maxLines = 3
@@ -482,8 +447,7 @@ fun DashboardScreenPreview() {
             ),
             ledgerEntries = emptyList(),
             isRecordEntryDialogOpen = false,
-            snackBarMessage = null,
-            guideState = rememberGuideState()
+            snackBarMessage = null
         )
     }
 }

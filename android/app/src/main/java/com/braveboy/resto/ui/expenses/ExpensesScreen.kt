@@ -43,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Expense
 import com.braveboy.resto.ui.components.RestoBadge
 import com.braveboy.resto.ui.components.RestoBadgeVariant
@@ -54,6 +56,7 @@ import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoEmptyState
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
@@ -75,9 +78,11 @@ fun ExpensesScreen(
     val selectedExpenseDetail by viewModel.selectedExpenseDetail.collectAsState()
     val selectedExpenseForEdit by viewModel.selectedExpenseForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -93,7 +98,7 @@ fun ExpensesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "هزینه‌های جاری" else "Expenses",
+                title = stringResource(R.string.expenses_title),
                 onNavigationClick = onBackClick
             )
         },
@@ -105,7 +110,7 @@ fun ExpensesScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.AddCard,
-                    contentDescription = if (isPersian) "ثبت هزینه جدید" else "Add Expense"
+                    contentDescription = stringResource(R.string.record_new_expense)
                 )
             }
         }
@@ -135,16 +140,13 @@ fun ExpensesScreen(
                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                     Column {
                         Text(
-                            text = if (isPersian) "تعریف هزینه‌های جاری:" else "What are Operating Expenses?",
+                            text = stringResource(R.string.operating_expenses_def),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (isPersian)
-                                "مخارجی مثل اجاره، بسته بندی، تبلیغات، اینترنت، حقوق و ارسال. (توجه: خرید کالای انبار در بخش «خرید و تامین» ثبت می‌شود)."
-                            else
-                                "Non-inventory costs such as rent, ads, internet, packaging and salaries.",
+                            text = stringResource(R.string.operating_expenses_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -162,14 +164,16 @@ fun ExpensesScreen(
 
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            if (expenses.isEmpty()) {
+            if (isLoading && expenses.isEmpty()) {
+                RestoLoadingState(
+                    modifier = Modifier.weight(1f),
+                    message = stringResource(R.string.loading_expenses)
+                )
+            } else if (expenses.isEmpty()) {
                 RestoEmptyState(
-                    title = if (isPersian) "هیچ هزینه‌ای ثبت نشده است" else "No expenses recorded",
-                    description = if (isPersian)
-                        "برای محاسبه دقیق سود و زیان کسب‌وکار، مخارج و هزینه‌های روزمره را ثبت کنید."
-                    else
-                        "Record your ongoing business expenses to keep your operating profit accurate.",
-                    actionText = if (isPersian) "+ ثبت هزینه جدید" else "+ Record Expense",
+                    title = stringResource(R.string.no_expenses_title),
+                    description = stringResource(R.string.no_expenses_desc),
+                    actionText = stringResource(R.string.record_new_expense),
                     onActionClick = { viewModel.openCreateExpenseDialog() },
                     modifier = Modifier.weight(1f)
                 )
@@ -196,10 +200,11 @@ fun ExpensesScreen(
     // Add / Edit Expense Dialog
     if (isCreateExpenseDialogOpen) {
         ExpenseFormDialog(
-            title = if (isPersian) "ثبت هزینه جدید" else "Record New Expense",
+            title = stringResource(R.string.record_new_expense),
             initialExpense = null,
             isPersian = isPersian,
             currencyUnit = currencyUnit,
+            confirmLoading = isSaving,
             onSubmit = { category, amount, method, date, notes ->
                 viewModel.addExpense(category, amount, date, method, notes)
             },
@@ -209,10 +214,11 @@ fun ExpensesScreen(
 
     selectedExpenseForEdit?.let { expense ->
         ExpenseFormDialog(
-            title = if (isPersian) "ویرایش اطلاعات هزینه" else "Edit Expense",
+            title = stringResource(R.string.edit_expense_title),
             initialExpense = expense,
             isPersian = isPersian,
             currencyUnit = currencyUnit,
+            confirmLoading = isSaving,
             onSubmit = { category, amount, method, date, notes ->
                 viewModel.updateExpense(
                     expense.copy(category = category, amount = amount, paymentMethod = method, date = date, notes = notes)
@@ -319,7 +325,8 @@ fun ExpenseFormDialog(
     isPersian: Boolean,
     currencyUnit: String,
     onSubmit: (category: String, amount: Double, method: String, date: String, notes: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    confirmLoading: Boolean = false
 ) {
     val defaultCategories = if (isPersian) {
         listOf(
@@ -356,7 +363,8 @@ fun ExpenseFormDialog(
 
     RestoDialog(
         title = title,
-        confirmText = if (isPersian) "ثبت هزینه" else "Save Expense",
+        confirmText = stringResource(R.string.save_expense),
+        confirmLoading = confirmLoading,
         onConfirm = {
             if (amountVal > 0) {
                 onSubmit(category, amountVal, paymentMethod, "", notes.trim())
@@ -375,7 +383,7 @@ fun ExpenseFormDialog(
                     value = category,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(if (isPersian) "دسته‌بندی هزینه *" else "Category *") },
+                    label = { Text("${stringResource(R.string.category_label)} *") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded) },
                     shape = RestoShapes.medium,
                     modifier = Modifier
@@ -402,7 +410,7 @@ fun ExpenseFormDialog(
             RestoTextField(
                 value = amountText,
                 onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                label = if (isPersian) "مبلغ هزینه ($currencyUnit) *" else "Amount ($currencyUnit) *",
+                label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
                 placeholder = "0"
             )
 
@@ -410,14 +418,14 @@ fun ExpenseFormDialog(
             RestoTextField(
                 value = paymentMethod,
                 onValueChange = { paymentMethod = it },
-                label = if (isPersian) "روش پرداخت (کارت، نقد، شبا...)" else "Payment Method"
+                label = stringResource(R.string.payment_method_label)
             )
 
             // Notes
             RestoTextField(
                 value = notes,
                 onValueChange = { notes = it },
-                label = if (isPersian) "توضیحات و بابت" else "Notes / Description",
+                label = stringResource(R.string.notes_description_label),
                 singleLine = false,
                 maxLines = 2
             )
@@ -443,7 +451,7 @@ fun ExpenseDetailSheet(
     RestoBottomSheet(
         onDismissRequest = onDismiss,
         title = expense.category,
-        subtitle = if (isPersian) "رسید سند هزینه جاری" else "Operating Expense Record"
+        subtitle = stringResource(R.string.expense_record_subtitle)
     ) {
         Column(
             modifier = Modifier
@@ -461,7 +469,7 @@ fun ExpenseDetailSheet(
                 ) {
                     Column {
                         Text(
-                            text = if (isPersian) "مبلغ هزینه" else "Expense Amount",
+                            text = stringResource(R.string.expense_amount_label),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -482,7 +490,7 @@ fun ExpenseDetailSheet(
 
             if (expense.notes.isNotBlank()) {
                 Text(
-                    text = if (isPersian) "توضیحات:" else "Notes:",
+                    text = "${stringResource(R.string.notes_description_label)}:",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -500,14 +508,14 @@ fun ExpenseDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
                 RestoButton(
-                    text = if (isPersian) "ویرایش" else "Edit",
+                    text = stringResource(R.string.edit),
                     onClick = onEditClick,
                     variant = RestoButtonVariant.Outlined,
                     modifier = Modifier.weight(1f)
                 )
 
                 RestoButton(
-                    text = if (isPersian) "بستن" else "Close",
+                    text = stringResource(R.string.close),
                     onClick = onDismiss,
                     variant = RestoButtonVariant.Primary,
                     modifier = Modifier.weight(1f)

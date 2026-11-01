@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,7 +64,8 @@ fun CheckoutModal(
     onProcessCheckout: (PaymentMethod, String) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = "تومان",
+    isCheckingOut: Boolean = false
 ) {
     val totalAmount = cartItems.sumOf { it.total }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
@@ -296,6 +299,7 @@ fun CheckoutModal(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
+                        enabled = !isCheckingOut,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(if (isPersian) "انصراف" else "Cancel", maxLines = 1)
@@ -303,6 +307,7 @@ fun CheckoutModal(
 
                     Button(
                         onClick = { onProcessCheckout(selectedPaymentMethod, notesText) },
+                        enabled = !isCheckingOut,
                         modifier = Modifier
                             .weight(2f)
                             .height(48.dp),
@@ -310,15 +315,23 @@ fun CheckoutModal(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isPersian) "ثبت نهایی و صدور" else "Complete Sale",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
+                        if (isCheckingOut) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isPersian) "ثبت نهایی و صدور" else "Complete Sale",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }

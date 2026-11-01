@@ -31,11 +31,24 @@ class InventoryViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    productRepository.refreshProducts(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        productRepository.refreshProducts(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -115,6 +128,7 @@ class InventoryViewModel(
         warehouseId: String
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 val newProduct = Product(
@@ -140,6 +154,8 @@ class InventoryViewModel(
                 _isAddProductDialogOpen.value = false
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در ثبت کالا: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
@@ -170,12 +186,15 @@ class InventoryViewModel(
 
     fun updateProduct(product: Product) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 productRepository.updateProduct(product)
-                _snackbarMessage.value = "Product '${product.name}' updated successfully"
+                _snackbarMessage.value = "کالای '${product.name}' با موفقیت بروزرسانی شد"
                 _selectedProductForEdit.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to update product: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در بروزرسانی کالا: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
@@ -187,6 +206,7 @@ class InventoryViewModel(
         reason: String
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 productRepository.adjustStock(
@@ -197,10 +217,12 @@ class InventoryViewModel(
                     orgId = state.activeOrgId,
                     storeId = state.activeStoreId
                 )
-                _snackbarMessage.value = "Stock updated successfully"
+                _snackbarMessage.value = "موجودی با موفقیت بروزرسانی شد"
                 _selectedProductForAdjustment.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to update stock: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در تغییر موجودی: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
@@ -219,3 +241,4 @@ class InventoryViewModel(
         }
     }
 }
+

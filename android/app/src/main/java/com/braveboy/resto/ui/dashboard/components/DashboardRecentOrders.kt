@@ -21,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
@@ -57,7 +59,7 @@ fun DashboardRecentOrders(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (isPersian) "سفارش‌های اخیر" else "Recent Orders",
+                text = stringResource(R.string.recent_orders_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -65,7 +67,7 @@ fun DashboardRecentOrders(
 
             if (orders.isNotEmpty()) {
                 Text(
-                    text = if (isPersian) "مشاهده همه" else "See All",
+                    text = stringResource(R.string.see_all),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -90,13 +92,13 @@ fun DashboardRecentOrders(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = if (isPersian) "هنوز سفارشی ثبت نشده است" else "No orders recorded yet",
+                        text = stringResource(R.string.no_orders_title),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (isPersian) "پس از انجام ثبت سفارش جدید یا دریافت فاکتور، سفارشات در این بخش قرار می‌گیرند." else "Your recent sales orders will appear here.",
+                        text = stringResource(R.string.no_orders_desc),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

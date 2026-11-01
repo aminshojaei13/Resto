@@ -44,10 +44,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.ui.components.RestoBottomSheet
 import com.braveboy.resto.ui.components.RestoButton
@@ -55,6 +57,7 @@ import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoEmptyState
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
@@ -75,9 +78,11 @@ fun CustomerScreen(
     val selectedCustomerForDetail by viewModel.selectedCustomerForDetail.collectAsState()
     val selectedCustomerForEdit by viewModel.selectedCustomerForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -93,7 +98,7 @@ fun CustomerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "مدیریت مشتریان" else "Customers",
+                title = stringResource(R.string.customers_title),
                 onNavigationClick = onBackClick
             )
         },
@@ -105,7 +110,7 @@ fun CustomerScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PersonAdd,
-                    contentDescription = if (isPersian) "افزودن مشتری جدید" else "Add Customer"
+                    contentDescription = stringResource(R.string.add_new_customer)
                 )
             }
         }
@@ -121,19 +126,21 @@ fun CustomerScreen(
             RestoSearchField(
                 query = searchQuery,
                 onQueryChange = { viewModel.setSearchQuery(it) },
-                placeholder = if (isPersian) "جستجوی مشتری با نام یا شماره تماس..." else "Search by name, phone, email..."
+                placeholder = stringResource(R.string.search_customer)
             )
 
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            if (customers.isEmpty()) {
+            if (isLoading && customers.isEmpty()) {
+                RestoLoadingState(
+                    modifier = Modifier.weight(1f),
+                    message = stringResource(R.string.loading_customers)
+                )
+            } else if (customers.isEmpty()) {
                 RestoEmptyState(
-                    title = if (isPersian) "هیچ مشتری ثبت نشده است" else "No customers found",
-                    description = if (isPersian)
-                        "با افزودن اولین مشتری، سوابق سفارشات و اطلاعات تماس او ثبت خواهد شد."
-                    else
-                        "When you add customers or checkout orders, customer profiles will appear here.",
-                    actionText = if (isPersian) "+ افزودن مشتری" else "+ Add Customer",
+                    title = stringResource(R.string.no_customers_title),
+                    description = stringResource(R.string.no_customers_desc),
+                    actionText = stringResource(R.string.add_customer),
                     onActionClick = { viewModel.openAddCustomerDialog() },
                     modifier = Modifier.weight(1f)
                 )
@@ -159,9 +166,10 @@ fun CustomerScreen(
     // Consolidated Customer Form Dialog (For Add and Edit)
     if (isAddCustomerDialogOpen) {
         CustomerFormDialog(
-            title = if (isPersian) "افزودن مشتری جدید" else "Add New Customer",
+            title = stringResource(R.string.add_new_customer),
             initialCustomer = null,
             isPersian = isPersian,
+            confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.addCustomer(name, email, phone, address)
             },
@@ -171,9 +179,10 @@ fun CustomerScreen(
 
     selectedCustomerForEdit?.let { customer ->
         CustomerFormDialog(
-            title = if (isPersian) "ویرایش اطلاعات مشتری" else "Edit Customer Profile",
+            title = stringResource(R.string.edit_customer_title),
             initialCustomer = customer,
             isPersian = isPersian,
+            confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.updateCustomer(
                     customer.copy(name = name, email = email, phone = phone, address = address)
@@ -272,7 +281,7 @@ fun CustomerItemCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (isPersian) "مجموع خرید" else "Total spent",
+                    text = stringResource(R.string.total_spent),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
@@ -288,7 +297,8 @@ fun CustomerFormDialog(
     initialCustomer: Customer?,
     isPersian: Boolean,
     onSubmit: (name: String, email: String, phone: String, address: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    confirmLoading: Boolean = false
 ) {
     var name by remember { mutableStateOf(initialCustomer?.name ?: "") }
     var phone by remember { mutableStateOf(initialCustomer?.phone ?: "") }
@@ -297,7 +307,8 @@ fun CustomerFormDialog(
 
     RestoDialog(
         title = title,
-        confirmText = if (isPersian) "ذخیره اطلاعات" else "Save Profile",
+        confirmText = stringResource(R.string.save_info),
+        confirmLoading = confirmLoading,
         onConfirm = {
             if (name.isNotBlank()) {
                 onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
@@ -310,25 +321,25 @@ fun CustomerFormDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = if (isPersian) "نام و نام خانوادگی *" else "Full Name *"
+                label = stringResource(R.string.full_name_label)
             )
 
             RestoTextField(
                 value = phone,
                 onValueChange = { phone = it },
-                label = if (isPersian) "شماره تماس" else "Phone Number"
+                label = stringResource(R.string.phone_number_label)
             )
 
             RestoTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = if (isPersian) "آدرس ایمیل" else "Email Address"
+                label = stringResource(R.string.email_address_label)
             )
 
             RestoTextField(
                 value = address,
                 onValueChange = { address = it },
-                label = if (isPersian) "آدرس پستی" else "Address",
+                label = stringResource(R.string.address_label),
                 singleLine = false,
                 maxLines = 2
             )
@@ -354,7 +365,7 @@ fun CustomerDetailSheet(
     RestoBottomSheet(
         onDismissRequest = onDismiss,
         title = customer.name,
-        subtitle = if (isPersian) "پروفایل مشتری" else "Customer Profile"
+        subtitle = stringResource(R.string.customer_profile)
     ) {
         Column(
             modifier = Modifier
@@ -372,7 +383,7 @@ fun CustomerDetailSheet(
                 ) {
                     Column {
                         Text(
-                            text = if (isPersian) "مجموع خرید مشتری" else "Total Purchases",
+                            text = stringResource(R.string.total_purchases),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -386,7 +397,7 @@ fun CustomerDetailSheet(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = if (isPersian) "امتیاز وفاداری" else "Loyalty Points",
+                            text = stringResource(R.string.loyalty_points_balance),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -434,14 +445,14 @@ fun CustomerDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
                 RestoButton(
-                    text = if (isPersian) "ویرایش اطلاعات" else "Edit Profile",
+                    text = stringResource(R.string.edit_profile),
                     onClick = onEditClick,
                     variant = RestoButtonVariant.Outlined,
                     modifier = Modifier.weight(1f)
                 )
 
                 RestoButton(
-                    text = if (isPersian) "بستن" else "Close",
+                    text = stringResource(R.string.close),
                     onClick = onDismiss,
                     variant = RestoButtonVariant.Primary,
                     modifier = Modifier.weight(1f)

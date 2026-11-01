@@ -45,16 +45,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Supplier
 import com.braveboy.resto.ui.components.RestoBottomSheet
 import com.braveboy.resto.ui.components.RestoButton
 import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoEmptyState
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
@@ -76,6 +79,8 @@ fun SupplierScreen(
     val selectedSupplierForDetail by viewModel.selectedSupplierForDetail.collectAsState()
     val selectedSupplierForEdit by viewModel.selectedSupplierForEdit.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     val isPersian = tenantState.language == "fa"
     val snackbarHostState = remember { SnackbarHostState() }
@@ -93,7 +98,7 @@ fun SupplierScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "تأمین‌کنندگان" else "Suppliers",
+                title = stringResource(R.string.suppliers_title),
                 onNavigationClick = onBackClick
             )
         },
@@ -105,7 +110,7 @@ fun SupplierScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.AddBusiness,
-                    contentDescription = if (isPersian) "افزودن تأمین‌کننده" else "Add Supplier"
+                    contentDescription = stringResource(R.string.add_supplier_title)
                 )
             }
         }
@@ -126,14 +131,16 @@ fun SupplierScreen(
 
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            if (suppliers.isEmpty()) {
+            if (isLoading && suppliers.isEmpty()) {
+                RestoLoadingState(
+                    modifier = Modifier.weight(1f),
+                    message = stringResource(R.string.loading_suppliers)
+                )
+            } else if (suppliers.isEmpty()) {
                 RestoEmptyState(
-                    title = if (isPersian) "هیچ تأمین‌کننده‌ای ثبت نشده است" else "No suppliers found",
-                    description = if (isPersian)
-                        "تأمین‌کنندگان را برای ثبت خریدهای انبار و ردیابی فاکتورها اضافه کنید."
-                    else
-                        "Add vendors and distributors to record inventory purchases and track payables.",
-                    actionText = if (isPersian) "+ افزودن تأمین‌کننده" else "+ Add Supplier",
+                    title = stringResource(R.string.no_suppliers_title),
+                    description = stringResource(R.string.no_suppliers_desc),
+                    actionText = stringResource(R.string.add_supplier_title),
                     onActionClick = { viewModel.openAddSupplierDialog() },
                     modifier = Modifier.weight(1f)
                 )
@@ -158,9 +165,10 @@ fun SupplierScreen(
     // Add Supplier Dialog
     if (isAddSupplierDialogOpen) {
         SupplierFormDialog(
-            title = if (isPersian) "افزودن تأمین‌کننده جدید" else "Add New Supplier",
+            title = stringResource(R.string.add_supplier_title),
             initialSupplier = null,
             isPersian = isPersian,
+            confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.addSupplier(name, email, phone, address)
             },
@@ -171,9 +179,10 @@ fun SupplierScreen(
     // Edit Supplier Dialog
     selectedSupplierForEdit?.let { supplier ->
         SupplierFormDialog(
-            title = if (isPersian) "ویرایش اطلاعات تأمین‌کننده" else "Edit Supplier Details",
+            title = stringResource(R.string.edit_supplier_title),
             initialSupplier = supplier,
             isPersian = isPersian,
+            confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.updateSupplier(
                     supplier.copy(name = name, email = email, phone = phone, address = address)
@@ -278,7 +287,8 @@ fun SupplierFormDialog(
     initialSupplier: Supplier?,
     isPersian: Boolean,
     onSubmit: (name: String, email: String, phone: String, address: String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    confirmLoading: Boolean = false
 ) {
     var name by remember { mutableStateOf(initialSupplier?.name ?: "") }
     var phone by remember { mutableStateOf(initialSupplier?.phone ?: "") }
@@ -287,7 +297,8 @@ fun SupplierFormDialog(
 
     RestoDialog(
         title = title,
-        confirmText = if (isPersian) "ذخیره تأمین‌کننده" else "Save Supplier",
+        confirmText = stringResource(R.string.save_supplier),
+        confirmLoading = confirmLoading,
         onConfirm = {
             if (name.isNotBlank()) {
                 onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
@@ -300,25 +311,25 @@ fun SupplierFormDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = if (isPersian) "نام شرکت یا فروشنده *" else "Company / Supplier Name *"
+                label = stringResource(R.string.company_supplier_label)
             )
 
             RestoTextField(
                 value = phone,
                 onValueChange = { phone = it },
-                label = if (isPersian) "شماره تماس" else "Phone Number"
+                label = stringResource(R.string.phone_number_label)
             )
 
             RestoTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = if (isPersian) "آدرس ایمیل" else "Email Address"
+                label = stringResource(R.string.email_address_label)
             )
 
             RestoTextField(
                 value = address,
                 onValueChange = { address = it },
-                label = if (isPersian) "آدرس و دفتر فروش" else "Address",
+                label = stringResource(R.string.address_label),
                 singleLine = false,
                 maxLines = 2
             )
@@ -337,7 +348,7 @@ fun SupplierDetailSheet(
     RestoBottomSheet(
         onDismissRequest = onDismiss,
         title = supplier.name,
-        subtitle = if (isPersian) "مشخصات و نشانی تأمین‌کننده" else "Supplier Profile"
+        subtitle = stringResource(R.string.supplier_profile)
     ) {
         Column(
             modifier = Modifier
@@ -379,14 +390,14 @@ fun SupplierDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
             ) {
                 RestoButton(
-                    text = if (isPersian) "ویرایش اطلاعات" else "Edit Details",
+                    text = stringResource(R.string.edit_details),
                     onClick = onEditClick,
                     variant = RestoButtonVariant.Outlined,
                     modifier = Modifier.weight(1f)
                 )
 
                 RestoButton(
-                    text = if (isPersian) "بستن" else "Close",
+                    text = stringResource(R.string.close),
                     onClick = onDismiss,
                     variant = RestoButtonVariant.Primary,
                     modifier = Modifier.weight(1f)

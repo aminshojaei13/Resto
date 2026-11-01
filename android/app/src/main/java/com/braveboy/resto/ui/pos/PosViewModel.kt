@@ -41,22 +41,35 @@ class PosViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isCheckingOut = MutableStateFlow(false)
+    val isCheckingOut: StateFlow<Boolean> = _isCheckingOut.asStateFlow()
+
     private val _defaultTaxRate = MutableStateFlow(0.0)
 
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    productRepository.refreshProducts(state.activeOrgId)
-                    customerRepository.refreshCustomers(state.activeOrgId)
+                    _isLoading.value = true
                     try {
-                        val response = com.braveboy.resto.data.remote.NetworkModule.apiService.getBusinessSettings()
-                        if (response.isSuccessful && response.body() != null) {
-                            val map = response.body()!!
-                            val rateNum = (map["default_tax_rate"] as? Number)?.toDouble() ?: 0.0
-                            _defaultTaxRate.value = rateNum / 100.0
-                        }
-                    } catch (_: Exception) {}
+                        productRepository.refreshProducts(state.activeOrgId)
+                        customerRepository.refreshCustomers(state.activeOrgId)
+                        try {
+                            val response = com.braveboy.resto.data.remote.NetworkModule.apiService.getBusinessSettings()
+                            if (response.isSuccessful && response.body() != null) {
+                                val map = response.body()!!
+                                val rateNum = (map["default_tax_rate"] as? Number)?.toDouble() ?: 0.0
+                                _defaultTaxRate.value = rateNum / 100.0
+                            }
+                        } catch (_: Exception) {}
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -168,7 +181,7 @@ class PosViewModel(
                 quantity = qty,
                 taxRate = _defaultTaxRate.value
             )
-            _snackbarMessage.value = "Added '${product.name}' to cart"
+            _snackbarMessage.value = "کالای '${product.name}' به سبد افزود شد"
         }
     }
 
@@ -206,7 +219,7 @@ class PosViewModel(
         if (cartItems.value.isNotEmpty()) {
             _isCheckoutModalOpen.value = true
         } else {
-            _snackbarMessage.value = "Cart is empty"
+            _snackbarMessage.value = "سبد خرید خالی است"
         }
     }
 
@@ -228,15 +241,16 @@ class PosViewModel(
             val matchedProduct = productRepository.getProductByBarcode(state.activeOrgId, barcode).firstOrNull()
             if (matchedProduct != null) {
                 addToCart(matchedProduct)
-                _snackbarMessage.value = "Scanned: ${matchedProduct.name}"
+                _snackbarMessage.value = "اسکن شد: ${matchedProduct.name}"
             } else {
-                _snackbarMessage.value = "No product found with barcode: $barcode"
+                _snackbarMessage.value = "کالایی با بارکد $barcode یافت نشد"
             }
         }
     }
 
     fun processCheckout(paymentMethod: PaymentMethod, notes: String) {
         viewModelScope.launch {
+            _isCheckingOut.value = true
             try {
                 val state = tenantState.value
                 val items = cartItems.value
@@ -255,9 +269,11 @@ class PosViewModel(
                 _lastCompletedOrder.value = order
                 _isCheckoutModalOpen.value = false
                 _selectedCustomer.value = null
-                _snackbarMessage.value = "Order ${order.orderNumber} completed!"
+                _snackbarMessage.value = "سفارش ${order.orderNumber} با موفقیت ثبت شد!"
             } catch (e: Exception) {
-                _snackbarMessage.value = "Checkout failed: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در تسویه حساب: ${e.localizedMessage}"
+            } finally {
+                _isCheckingOut.value = false
             }
         }
     }

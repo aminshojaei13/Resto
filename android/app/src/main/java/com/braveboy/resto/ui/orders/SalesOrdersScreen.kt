@@ -1,5 +1,6 @@
 package com.braveboy.resto.ui.orders
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,9 +38,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.FulfillmentStatus
 import com.braveboy.resto.data.model.PaymentStatus
 import com.braveboy.resto.data.model.SalesOrder
@@ -51,6 +54,7 @@ import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoChip
 import com.braveboy.resto.ui.components.RestoEmptyState
+import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoOrderCard
 import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoTopBar
@@ -61,8 +65,6 @@ import com.braveboy.resto.util.PersianFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-import android.annotation.SuppressLint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,9 +81,11 @@ fun SalesOrdersScreen(
     val orders by viewModel.orders.collectAsState()
     val selectedOrderForDetail by viewModel.selectedOrderForDetail.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
     val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -97,7 +101,7 @@ fun SalesOrdersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "سفارش‌ها" else "Orders",
+                title = stringResource(R.string.orders_screen_title),
                 onNavigationClick = onBackClick
             )
         }
@@ -126,7 +130,7 @@ fun SalesOrdersScreen(
             ) {
                 item {
                     RestoChip(
-                        text = if (isPersian) "همه سفارش‌ها" else "All Orders",
+                        text = stringResource(R.string.all_orders_chip),
                         selected = selectedPaymentStatus == null && selectedFulfillmentStatus == null,
                         onClick = {
                             viewModel.filterPaymentStatus(null)
@@ -137,7 +141,7 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
-                        text = if (isPersian) "پرداخت شده" else "Paid",
+                        text = stringResource(R.string.paid_chip),
                         selected = selectedPaymentStatus == PaymentStatus.PAID,
                         onClick = { viewModel.filterPaymentStatus(PaymentStatus.PAID) }
                     )
@@ -145,7 +149,7 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
-                        text = if (isPersian) "در انتظار پرداخت" else "Pending Payment",
+                        text = stringResource(R.string.pending_payment_chip),
                         selected = selectedPaymentStatus == PaymentStatus.PENDING,
                         onClick = { viewModel.filterPaymentStatus(PaymentStatus.PENDING) }
                     )
@@ -153,7 +157,7 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
-                        text = if (isPersian) "تکمیل شده" else "Completed",
+                        text = stringResource(R.string.completed_chip),
                         selected = selectedFulfillmentStatus == FulfillmentStatus.COMPLETED,
                         onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.COMPLETED) }
                     )
@@ -161,7 +165,7 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
-                        text = if (isPersian) "در صف ارسال" else "Processing",
+                        text = stringResource(R.string.processing_chip),
                         selected = selectedFulfillmentStatus == FulfillmentStatus.PROCESSING,
                         onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.PROCESSING) }
                     )
@@ -171,13 +175,15 @@ fun SalesOrdersScreen(
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
             // ORDERS LIST
-            if (orders.isEmpty()) {
+            if (isLoading && orders.isEmpty()) {
+                RestoLoadingState(
+                    modifier = Modifier.weight(1f),
+                    message = stringResource(R.string.loading_orders)
+                )
+            } else if (orders.isEmpty()) {
                 RestoEmptyState(
-                    title = if (isPersian) "هنوز سفارشی ثبت نشده است" else "No orders found",
-                    description = if (isPersian)
-                        "وقتی مشتریان سفارش ثبت کنند یا از بخش فروش ثبت سفارش کنید، اینجا نمایش داده می‌شود."
-                    else
-                        "Orders created through the store or imported from social media will appear here.",
+                    title = stringResource(R.string.no_orders_title),
+                    description = stringResource(R.string.no_orders_desc),
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -205,6 +211,7 @@ fun SalesOrdersScreen(
             order = order,
             isPersian = isPersian,
             currencyUnit = currencyUnit,
+            isSaving = isSaving,
             onUpdateStatus = { orderId, payStatus, fulStatus ->
                 viewModel.updateOrderStatus(orderId, payStatus, fulStatus)
             },
@@ -219,6 +226,7 @@ fun OrderDetailSheet(
     order: SalesOrder,
     isPersian: Boolean,
     currencyUnit: String,
+    isSaving: Boolean = false,
     onUpdateStatus: (orderId: String, paymentStatus: PaymentStatus?, fulfillmentStatus: FulfillmentStatus?) -> Unit = { _, _, _ -> },
     onDismiss: () -> Unit
 ) {
@@ -231,7 +239,7 @@ fun OrderDetailSheet(
 
     RestoBottomSheet(
         onDismissRequest = onDismiss,
-        title = if (isPersian) "جزئیات سفارش ${order.orderNumber}" else "Order Details ${order.orderNumber}",
+        title = "${stringResource(R.string.order_details_title)} ${order.orderNumber}",
         subtitle = dateStr
     ) {
         Column(
@@ -257,7 +265,7 @@ fun OrderDetailSheet(
                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                     Column {
                         Text(
-                            text = if (isPersian) "مشتری:" else "Customer:",
+                            text = "${stringResource(R.string.search_customer)}:",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -273,7 +281,7 @@ fun OrderDetailSheet(
 
             // Products list
             Text(
-                text = if (isPersian) "اقلام سفارش" else "Order Items",
+                text = stringResource(R.string.order_items),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -323,25 +331,25 @@ fun OrderDetailSheet(
             // Financial Summary
             Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.xxs)) {
                 FinancialRow(
-                    label = if (isPersian) "جمع اقلام:" else "Subtotal:",
+                    label = stringResource(R.string.subtotal_label),
                     value = if (isPersian) "${PersianFormatter.formatTomans(order.subtotal)} $currencyUnit" else "$${String.format("%.2f", order.subtotal)}"
                 )
                 if (order.discountAmount > 0) {
                     FinancialRow(
-                        label = if (isPersian) "تخفیف:" else "Discount:",
+                        label = stringResource(R.string.discount_label),
                         value = if (isPersian) "-${PersianFormatter.formatTomans(order.discountAmount)} $currencyUnit" else "-$${String.format("%.2f", order.discountAmount)}",
                         valueColor = MaterialTheme.colorScheme.error
                     )
                 }
                 if (order.taxAmount > 0) {
                     FinancialRow(
-                        label = if (isPersian) "مالیات بر ارزش افزوده:" else "Tax:",
+                        label = stringResource(R.string.tax_label),
                         value = if (isPersian) "${PersianFormatter.formatTomans(order.taxAmount)} $currencyUnit" else "$${String.format("%.2f", order.taxAmount)}"
                     )
                 }
                 Spacer(modifier = Modifier.height(RestoSpacing.xs))
                 FinancialRow(
-                    label = if (isPersian) "مبلغ کل قابل پرداخت:" else "Total Amount:",
+                    label = stringResource(R.string.total_amount_payable),
                     value = if (isPersian) "${PersianFormatter.formatTomans(order.totalAmount)} $currencyUnit" else "$${String.format("%.2f", order.totalAmount)}",
                     isBold = true,
                     valueColor = MaterialTheme.colorScheme.primary
@@ -352,7 +360,7 @@ fun OrderDetailSheet(
 
             // Order Workflow Actions
             Text(
-                text = if (isPersian) "مراحل آماده‌سازی و پردازش" else "Order Fulfillment & Status",
+                text = stringResource(R.string.fulfillment_workflow),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -361,18 +369,20 @@ fun OrderDetailSheet(
             Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 if (order.fulfillmentStatus == FulfillmentStatus.PENDING) {
                     RestoButton(
-                        text = if (isPersian) "شروع آماده‌سازی سفارش (پردازش)" else "Start Processing",
+                        text = stringResource(R.string.start_processing),
                         onClick = {
                             onUpdateStatus(order.id, null, FulfillmentStatus.PROCESSING)
                         },
+                        isLoading = isSaving,
                         fullWidth = true
                     )
                 } else if (order.fulfillmentStatus == FulfillmentStatus.PROCESSING) {
                     RestoButton(
-                        text = if (isPersian) "تکمیل و ارسال سفارش به مشتری" else "Complete & Ship Order",
+                        text = stringResource(R.string.complete_and_ship),
                         onClick = {
                             onUpdateStatus(order.id, null, FulfillmentStatus.COMPLETED)
                         },
+                        isLoading = isSaving,
                         fullWidth = true
                     )
                 } else if (order.fulfillmentStatus == FulfillmentStatus.COMPLETED) {
@@ -391,7 +401,7 @@ fun OrderDetailSheet(
                             )
                             Spacer(modifier = Modifier.width(RestoSpacing.xs))
                             Text(
-                                text = if (isPersian) "این سفارش با موفقیت ارسال و تکمیل شده است." else "This order has been completed.",
+                                text = stringResource(R.string.order_completed_notice),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = RestoTheme.colors.onSuccessContainer
@@ -402,10 +412,11 @@ fun OrderDetailSheet(
 
                 if (order.paymentStatus != PaymentStatus.PAID) {
                     RestoButton(
-                        text = if (isPersian) "ثبت تسویه حساب (پرداخت شد)" else "Mark as Paid",
+                        text = stringResource(R.string.mark_as_paid),
                         onClick = {
                             onUpdateStatus(order.id, PaymentStatus.PAID, null)
                         },
+                        isLoading = isSaving,
                         variant = RestoButtonVariant.Outlined,
                         fullWidth = true
                     )
@@ -415,7 +426,7 @@ fun OrderDetailSheet(
             // Close button
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
             RestoButton(
-                text = if (isPersian) "بستن جزئیات" else "Close",
+                text = stringResource(R.string.close_details),
                 onClick = onDismiss,
                 variant = RestoButtonVariant.Secondary,
                 fullWidth = true

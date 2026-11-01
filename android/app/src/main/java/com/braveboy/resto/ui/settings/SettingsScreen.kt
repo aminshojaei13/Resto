@@ -65,7 +65,6 @@ fun SettingsScreen(
     tenantRepository: TenantRepository,
     authRepository: AuthRepository,
     syncManager: SyncManager? = null,
-    guidePreferences: com.braveboy.resto.ui.guide.GuidePreferences? = null,
     onOpenTenantSwitcher: () -> Unit,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
@@ -261,55 +260,6 @@ fun SettingsScreen(
                             subtitle = if (isPersian) "تومان (محاسبات دقیق مالی)" else "USD / Precision Monetary",
                             leadingIcon = Icons.Rounded.Tune
                         )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = RestoSpacing.md),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-
-                        // Interactive Screen Guides Replay Item
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(RestoSpacing.md),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.School,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.padding(start = RestoSpacing.md))
-                                Column {
-                                    Text(
-                                        text = if (isPersian) "راه‌اندازی مجدد راهنماهای تصویری" else "Replay Screen Guides",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = if (isPersian) "نمایش مجدد راهنمای تعاملی تمام صفحات" else "Reset and show interactive tours for all screens",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            RestoButton(
-                                text = if (isPersian) "راه‌اندازی مجدد" else "Reset",
-                                onClick = {
-                                    scope.launch {
-                                        guidePreferences?.resetAllGuides()
-                                    }
-                                },
-                                variant = RestoButtonVariant.Outlined,
-                                compact = true
-                            )
-                        }
                     }
                 }
             }

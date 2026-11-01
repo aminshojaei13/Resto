@@ -29,11 +29,24 @@ class ExpensesViewModel(
         initialValue = TenantState()
     )
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    expenseRepository.refreshExpenses(state.activeOrgId)
+                    _isLoading.value = true
+                    try {
+                        expenseRepository.refreshExpenses(state.activeOrgId)
+                    } finally {
+                        _isLoading.value = false
+                    }
+                } else {
+                    _isLoading.value = false
                 }
             }
         }
@@ -114,6 +127,7 @@ class ExpensesViewModel(
         notes: String
     ) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 val state = tenantState.value
                 val expense = Expense(
@@ -127,35 +141,43 @@ class ExpensesViewModel(
                     userId = state.userId
                 )
                 expenseRepository.addExpense(expense)
-                _snackbarMessage.value = "Recorded expense '$category'"
+                _snackbarMessage.value = "هزینه '$category' ثبت شد"
                 _isCreateExpenseDialogOpen.value = false
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to record expense: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در ثبت هزینه: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun updateExpense(expense: Expense) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 expenseRepository.updateExpense(expense)
-                _snackbarMessage.value = "Updated expense '${expense.category}'"
+                _snackbarMessage.value = "هزینه '${expense.category}' به روز شد"
                 _selectedExpenseForEdit.value = null
                 _selectedExpenseDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to update expense: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در به روز رسانی هزینه: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun deleteExpense(expense: Expense) {
         viewModelScope.launch {
+            _isSaving.value = true
             try {
                 expenseRepository.deleteExpense(expense.id)
-                _snackbarMessage.value = "Deleted expense '${expense.category}'"
+                _snackbarMessage.value = "هزینه '${expense.category}' حذف شد"
                 _selectedExpenseDetail.value = null
             } catch (e: Exception) {
-                _snackbarMessage.value = "Failed to delete expense: ${e.localizedMessage}"
+                _snackbarMessage.value = "خطا در حذف هزینه: ${e.localizedMessage}"
+            } finally {
+                _isSaving.value = false
             }
         }
     }

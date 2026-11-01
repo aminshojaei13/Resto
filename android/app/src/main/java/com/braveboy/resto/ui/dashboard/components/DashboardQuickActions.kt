@@ -31,11 +31,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
@@ -108,7 +110,7 @@ fun DashboardQuickActions(
     ) {
         Column {
             DashboardQuickActionRow(
-                title = if (isPersian) "افزودن محصول" else "Add Product",
+                title = stringResource(R.string.quick_add_product),
                 icon = Icons.Rounded.Add,
                 onClick = onAddProductClick,
                 isPersian = isPersian
@@ -117,7 +119,7 @@ fun DashboardQuickActions(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
             DashboardQuickActionRow(
-                title = if (isPersian) "وارد کردن دراپ‌شیپینگ" else "Import Dropshipping",
+                title = stringResource(R.string.quick_import_dropshipping),
                 icon = Icons.Rounded.Upload,
                 onClick = onImportDropshippingClick,
                 isPersian = isPersian
@@ -126,7 +128,7 @@ fun DashboardQuickActions(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
             DashboardQuickActionRow(
-                title = if (isPersian) "مشاهده سفارشات" else "View Orders",
+                title = stringResource(R.string.quick_view_orders),
                 icon = Icons.AutoMirrored.Rounded.ReceiptLong,
                 onClick = onViewOrdersClick,
                 isPersian = isPersian
@@ -135,7 +137,7 @@ fun DashboardQuickActions(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
             DashboardQuickActionRow(
-                title = if (isPersian) "برداشت وجه" else "Withdraw Money",
+                title = stringResource(R.string.quick_record_financial_doc),
                 icon = Icons.Rounded.NorthEast,
                 onClick = onWithdrawMoneyClick,
                 isPersian = isPersian
