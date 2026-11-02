@@ -132,10 +132,7 @@ fun SalesOrdersScreen(
                     RestoChip(
                         text = stringResource(R.string.all_orders_chip),
                         selected = selectedPaymentStatus == null && selectedFulfillmentStatus == null,
-                        onClick = {
-                            viewModel.filterPaymentStatus(null)
-                            viewModel.filterFulfillmentStatus(null)
-                        }
+                        onClick = { viewModel.setStatusFilter(null, null) }
                     )
                 }
 
@@ -157,6 +154,14 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
+                        text = stringResource(R.string.processing_chip),
+                        selected = selectedFulfillmentStatus == FulfillmentStatus.PROCESSING,
+                        onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.PROCESSING) }
+                    )
+                }
+
+                item {
+                    RestoChip(
                         text = stringResource(R.string.completed_chip),
                         selected = selectedFulfillmentStatus == FulfillmentStatus.COMPLETED,
                         onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.COMPLETED) }
@@ -165,9 +170,9 @@ fun SalesOrdersScreen(
 
                 item {
                     RestoChip(
-                        text = stringResource(R.string.processing_chip),
-                        selected = selectedFulfillmentStatus == FulfillmentStatus.PROCESSING,
-                        onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.PROCESSING) }
+                        text = if (isPersian) "لغو شده" else "Cancelled",
+                        selected = selectedFulfillmentStatus == FulfillmentStatus.CANCELLED,
+                        onClick = { viewModel.filterFulfillmentStatus(FulfillmentStatus.CANCELLED) }
                     )
                 }
             }

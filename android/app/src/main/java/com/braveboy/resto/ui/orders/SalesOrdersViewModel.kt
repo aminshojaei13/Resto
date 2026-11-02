@@ -101,12 +101,27 @@ class SalesOrdersViewModel(
         _searchQuery.value = query
     }
 
+    fun setStatusFilter(paymentStatus: PaymentStatus?, fulfillmentStatus: FulfillmentStatus?) {
+        _selectedPaymentStatus.value = paymentStatus
+        _selectedFulfillmentStatus.value = fulfillmentStatus
+    }
+
     fun filterPaymentStatus(status: PaymentStatus?) {
-        _selectedPaymentStatus.value = if (_selectedPaymentStatus.value == status) null else status
+        if (_selectedPaymentStatus.value == status) {
+            _selectedPaymentStatus.value = null
+        } else {
+            _selectedPaymentStatus.value = status
+            _selectedFulfillmentStatus.value = null
+        }
     }
 
     fun filterFulfillmentStatus(status: FulfillmentStatus?) {
-        _selectedFulfillmentStatus.value = if (_selectedFulfillmentStatus.value == status) null else status
+        if (_selectedFulfillmentStatus.value == status) {
+            _selectedFulfillmentStatus.value = null
+        } else {
+            _selectedFulfillmentStatus.value = status
+            _selectedPaymentStatus.value = null
+        }
     }
 
     fun selectOrderForDetail(order: SalesOrder?) {

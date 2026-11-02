@@ -159,8 +159,9 @@ class ProductRepositoryImpl(
         warehouseId: String,
         storeId: String
     ) {
-        val stockMap = if (initialStock > 0 && warehouseId.isNotBlank()) {
-            mapOf(warehouseId to initialStock)
+        val activeWhId = if (warehouseId.isNotBlank()) warehouseId else "default_warehouse"
+        val stockMap = if (initialStock > 0) {
+            mapOf(activeWhId to initialStock)
         } else {
             emptyMap()
         }
@@ -169,7 +170,7 @@ class ProductRepositoryImpl(
         // Save locally first so UI updates instantly
         productDao.insertProduct(productWithStock.toEntity(isSynced = false))
 
-        if (initialStock > 0 && warehouseId.isNotBlank()) {
+        if (initialStock > 0) {
             val value = initialStock * productWithStock.costPrice
             val ledgerEntry = LedgerEntry(
                 orgId = productWithStock.orgId,

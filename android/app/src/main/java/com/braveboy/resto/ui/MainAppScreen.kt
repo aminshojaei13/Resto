@@ -83,7 +83,7 @@ enum class MainDestination(
     val icon: ImageVector
 ) {
     ACCOUNTING("Dashboard", "داشبورد", Icons.Rounded.Assessment),
-    REPORTS("Reports", "گزارش‌ها و تحلیل", Icons.Rounded.Assessment),
+    REPORTS("Reports", "گزارش‌ها", Icons.Rounded.Assessment),
     ORDERS("Orders", "سفارش‌ها", Icons.AutoMirrored.Rounded.ReceiptLong),
     INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
     POS("New Sale", "ثبت سفارش", Icons.Rounded.PointOfSale),

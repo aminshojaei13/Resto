@@ -130,7 +130,10 @@ data class Product(
     val stockQuantityByWarehouse: Map<String, Int> = emptyMap() // warehouseId -> qty
 ) {
     fun getTotalStock(): Int = stockQuantityByWarehouse.values.sum()
-    fun getStockForWarehouse(warehouseId: String): Int = stockQuantityByWarehouse[warehouseId] ?: 0
+    fun getStockForWarehouse(warehouseId: String): Int {
+        if (warehouseId.isBlank()) return getTotalStock()
+        return stockQuantityByWarehouse[warehouseId] ?: stockQuantityByWarehouse.values.firstOrNull() ?: getTotalStock()
+    }
 }
 
 data class CartItem(

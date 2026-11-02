@@ -518,14 +518,15 @@ fun MessagesScreenContent(
 
                         Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-                        // Warehouse Selection
-                        WarehouseDropdown(
-                            warehouses = warehouses,
-                            selectedId = uiState.selectedWarehouseId,
-                            onSelect = { onSetWarehouseId(it) }
-                        )
-
-                        Spacer(modifier = Modifier.height(RestoSpacing.sm))
+                        // Warehouse Selection (Only for Multi-Warehouse Businesses)
+                        if (warehouses.size > 1) {
+                            WarehouseDropdown(
+                                warehouses = warehouses,
+                                selectedId = uiState.selectedWarehouseId,
+                                onSelect = { onSetWarehouseId(it) }
+                            )
+                            Spacer(modifier = Modifier.height(RestoSpacing.sm))
+                        }
 
                         // Payment Method Selection Chips
                         Text(
@@ -1005,7 +1006,7 @@ private fun ProductCatalogPickerDialog(
                         verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                     ) {
                         items(filteredProducts) { prod ->
-                            val stockInWh = prod.stockQuantityByWarehouse[warehouseId] ?: 0
+                            val stockInWh = prod.getStockForWarehouse(warehouseId)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

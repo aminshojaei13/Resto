@@ -1,15 +1,21 @@
 package com.braveboy.resto.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +30,6 @@ import com.braveboy.resto.data.model.FulfillmentStatus
 import com.braveboy.resto.data.model.PaymentStatus
 import com.braveboy.resto.data.model.SalesChannel
 import com.braveboy.resto.data.model.SalesOrder
-import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -79,25 +84,44 @@ fun RestoOrderCard(
         "$${String.format("%.2f", order.totalAmount)}"
     }
 
-    RestoCard(
-        modifier = modifier,
-        variant = RestoCardVariant.Filled,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        onClick = onClick
+    val itemsSummaryStr = if (order.items.isNotEmpty()) {
+        val names = order.items.take(2).joinToString("، ") { it.productName }
+        val count = order.items.sumOf { it.quantity }
+        if (order.items.size > 2) "$names (+${order.items.size - 2} کالا) • مجموع $count عدد" else "$names • $count عدد"
+    } else {
+        if (isPersian) "بدون اقلام ریز" else "No items listed"
+    }
+
+    val channel = SalesChannel.fromCode(order.source)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .clickable { onClick?.invoke() }
+            .padding(16.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Header Row: Order Number + Channel Badge + Total Price
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = order.orderNumber,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = order.orderNumber,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    RestoBadge(text = if (isPersian) channel.titleFa else channel.titleEn, variant = RestoBadgeVariant.Neutral)
+                }
+
                 Text(
                     text = formattedTotal,
                     style = MaterialTheme.typography.titleMedium,
@@ -106,19 +130,33 @@ fun RestoOrderCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(RestoSpacing.xs))
-
+            // Customer Name & Date
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${if (isPersian) "مشتری:" else "Customer:"} ${order.customerName}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = order.customerName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
                 Text(
                     text = dateStr,
                     style = MaterialTheme.typography.bodySmall,
@@ -126,79 +164,29 @@ fun RestoOrderCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(RestoSpacing.xs))
-
-            // DEFINED PRODUCTS / ITEMS IN THIS ORDER
+            // Clean 1-Line Items Summary
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    .padding(8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = if (isPersian) "اقلام سفارش (کالاهای تعریف‌شده):" else "Order Defined Items:",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    if (order.items.isEmpty()) {
-                        Text(
-                            text = if (isPersian) "• (بدون جزئیات اقلام)" else "• (No item details)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        order.items.take(3).forEach { item ->
-                            val itemTotalText = if (isPersian) {
-                                "${PersianFormatter.formatTomans(item.totalPrice)} $currencySymbol"
-                            } else {
-                                "$${String.format("%.2f", item.totalPrice)}"
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "• ${item.productName} (${if (isPersian) PersianFormatter.toPersianDigits(item.quantity) else item.quantity} عدد)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = itemTotalText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        if (order.items.size > 3) {
-                            Text(
-                                text = if (isPersian) "+ ${PersianFormatter.toPersianDigits(order.items.size - 3)} قلم دیگر..." else "+ ${order.items.size - 3} more items...",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = "📦 $itemsSummaryStr",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
-            Spacer(modifier = Modifier.height(RestoSpacing.sm))
-
+            // Footer Row: Status Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val channel = SalesChannel.fromCode(order.source)
-                RestoBadge(text = if (isPersian) channel.titleFa else channel.titleEn, variant = RestoBadgeVariant.Neutral)
                 RestoBadge(text = paymentBadgeText, variant = paymentBadgeVariant)
                 RestoBadge(text = fulfillmentBadgeText, variant = fulfillmentBadgeVariant)
             }
