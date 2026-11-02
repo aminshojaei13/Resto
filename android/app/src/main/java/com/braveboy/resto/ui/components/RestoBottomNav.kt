@@ -85,7 +85,7 @@ fun RestoBottomNav(
                     onClick = { onDestinationSelected(MainDestination.ORDERS) }
                 )
 
-                // Tab 3: Center FAB (+) Button
+                /*// Tab 3: Center FAB (+) Button
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -100,7 +100,7 @@ fun RestoBottomNav(
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
-                }
+                }*/
 
                 // Tab 4: Inventory / Messages
                 RestoNavItem(

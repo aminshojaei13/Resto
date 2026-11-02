@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.di.AppContainer
+import com.braveboy.resto.ui.components.RestoBottomNav
 import com.braveboy.resto.ui.customer.CustomerScreen
 import com.braveboy.resto.ui.customer.CustomerViewModel
 import com.braveboy.resto.ui.dashboard.DashboardScreen
@@ -67,6 +68,8 @@ import com.braveboy.resto.ui.pos.PosScreen
 import com.braveboy.resto.ui.pos.PosViewModel
 import com.braveboy.resto.ui.purchases.PurchasesScreen
 import com.braveboy.resto.ui.purchases.PurchasesViewModel
+import com.braveboy.resto.ui.reports.ReportsScreen
+import com.braveboy.resto.ui.reports.ReportsViewModel
 import com.braveboy.resto.ui.settings.SettingsScreen
 import com.braveboy.resto.ui.supplier.SupplierScreen
 import com.braveboy.resto.ui.supplier.SupplierViewModel
@@ -80,6 +83,7 @@ enum class MainDestination(
     val icon: ImageVector
 ) {
     ACCOUNTING("Dashboard", "داشبورد", Icons.Rounded.Assessment),
+    REPORTS("Reports", "گزارش‌ها و تحلیل", Icons.Rounded.Assessment),
     ORDERS("Orders", "سفارش‌ها", Icons.AutoMirrored.Rounded.ReceiptLong),
     INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
     POS("New Sale", "ثبت سفارش", Icons.Rounded.PointOfSale),
@@ -218,11 +222,22 @@ fun MainAppScreen(
         )
     )
 
+    val reportsViewModel: ReportsViewModel = viewModel(
+        factory = ReportsViewModel.Factory(
+            appContainer.tenantRepository,
+            appContainer.salesOrderRepository,
+            appContainer.productRepository,
+            appContainer.expenseRepository,
+            appContainer.purchaseRepository,
+            appContainer.customerRepository
+        )
+    )
+
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             bottomBar = {
-                com.braveboy.resto.ui.components.RestoBottomNav(
+                RestoBottomNav(
                     currentDestination = currentDestination,
                     onDestinationSelected = { navigateTo(it) },
                     onCenterFabClick = { dashboardViewModel.openRecordEntryDialog() },
@@ -246,6 +261,13 @@ fun MainAppScreen(
                                 }
                                 navigateTo(destination)
                             }
+                        )
+                    }
+
+                    MainDestination.REPORTS -> {
+                        ReportsScreen(
+                            viewModel = reportsViewModel,
+                            onBackClick = { navigateBack() }
                         )
                     }
 
@@ -346,6 +368,7 @@ fun MainAppScreen(
                     Spacer(modifier = Modifier.height(RestoSpacing.md))
 
                     val secondaryDestinations = listOf(
+                        MainDestination.REPORTS,
                         MainDestination.PURCHASES,
                         MainDestination.CUSTOMERS,
                         MainDestination.SUPPLIERS,
