@@ -176,7 +176,7 @@ class ProductRepositoryImpl(
                 storeId = storeId,
                 entryNumber = "INIT-${System.currentTimeMillis().toString().takeLast(6)}",
                 type = LedgerType.CREDIT,
-                category = LedgerCategory.INVENTORY_ADJUSTMENT,
+                category = LedgerCategory.INITIAL_STOCK,
                 amount = value,
                 description = "موجودی اولیه برای ${productWithStock.name} ($initialStock ${productWithStock.unit})",
                 referenceId = productWithStock.id

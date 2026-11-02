@@ -210,6 +210,7 @@
     <string name="income_inflow">+ درآمد / دریافتی</string>
     <string name="expense_outflow">- هزینه / پرداختی</string>
     <string name="sales_income_cat">درآمد فروش</string>
+    <string name="initial_stock_cat">موجودی اولیه کالا</string>
     <string name="stock_adjustment_cat">اصلاح موجودی</string>
     <string name="operating_expense_cat">هزینه‌های جاری</string>
     <string name="cash_in_cat">ورود نقدینگی</string>

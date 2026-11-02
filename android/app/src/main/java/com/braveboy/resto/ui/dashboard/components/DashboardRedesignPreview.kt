@@ -11,12 +11,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.braveboy.resto.data.model.LedgerEntry
+import com.braveboy.resto.data.model.OrderItem
+import com.braveboy.resto.data.model.PaymentMethod
+import com.braveboy.resto.data.model.SalesOrder
 import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
@@ -29,13 +31,30 @@ fun DashboardRedesignView(
     totalOrdersTrend: String = "-5%",
     revenueValue: String = "۳۲,۴۵۰,۰۰۰ تومان",
     revenueTrend: String = "+8%",
-    recentOrders: List<DashboardOrderItem> = listOf(
-        DashboardOrderItem(
-            orderNumber = "Order-12567",
-            amount = "۱۶۹,۰۰۰ تومان",
-            isLikelyFake = true,
-            paymentStatus = "Unpaid",
-            orderTag = "New"
+    recentOrders: List<SalesOrder> = listOf(
+        SalesOrder(
+            orderNumber = "ORD-2026-1001",
+            orgId = "org1",
+            storeId = "store1",
+            warehouseId = "wh1",
+            customerName = "رضا احمدی",
+            items = listOf(
+                OrderItem(
+                    productId = "p1",
+                    productName = "پیتزا مخصوص",
+                    sku = "SKU-1",
+                    unitPrice = 120000.0,
+                    quantity = 2,
+                    discountPercent = 0.0,
+                    taxAmount = 0.0,
+                    totalPrice = 240000.0
+                )
+            ),
+            subtotal = 240000.0,
+            discountAmount = 0.0,
+            taxAmount = 0.0,
+            totalAmount = 240000.0,
+            paymentMethod = PaymentMethod.CASH
         )
     ),
     ledgerEntries: List<LedgerEntry> = emptyList(),
@@ -46,7 +65,7 @@ fun DashboardRedesignView(
     onViewOrdersClick: () -> Unit = {},
     onWithdrawMoneyClick: () -> Unit = {},
     onSeeAllOrdersClick: () -> Unit = {},
-    onOrderClick: (DashboardOrderItem) -> Unit = {},
+    onOrderClick: (SalesOrder) -> Unit = {},
     onNewEntryClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},

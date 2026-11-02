@@ -213,13 +213,16 @@ fun ModernLedgerCardItem(
         "${if (isCredit) "+" else "-"}$${String.format(Locale.getDefault(), "%.2f", entry.amount)}"
     }
 
-    val categoryTitle = when (entry.category) {
-        LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
-        LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
-        LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
-        LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
-        LedgerCategory.CASH_OUT -> stringResource(R.string.cash_out_cat)
-        LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
+    val categoryTitle = when {
+        entry.category == LedgerCategory.INITIAL_STOCK || entry.entryNumber.startsWith("INIT-") || entry.description.contains("موجودی اولیه") ->
+            stringResource(R.string.initial_stock_cat)
+        entry.category == LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+        entry.category == LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
+        entry.category == LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
+        entry.category == LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
+        entry.category == LedgerCategory.CASH_OUT -> stringResource(R.string.cash_out_cat)
+        entry.category == LedgerCategory.REFUND -> stringResource(R.string.customer_refund_cat)
+        else -> entry.category.displayName
     }
 
     val badgeBg = if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
@@ -345,7 +348,7 @@ fun DashboardFinancialActivityPreview() {
             storeId = "store_1",
             entryNumber = "INIT-833544",
             type = LedgerType.CREDIT,
-            category = LedgerCategory.INVENTORY_ADJUSTMENT,
+            category = LedgerCategory.INITIAL_STOCK,
             amount = 85000000.0,
             description = "موجودی اولیه برای کابل vga (100 عدد)",
             referenceId = "prod_2",

@@ -53,10 +53,10 @@ import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.dashboard.components.DashboardFinancialActivity
 import com.braveboy.resto.ui.dashboard.components.DashboardHeader
-import com.braveboy.resto.ui.dashboard.components.DashboardOrderItem
 import com.braveboy.resto.ui.dashboard.components.DashboardQuickActions
 import com.braveboy.resto.ui.dashboard.components.DashboardRecentOrders
 import com.braveboy.resto.ui.dashboard.components.DashboardRevenueCard
+import com.braveboy.resto.data.model.SalesOrder
 import com.braveboy.resto.ui.dashboard.components.DashboardStatCardsRow
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
@@ -72,6 +72,7 @@ fun DashboardScreen(
     val tenantState by viewModel.tenantState.collectAsState()
     val metrics by viewModel.metricsSummary.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
+    val recentSalesOrders by viewModel.recentSalesOrders.collectAsState()
     val isRecordEntryDialogOpen by viewModel.isRecordEntryDialogOpen.collectAsState()
     val snackBarMessage by viewModel.snackbarMessage.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
@@ -80,6 +81,7 @@ fun DashboardScreen(
         tenantState = tenantState,
         metrics = metrics,
         ledgerEntries = ledgerEntries,
+        recentSalesOrders = recentSalesOrders,
         isRecordEntryDialogOpen = isRecordEntryDialogOpen,
         snackBarMessage = snackBarMessage,
         isSaving = isSaving,
@@ -101,6 +103,7 @@ fun DashboardScreenContent(
     tenantState: TenantState,
     metrics: MetricsSummary,
     ledgerEntries: List<LedgerEntry>,
+    recentSalesOrders: List<SalesOrder> = emptyList(),
     isRecordEntryDialogOpen: Boolean,
     snackBarMessage: String?,
     isSaving: Boolean = false,
@@ -242,29 +245,10 @@ fun DashboardScreenContent(
 
             // 5. Recent Orders List
             item {
-                val recentOrdersList = if (ledgerEntries.isNotEmpty()) {
-                    ledgerEntries.take(3).map { entry ->
-                        val isCredit = entry.type == LedgerType.CREDIT
-                        val amtStr = if (isPersian) {
-                            "${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
-                        } else {
-                            "$${String.format("%.2f", entry.amount)}"
-                        }
-                        DashboardOrderItem(
-                            orderNumber = entry.entryNumber,
-                            amount = amtStr,
-                            isLikelyFake = entry.category == LedgerCategory.REFUND,
-                            paymentStatus = if (isCredit) "Paid" else "Unpaid",
-                            orderTag = if (isCredit) "New" else "Expense"
-                        )
-                    }
-                } else {
-                    emptyList()
-                }
-
                 DashboardRecentOrders(
-                    orders = recentOrdersList,
+                    orders = recentSalesOrders.take(5),
                     isPersian = isPersian,
+                    currencySymbol = currencyUnit,
                     onSeeAllClick = {
                         onNavigateToDestination(MainDestination.ORDERS, false)
                     },
@@ -363,6 +347,7 @@ private fun ModernRecordEntryDialog(
             ) {
                 val categoryName = when (selectedCategory) {
                     LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+                    LedgerCategory.INITIAL_STOCK -> stringResource(R.string.initial_stock_cat)
                     LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
                     LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
                     LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)
@@ -389,6 +374,7 @@ private fun ModernRecordEntryDialog(
                     categories.forEach { cat ->
                         val catLabel = when (cat) {
                             LedgerCategory.SALES -> stringResource(R.string.sales_income_cat)
+                            LedgerCategory.INITIAL_STOCK -> stringResource(R.string.initial_stock_cat)
                             LedgerCategory.INVENTORY_ADJUSTMENT -> stringResource(R.string.stock_adjustment_cat)
                             LedgerCategory.EXPENSE -> stringResource(R.string.operating_expense_cat)
                             LedgerCategory.CASH_IN -> stringResource(R.string.cash_in_cat)

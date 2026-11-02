@@ -53,6 +53,7 @@ enum class LedgerType {
 
 enum class LedgerCategory(val displayName: String) {
     SALES("Sales Income"),
+    INITIAL_STOCK("Initial Inventory"),
     INVENTORY_ADJUSTMENT("Stock Adjustment"),
     EXPENSE("Operating Expense"),
     CASH_IN("Cash Deposit / Float"),

@@ -111,18 +111,18 @@ fun DashboardQuickActions(
     ) {
         Column {
             DashboardQuickActionRow(
-                title = stringResource(R.string.quick_new_manual_order),
-                icon = Icons.Rounded.PointOfSale,
-                onClick = onNewManualOrderClick,
+                title = stringResource(R.string.quick_add_product),
+                icon = Icons.Rounded.Add,
+                onClick = onAddProductClick,
                 isPersian = isPersian
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
             DashboardQuickActionRow(
-                title = stringResource(R.string.quick_add_product),
-                icon = Icons.Rounded.Add,
-                onClick = onAddProductClick,
+                title = stringResource(R.string.quick_new_manual_order),
+                icon = Icons.Rounded.PointOfSale,
+                onClick = onNewManualOrderClick,
                 isPersian = isPersian
             )
 

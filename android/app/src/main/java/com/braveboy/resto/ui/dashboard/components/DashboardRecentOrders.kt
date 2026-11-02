@@ -7,46 +7,46 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.braveboy.resto.R
-import com.braveboy.resto.ui.theme.RestoTheme
+import com.braveboy.resto.data.model.FulfillmentStatus
+import com.braveboy.resto.data.model.PaymentStatus
+import com.braveboy.resto.data.model.SalesChannel
+import com.braveboy.resto.data.model.SalesOrder
+import com.braveboy.resto.ui.components.RestoBadge
+import com.braveboy.resto.ui.components.RestoBadgeVariant
+import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
-
-data class DashboardOrderItem(
-    val orderNumber: String,
-    val amount: String,
-    val isLikelyFake: Boolean = false,
-    val paymentStatus: String = "Unpaid", // Unpaid, Paid, Pending
-    val orderTag: String = "New" // New, Processing, Completed
-)
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun DashboardRecentOrders(
     modifier: Modifier = Modifier,
-    orders: List<DashboardOrderItem> = emptyList(),
-    isPersian: Boolean = false,
+    orders: List<SalesOrder> = emptyList(),
+    isPersian: Boolean = true,
+    currencySymbol: String = "تومان",
     onSeeAllClick: () -> Unit = {},
-    onOrderClick: (DashboardOrderItem) -> Unit = {}
+    onOrderClick: (SalesOrder) -> Unit = {}
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -106,11 +106,12 @@ fun DashboardRecentOrders(
                 }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 orders.forEach { order ->
-                    DashboardOrderItemCard(
+                    DashboardSalesOrderCard(
                         order = order,
                         isPersian = isPersian,
+                        currencySymbol = currencySymbol,
                         onClick = { onOrderClick(order) }
                     )
                 }
@@ -120,12 +121,56 @@ fun DashboardRecentOrders(
 }
 
 @Composable
-fun DashboardOrderItemCard(
-    order: DashboardOrderItem,
+fun DashboardSalesOrderCard(
+    order: SalesOrder,
     modifier: Modifier = Modifier,
-    isPersian: Boolean = false,
+    isPersian: Boolean = true,
+    currencySymbol: String = "تومان",
     onClick: () -> Unit = {}
 ) {
+    val dateFormat = SimpleDateFormat("yyyy/MM/dd • HH:mm", Locale.getDefault())
+    val dateStr = if (isPersian) {
+        PersianFormatter.toPersianDigits(dateFormat.format(Date(order.createdAt)))
+    } else {
+        dateFormat.format(Date(order.createdAt))
+    }
+
+    val formattedTotal = if (isPersian) {
+        "${PersianFormatter.formatTomans(order.totalAmount)} $currencySymbol"
+    } else {
+        "$${String.format("%.2f", order.totalAmount)}"
+    }
+
+    val paymentBadgeVariant = when (order.paymentStatus) {
+        PaymentStatus.PAID -> RestoBadgeVariant.Success
+        PaymentStatus.PENDING -> RestoBadgeVariant.Warning
+        PaymentStatus.PARTIAL -> RestoBadgeVariant.Info
+        PaymentStatus.REFUNDED -> RestoBadgeVariant.Error
+    }
+
+    val paymentBadgeText = when (order.paymentStatus) {
+        PaymentStatus.PAID -> if (isPersian) "پرداخت شده" else "Paid"
+        PaymentStatus.PENDING -> if (isPersian) "در انتظار پرداخت" else "Pending"
+        PaymentStatus.PARTIAL -> if (isPersian) "پرداخت ناقص" else "Partial"
+        PaymentStatus.REFUNDED -> if (isPersian) "مرجوع شده" else "Refunded"
+    }
+
+    val fulfillmentBadgeVariant = when (order.fulfillmentStatus) {
+        FulfillmentStatus.COMPLETED -> RestoBadgeVariant.Success
+        FulfillmentStatus.PROCESSING -> RestoBadgeVariant.Info
+        FulfillmentStatus.PENDING -> RestoBadgeVariant.Warning
+        FulfillmentStatus.CANCELLED -> RestoBadgeVariant.Error
+    }
+
+    val fulfillmentBadgeText = when (order.fulfillmentStatus) {
+        FulfillmentStatus.COMPLETED -> if (isPersian) "تکمیل شده" else "Completed"
+        FulfillmentStatus.PROCESSING -> if (isPersian) "در حال پردازش" else "Processing"
+        FulfillmentStatus.PENDING -> if (isPersian) "در صف ارسال" else "Pending"
+        FulfillmentStatus.CANCELLED -> if (isPersian) "لغو شده" else "Cancelled"
+    }
+
+    val channel = SalesChannel.fromCode(order.source)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -136,118 +181,121 @@ fun DashboardOrderItemCard(
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Badges Row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (order.isLikelyFake) {
-                    // Likely Fake Pill
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(RestoTheme.colors.warningContainer)
-                            .border(1.dp, RestoTheme.colors.warning.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(RestoTheme.colors.warning)
-                            )
-                            Text(
-                                text = if (isPersian) "احتمالاً فیک" else "Likely Fake",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = RestoTheme.colors.onWarningContainer
-                            )
-                        }
-                    }
-                }
-
-                if (order.paymentStatus.isNotBlank()) {
-                    // Unpaid Pill
-                    val isUnpaid = order.paymentStatus.equals("Unpaid", ignoreCase = true)
-                    val bg = if (isUnpaid) MaterialTheme.colorScheme.errorContainer else RestoTheme.colors.successContainer
-                    val textClr = if (isUnpaid) MaterialTheme.colorScheme.onErrorContainer else RestoTheme.colors.onSuccessContainer
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(bg)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (isPersian) {
-                                if (isUnpaid) "پرداخت نشده" else "پرداخت شده"
-                            } else order.paymentStatus,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = textClr
-                        )
-                    }
-                }
-
-                if (order.orderTag.isNotBlank()) {
-                    // New Pill
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(RestoTheme.colors.infoContainer)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (isPersian && order.orderTag == "New") "جدید" else order.orderTag,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = RestoTheme.colors.onInfoContainer
-                        )
-                    }
-                }
-            }
-
-            // Order title & Price
+            // Header: Order Number & Total Amount
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isPersian) PersianFormatter.toPersianDigits(order.orderNumber) else order.orderNumber,
-                    fontSize = 17.sp,
+                    text = order.orderNumber,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
-                    text = order.amount,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = formattedTotal,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
-        }
-    }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun DashboardRecentOrdersPreview() {
-    RestoTheme {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            Box(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(16.dp)
+            // Customer Name & Date
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                DashboardRecentOrders(
-                    orders = emptyList(),
-                    isPersian = true
+                Text(
+                    text = "${if (isPersian) "مشتری:" else "Customer:"} ${order.customerName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = dateStr,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // DEFINED PRODUCTS / ITEMS IN THIS ORDER
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = if (isPersian) "کالاهای تعریف‌شده در این سفارش:" else "Order Defined Items:",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                if (order.items.isEmpty()) {
+                    Text(
+                        text = if (isPersian) "• (اقلام به صورت خلاصه ثبت شده است)" else "• (Item details summary)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    order.items.forEach { item ->
+                        val itemFormattedTotal = if (isPersian) {
+                            "${PersianFormatter.formatTomans(item.totalPrice)} $currencySymbol"
+                        } else {
+                            "$${String.format("%.2f", item.totalPrice)}"
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "• ${item.productName} (${if (isPersian) PersianFormatter.toPersianDigits(item.quantity) else item.quantity} عدد)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            Text(
+                                text = itemFormattedTotal,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Badges Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RestoBadge(
+                    text = if (isPersian) channel.titleFa else channel.titleEn,
+                    variant = RestoBadgeVariant.Neutral
+                )
+                RestoBadge(
+                    text = paymentBadgeText,
+                    variant = paymentBadgeVariant
+                )
+                RestoBadge(
+                    text = fulfillmentBadgeText,
+                    variant = fulfillmentBadgeVariant
                 )
             }
         }

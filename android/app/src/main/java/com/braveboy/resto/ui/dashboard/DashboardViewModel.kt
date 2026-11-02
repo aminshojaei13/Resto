@@ -7,6 +7,7 @@ import com.braveboy.resto.data.model.LedgerCategory
 import com.braveboy.resto.data.model.LedgerEntry
 import com.braveboy.resto.data.model.LedgerType
 import com.braveboy.resto.data.model.MetricsSummary
+import com.braveboy.resto.data.model.SalesOrder
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.LedgerRepository
 import com.braveboy.resto.data.repository.ProductRepository
@@ -54,6 +55,15 @@ class DashboardViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val ledgerEntries: StateFlow<List<LedgerEntry>> = tenantState.flatMapLatest { state ->
         ledgerRepository.getLedgerEntriesByStore(state.activeOrgId, state.activeStoreId)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val recentSalesOrders: StateFlow<List<SalesOrder>> = tenantState.flatMapLatest { state ->
+        salesOrderRepository.getOrdersByStore(state.activeOrgId, state.activeStoreId)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
