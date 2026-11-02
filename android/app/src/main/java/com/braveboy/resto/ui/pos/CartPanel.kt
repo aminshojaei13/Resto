@@ -52,6 +52,8 @@ import com.braveboy.resto.data.model.Customer
 fun CartPanel(
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
+    selectedChannel: com.braveboy.resto.data.model.SalesChannel = com.braveboy.resto.data.model.SalesChannel.WALK_IN,
+    customGuestName: String = "",
     onUpdateQuantity: (CartItem, Int) -> Unit,
     onApplyDiscount: (String, Double) -> Unit,
     onRemoveItem: (String) -> Unit,
@@ -150,8 +152,13 @@ fun CartPanel(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
+                        val headerText = when {
+                            selectedCustomer != null -> selectedCustomer.name
+                            customGuestName.isNotBlank() -> if (isPersian) "$customGuestName (${selectedChannel.titleFa})" else "$customGuestName (${selectedChannel.titleEn})"
+                            else -> if (isPersian) "${selectedChannel.defaultCustomerNameFa} (${selectedChannel.titleFa})" else "${selectedChannel.defaultCustomerNameEn} (${selectedChannel.titleEn})"
+                        }
                         Text(
-                            text = selectedCustomer?.name ?: (if (isPersian) "مشتری حضوری (گذری)" else "Walk-in Customer"),
+                            text = headerText,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -167,7 +174,7 @@ fun CartPanel(
                             )
                         } else {
                             Text(
-                                text = if (isPersian) "برای انتخاب یا ثبت مشخصات مشتری ضربه بزنید" else "Tap to attach customer profile",
+                                text = if (isPersian) "برای تغییر کانال سفارش (تلفنی، اینترنتی، حضوری) یا انتخاب مشتری کلیک کنید" else "Tap to change channel or attach customer",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,

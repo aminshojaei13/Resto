@@ -248,34 +248,46 @@ fun OrderDetailSheet(
                 .padding(bottom = RestoSpacing.xl),
             verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)
         ) {
-            // Customer Info Box
+            // Customer & Sales Channel Info Box
             RestoCard(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(RestoSpacing.sm))
-                    Column {
-                        Text(
-                            text = "${stringResource(R.string.search_customer)}:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
-                        Text(
-                            text = order.customerName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Spacer(modifier = Modifier.width(RestoSpacing.sm))
+                        Column {
+                            Text(
+                                text = if (isPersian) "نام مشتری:" else "Customer:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = order.customerName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
+
+                    val channel = com.braveboy.resto.data.model.SalesChannel.fromCode(order.source)
+                    RestoBadge(
+                        text = if (isPersian) channel.titleFa else channel.titleEn,
+                        variant = RestoBadgeVariant.Neutral
+                    )
                 }
             }
 

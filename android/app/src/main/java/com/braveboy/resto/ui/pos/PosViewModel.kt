@@ -8,6 +8,7 @@ import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.ProductVariant
+import com.braveboy.resto.data.model.SalesChannel
 import com.braveboy.resto.data.model.SalesOrder
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.CartRepository
@@ -118,9 +119,17 @@ class PosViewModel(
         initialValue = emptyList()
     )
 
+    private val _customerSearchQuery = MutableStateFlow("")
+    val customerSearchQuery: StateFlow<String> = _customerSearchQuery.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val customers: StateFlow<List<Customer>> = tenantState.flatMapLatest { state ->
-        customerRepository.getCustomers(state.activeOrgId)
+    val customers: StateFlow<List<Customer>> = combine(
+        tenantState,
+        _customerSearchQuery
+    ) { state, query ->
+        Pair(state.activeOrgId, query)
+    }.flatMapLatest { (orgId, query) ->
+        customerRepository.searchCustomers(orgId, query)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -129,6 +138,12 @@ class PosViewModel(
 
     private val _selectedCustomer = MutableStateFlow<Customer?>(null)
     val selectedCustomer: StateFlow<Customer?> = _selectedCustomer.asStateFlow()
+
+    private val _selectedChannel = MutableStateFlow(SalesChannel.WALK_IN)
+    val selectedChannel: StateFlow<SalesChannel> = _selectedChannel.asStateFlow()
+
+    private val _customGuestName = MutableStateFlow("")
+    val customGuestName: StateFlow<String> = _customGuestName.asStateFlow()
 
     private val _selectedVariantProduct = MutableStateFlow<Product?>(null)
     val selectedVariantProduct: StateFlow<Product?> = _selectedVariantProduct.asStateFlow()
@@ -149,8 +164,40 @@ class PosViewModel(
         _searchQuery.value = query
     }
 
+    fun setCustomerSearchQuery(query: String) {
+        _customerSearchQuery.value = query
+    }
+
     fun selectCategory(category: String?) {
         _selectedCategory.value = if (_selectedCategory.value == category) null else category
+    }
+
+    fun selectSalesChannel(channel: SalesChannel) {
+        _selectedChannel.value = channel
+    }
+
+    fun setCustomGuestName(name: String) {
+        _customGuestName.value = name
+    }
+
+    fun createQuickCustomer(name: String, phone: String, address: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            if (name.isBlank()) {
+                _snackbarMessage.value = "لطفاً نام مشتری را وارد کنید"
+                return@launch
+            }
+            val state = tenantState.value
+            val newCustomer = Customer(
+                orgId = state.activeOrgId,
+                name = name,
+                phone = phone,
+                address = address
+            )
+            customerRepository.addCustomer(newCustomer)
+            _selectedCustomer.value = newCustomer
+            _snackbarMessage.value = "مشتری '${newCustomer.name}' با موفقیت ایجاد و انتخاب شد"
+            onSuccess()
+        }
     }
 
     fun onProductClicked(product: Product) {
@@ -248,7 +295,7 @@ class PosViewModel(
         }
     }
 
-    fun processCheckout(paymentMethod: PaymentMethod, notes: String) {
+    fun processCheckout(paymentMethod: PaymentMethod, notes: String, channel: SalesChannel = _selectedChannel.value) {
         viewModelScope.launch {
             _isCheckingOut.value = true
             try {
@@ -256,19 +303,28 @@ class PosViewModel(
                 val items = cartItems.value
                 if (items.isEmpty()) return@launch
 
+                val effectiveCustomer = selectedCustomer.value ?: run {
+                    val customName = customGuestName.value.trim()
+                    val guestName = if (customName.isNotBlank()) customName else channel.defaultCustomerNameFa
+                    Customer(orgId = state.activeOrgId, name = guestName)
+                }
+
                 val order = salesOrderRepository.processCheckout(
                     orgId = state.activeOrgId,
                     storeId = state.activeStoreId,
                     warehouseId = state.activeWarehouseId,
-                    customer = selectedCustomer.value,
+                    customer = effectiveCustomer,
                     cartItems = items,
                     paymentMethod = paymentMethod,
-                    notes = notes
+                    notes = notes,
+                    source = channel.code
                 )
 
                 _lastCompletedOrder.value = order
                 _isCheckoutModalOpen.value = false
                 _selectedCustomer.value = null
+                _customGuestName.value = ""
+                _selectedChannel.value = SalesChannel.WALK_IN
                 _snackbarMessage.value = "سفارش ${order.orderNumber} با موفقیت ثبت شد!"
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در تسویه حساب: ${e.localizedMessage}"

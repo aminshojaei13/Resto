@@ -56,18 +56,22 @@ import androidx.compose.ui.window.Dialog
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.PaymentMethod
+import com.braveboy.resto.data.model.SalesChannel
 
 @Composable
 fun CheckoutModal(
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
-    onProcessCheckout: (PaymentMethod, String) -> Unit,
+    initialChannel: SalesChannel = SalesChannel.WALK_IN,
+    customGuestName: String = "",
+    onProcessCheckout: (PaymentMethod, String, SalesChannel) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true,
     currencyUnit: String = "تومان",
     isCheckingOut: Boolean = false
 ) {
     val totalAmount = cartItems.sumOf { it.total }
+    var selectedChannel by remember { mutableStateOf(initialChannel) }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
     var cashTenderedText by remember { mutableStateOf(totalAmount.toLong().toString()) }
     var notesText by remember { mutableStateOf("") }
@@ -147,25 +151,58 @@ fun CheckoutModal(
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
-                        if (selectedCustomer != null) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                        val customerBannerText = when {
+                            selectedCustomer != null -> "${if (isPersian) "مشتری:" else "Customer:"} ${selectedCustomer.name}"
+                            customGuestName.isNotBlank() -> "${if (isPersian) "مشتری مهمان:" else "Guest:"} $customGuestName (${if (isPersian) selectedChannel.titleFa else selectedChannel.titleEn})"
+                            else -> "${if (isPersian) "کانال فروش:" else "Sales Channel:"} ${if (isPersian) selectedChannel.titleFa else selectedChannel.titleEn}"
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = customerBannerText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sales Channel Selector
+                Text(
+                    text = if (isPersian) "کانال و منبع ثبت سفارش" else "Select Sales Channel",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(SalesChannel.entries.size) { idx ->
+                        val ch = SalesChannel.entries[idx]
+                        FilterChip(
+                            selected = selectedChannel == ch,
+                            onClick = { selectedChannel = ch },
+                            label = {
                                 Text(
-                                    text = "${if (isPersian) "مشتری:" else "Customer:"} ${selectedCustomer.name}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    text = if (isPersian) ch.titleFa else ch.titleEn,
+                                    fontWeight = if (selectedChannel == ch) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
-                        }
+                        )
                     }
                 }
 
@@ -307,7 +344,7 @@ fun CheckoutModal(
                     }
 
                     Button(
-                        onClick = { onProcessCheckout(selectedPaymentMethod, notesText) },
+                        onClick = { onProcessCheckout(selectedPaymentMethod, notesText, selectedChannel) },
                         enabled = !isCheckingOut,
                         modifier = Modifier
                             .weight(2f)

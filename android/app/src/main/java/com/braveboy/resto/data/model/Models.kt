@@ -9,6 +9,29 @@ enum class PaymentMethod(val displayName: String) {
     STORE_CREDIT("Store Credit / Account")
 }
 
+enum class SalesChannel(
+    val code: String,
+    val titleFa: String,
+    val titleEn: String,
+    val defaultCustomerNameFa: String,
+    val defaultCustomerNameEn: String
+) {
+    WALK_IN("POS", "حضوری (صندوق)", "Walk-in (POS)", "مشتری حضوری", "Walk-in Customer"),
+    PHONE("PHONE", "تلفنی (سفارش تلفنی)", "Phone Order", "مشتری تلفنی", "Phone Customer"),
+    ONLINE("ONLINE", "اینترنتی (وب‌سایت)", "Online Order", "مشتری اینترنتی", "Online Customer"),
+    INSTAGRAM("INSTAGRAM", "اینستاگرام", "Instagram", "مشتری اینستاگرام", "Instagram Customer"),
+    WHATSAPP("WHATSAPP", "واتساپ", "WhatsApp", "مشتری واتساپ", "WhatsApp Customer"),
+    TELEGRAM("TELEGRAM", "تلگرام", "Telegram", "مشتری تلگرام", "Telegram Customer"),
+    OTHER("OTHER", "سایر کانال‌ها", "Other", "مشتری متفرقه", "Other Customer");
+
+    companion object {
+        fun fromCode(code: String?): SalesChannel {
+            if (code == null) return WALK_IN
+            return entries.find { it.code.equals(code, ignoreCase = true) } ?: WALK_IN
+        }
+    }
+}
+
 enum class PaymentStatus(val displayName: String) {
     PAID("Paid"),
     PENDING("Pending"),
@@ -212,6 +235,7 @@ data class SalesOrder(
     val warehouseId: String,
     val customerId: String? = null,
     val customerName: String = "Walk-in Customer",
+    val source: String = "POS",
     val items: List<OrderItem>,
     val subtotal: Double,
     val discountAmount: Double,

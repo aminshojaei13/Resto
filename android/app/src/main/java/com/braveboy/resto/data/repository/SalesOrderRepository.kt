@@ -201,6 +201,7 @@ class SalesOrderRepositoryImpl(
             warehouseId = warehouseId,
             customerId = customer?.id,
             customerName = customer?.name ?: (remoteOrder?.customerName ?: "مشتری حضوری"),
+            source = source,
             items = orderItems,
             subtotal = subtotal,
             discountAmount = discountAmount,

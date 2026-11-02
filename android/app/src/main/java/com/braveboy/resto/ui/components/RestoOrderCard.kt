@@ -125,6 +125,8 @@ fun RestoOrderCard(
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val channel = com.braveboy.resto.data.model.SalesChannel.fromCode(order.source)
+                RestoBadge(text = if (isPersian) channel.titleFa else channel.titleEn, variant = RestoBadgeVariant.Neutral)
                 RestoBadge(text = paymentBadgeText, variant = paymentBadgeVariant)
                 RestoBadge(text = fulfillmentBadgeText, variant = fulfillmentBadgeVariant)
             }

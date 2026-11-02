@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingCart
@@ -54,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.braveboy.resto.data.model.Customer
+import com.braveboy.resto.data.model.SalesChannel
 import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoTopBar
 
@@ -74,6 +79,9 @@ fun PosScreen(
     val cartItems by viewModel.cartItems.collectAsState()
     val customers by viewModel.customers.collectAsState()
     val selectedCustomer by viewModel.selectedCustomer.collectAsState()
+    val selectedChannel by viewModel.selectedChannel.collectAsState()
+    val customGuestName by viewModel.customGuestName.collectAsState()
+    val customerSearchQuery by viewModel.customerSearchQuery.collectAsState()
     val selectedVariantProduct by viewModel.selectedVariantProduct.collectAsState()
     val isCheckoutModalOpen by viewModel.isCheckoutModalOpen.collectAsState()
     val isBarcodeScannerOpen by viewModel.isBarcodeScannerOpen.collectAsState()
@@ -282,6 +290,8 @@ fun PosScreen(
                     CartPanel(
                         cartItems = cartItems,
                         selectedCustomer = selectedCustomer,
+                        selectedChannel = selectedChannel,
+                        customGuestName = customGuestName,
                         onUpdateQuantity = { item, delta ->
                             viewModel.updateCartQuantity(
                                 item,
@@ -314,6 +324,8 @@ fun PosScreen(
             CartPanel(
                 cartItems = cartItems,
                 selectedCustomer = selectedCustomer,
+                selectedChannel = selectedChannel,
+                customGuestName = customGuestName,
                 onUpdateQuantity = { item, delta -> viewModel.updateCartQuantity(item, delta) },
                 onApplyDiscount = { id, percent -> viewModel.applyCartItemDiscount(id, percent) },
                 onRemoveItem = { id -> viewModel.removeFromCart(id) },
@@ -336,9 +348,20 @@ fun PosScreen(
         CustomerPickerModal(
             customers = customers,
             selectedCustomer = selectedCustomer,
+            selectedChannel = selectedChannel,
+            customGuestName = customGuestName,
+            searchQuery = customerSearchQuery,
+            onSearchQueryChange = { viewModel.setCustomerSearchQuery(it) },
+            onSelectChannel = { viewModel.selectSalesChannel(it) },
+            onCustomGuestNameChange = { viewModel.setCustomGuestName(it) },
             onSelectCustomer = {
                 viewModel.selectCustomer(it)
                 isCustomerPickerOpen = false
+            },
+            onCreateQuickCustomer = { name, phone, address ->
+                viewModel.createQuickCustomer(name, phone, address) {
+                    isCustomerPickerOpen = false
+                }
             },
             onDismiss = { isCustomerPickerOpen = false },
             isPersian = isPersian
@@ -361,7 +384,9 @@ fun PosScreen(
         CheckoutModal(
             cartItems = cartItems,
             selectedCustomer = selectedCustomer,
-            onProcessCheckout = { method, notes -> viewModel.processCheckout(method, notes) },
+            initialChannel = selectedChannel,
+            customGuestName = customGuestName,
+            onProcessCheckout = { method, notes, channel -> viewModel.processCheckout(method, notes, channel) },
             onDismiss = { viewModel.closeCheckoutModal() },
             isPersian = isPersian,
             currencyUnit = currencyUnit,
@@ -393,81 +418,256 @@ fun PosScreen(
 fun CustomerPickerModal(
     customers: List<Customer>,
     selectedCustomer: Customer?,
+    selectedChannel: SalesChannel,
+    customGuestName: String,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onSelectChannel: (SalesChannel) -> Unit,
+    onCustomGuestNameChange: (String) -> Unit,
     onSelectCustomer: (Customer?) -> Unit,
+    onCreateQuickCustomer: (name: String, phone: String, address: String) -> Unit,
     onDismiss: () -> Unit,
     isPersian: Boolean = true
 ) {
+    var isQuickAddOpen by remember { mutableStateOf(false) }
+    var newCustomerName by remember { mutableStateOf("") }
+    var newCustomerPhone by remember { mutableStateOf("") }
+    var newCustomerAddress by remember { mutableStateOf("") }
+
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .padding(20.dp)
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = if (isPersian) "انتخاب یا تخصیص مشتری به فاکتور" else "Attach Customer Profile",
+                text = if (isPersian) "انتخاب مشتری یا کانال ثبت سفارش" else "Attach Customer or Sales Channel",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Walk-in default option
-            Card(
-                onClick = { onSelectCustomer(null) },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (selectedCustomer == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                ),
+            // SECTION 1: Sales Channel Selection (Non-registered / Guest Channel)
+            Text(
+                text = if (isPersian) "۱. تعیین کانال ثبت سفارش (مشتری مهمان / تلفنی / اینترنتی)" else "1. Order Channel (Guest / Phone / Online)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = if (isPersian) "مشتری گذری / حضوری (بدون ثبت پرونده)" else "Walk-in Customer (Guest)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                items(SalesChannel.entries.size) { idx ->
+                    val channel = SalesChannel.entries[idx]
+                    FilterChip(
+                        selected = selectedChannel == channel && selectedCustomer == null,
+                        onClick = {
+                            onSelectChannel(channel)
+                            onSelectCustomer(null)
+                        },
+                        label = {
+                            Text(
+                                text = if (isPersian) channel.titleFa else channel.titleEn,
+                                fontWeight = if (selectedChannel == channel && selectedCustomer == null) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(customers) { customer ->
-                    Card(
-                        onClick = { onSelectCustomer(customer) },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (selectedCustomer?.id == customer.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = customer.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = customer.phone.ifBlank { customer.email },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "${if (isPersian) "امتیاز باشگاه:" else "Points:"} ${
-                                    if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
-                                        customer.loyaltyPoints
-                                    ) else customer.loyaltyPoints
-                                }",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1
-                            )
+            OutlinedTextField(
+                value = customGuestName,
+                onValueChange = {
+                    onCustomGuestNameChange(it)
+                    if (it.isNotBlank()) onSelectCustomer(null)
+                },
+                label = {
+                    Text(if (isPersian) "نام یا شماره تماس مشتری مهمان / سفارشی (اختیاری)" else "Custom Guest Name / Phone (Optional)")
+                },
+                placeholder = {
+                    Text(if (isPersian) "مثلاً: آقای علوی (تلفنی) یا سفارش اینستاگرام" else "e.g., John (Phone) or Insta Order")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 2: Search & Select Registered Customer (CRM)
+            Text(
+                text = if (isPersian) "۲. یا انتخاب از مشتریان ثبت‌شده (CRM)" else "2. Select Registered Customer",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = {
+                    Text(if (isPersian) "جستجوی نام، تلفن یا ایمیل مشتری..." else "Search customer name or phone...")
+                },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(imageVector = Icons.Rounded.Clear, contentDescription = null)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (customers.isEmpty()) {
+                Text(
+                    text = if (isPersian) "مشتری متناسب با جستجو یافت نشد" else "No matching registered customer found",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    customers.take(5).forEach { customer ->
+                        val isSelected = selectedCustomer?.id == customer.id
+                        Card(
+                            onClick = { onSelectCustomer(customer) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = customer.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (customer.phone.isNotBlank()) {
+                                        Text(
+                                            text = customer.phone,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "${if (isPersian) "امتیاز:" else "Pts:"} ${
+                                        if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
+                                            customer.loyaltyPoints
+                                        ) else customer.loyaltyPoints
+                                    }",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECTION 3: Quick Add New Customer
+            if (!isQuickAddOpen) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { isQuickAddOpen = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(imageVector = Icons.Rounded.PersonAdd, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (isPersian) "+ ثبت مشتری جدید در دیتابیس" else "+ Add New Customer")
+                }
+            } else {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = if (isPersian) "ثبت مشتری جدید" else "Quick New Customer",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = newCustomerName,
+                            onValueChange = { newCustomerName = it },
+                            label = { Text(if (isPersian) "نام و نام خانوادگی" else "Full Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = newCustomerPhone,
+                            onValueChange = { newCustomerPhone = it },
+                            label = { Text(if (isPersian) "شماره تلفن" else "Phone Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = newCustomerAddress,
+                            onValueChange = { newCustomerAddress = it },
+                            label = { Text(if (isPersian) "آدرس" else "Address") },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 2
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { isQuickAddOpen = false },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isPersian) "انصراف" else "Cancel")
+                            }
+
+                            androidx.compose.material3.Button(
+                                onClick = {
+                                    if (newCustomerName.isNotBlank()) {
+                                        onCreateQuickCustomer(newCustomerName, newCustomerPhone, newCustomerAddress)
+                                        isQuickAddOpen = false
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isPersian) "ثبت و انتخاب" else "Save & Select")
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
