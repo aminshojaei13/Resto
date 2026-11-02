@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,23 +48,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.braveboy.resto.data.local.datastore.TenantPreferences
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.AuthRepository
 import com.braveboy.resto.data.repository.TenantRepository
 import com.braveboy.resto.data.sync.SyncManager
 import com.braveboy.resto.data.sync.SyncStatus
 import com.braveboy.resto.ui.components.RestoCard
+import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.components.RestoListItem
 import com.braveboy.resto.ui.components.RestoSection
+import com.braveboy.resto.ui.components.RestoTextField
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.ImageStorageManager
+import com.braveboy.resto.util.PersianFormatter
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,13 +78,28 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     tenantRepository: TenantRepository,
     authRepository: AuthRepository,
+    tenantPreferences: TenantPreferences? = null,
     syncManager: SyncManager? = null,
     onOpenTenantSwitcher: () -> Unit,
     onBackClick: () -> Unit = {},
 ) {
     val tenantState by tenantRepository.getTenantState().collectAsState(initial = TenantState())
+    val currentTaxRate by tenantPreferences?.defaultTaxRate?.collectAsState(initial = 9.0)
+        ?: remember { mutableStateOf(9.0) }
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = com.braveboy.resto.data.remote.NetworkModule.apiService.getBusinessSettings()
+            if (response.isSuccessful && response.body() != null) {
+                val map = response.body()!!
+                val rateNum = (map["default_tax_rate"] as? Number)?.toDouble() ?: 9.0
+                tenantPreferences?.setDefaultTaxRate(rateNum)
+            }
+        } catch (_: Exception) {}
+    }
 
     val avatarPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -107,6 +129,17 @@ fun SettingsScreen(
         tenantState = tenantState,
         syncStatus = syncStatus,
         unsyncedCount = unsyncedCount,
+        currentTaxRate = currentTaxRate,
+        onUpdateTaxRate = { newRate ->
+            scope.launch {
+                tenantPreferences?.setDefaultTaxRate(newRate)
+                try {
+                    com.braveboy.resto.data.remote.NetworkModule.apiService.updateBusinessSettings(
+                        mapOf("default_tax_rate" to newRate)
+                    )
+                } catch (_: Exception) {}
+            }
+        },
         onTriggerSync = {
             scope.launch {
                 syncManager?.triggerSync(tenantState.activeOrgId)
@@ -132,6 +165,8 @@ fun SettingsScreenContent(
     tenantState: TenantState,
     syncStatus: SyncStatus,
     unsyncedCount: Int,
+    currentTaxRate: Double = 9.0,
+    onUpdateTaxRate: (Double) -> Unit = {},
     onTriggerSync: () -> Unit,
     onLogout: () -> Unit,
     onAvatarClick: () -> Unit = {},
@@ -140,6 +175,8 @@ fun SettingsScreenContent(
     onBackClick: () -> Unit = {},
 ) {
     val isPersian = tenantState.language == "fa"
+    var isTaxDialogOpened by remember { mutableStateOf(false) }
+    var taxRateInputText by remember { mutableStateOf(if (currentTaxRate % 1.0 == 0.0) currentTaxRate.toInt().toString() else currentTaxRate.toString()) }
 
     Scaffold(
         topBar = {
@@ -312,11 +349,25 @@ fun SettingsScreenContent(
 
             item {
                 RestoSection(
-                    title = if (isPersian) "ترجیحات برنامه" else "App Preferences"
+                    title = if (isPersian) "ترجیحات برنامه و مالیات" else "App & Tax Preferences"
                 )
                 Spacer(modifier = Modifier.height(RestoSpacing.xs))
                 RestoCard {
                     Column {
+                        val taxRateDisplayStr = if (currentTaxRate % 1.0 == 0.0) currentTaxRate.toInt().toString() else currentTaxRate.toString()
+                        RestoListItem(
+                            title = if (isPersian) "نرخ مالیات بر ارزش افزوده (VAT)" else "Default Sales Tax Rate",
+                            subtitle = if (isPersian)
+                                "${PersianFormatter.toPersianDigits(taxRateDisplayStr)}٪ (محاسبه خودکار در فاکتورهای فروش)"
+                            else
+                                "$taxRateDisplayStr% (Applied automatically on sales)",
+                            leadingIcon = Icons.Rounded.ReceiptLong,
+                            onClick = {
+                                taxRateInputText = taxRateDisplayStr
+                                isTaxDialogOpened = true
+                            }
+                        )
+
                         RestoListItem(
                             title = if (isPersian) "واحد پولی پیش‌فرض" else "Default Currency",
                             subtitle = if (isPersian) "تومان (محاسبات دقیق مالی)" else "USD / Precision Monetary",
@@ -355,6 +406,37 @@ fun SettingsScreenContent(
                             onClick = onLogout
                         )
                     }
+                }
+            }
+        }
+
+        if (isTaxDialogOpened) {
+            RestoDialog(
+                title = if (isPersian) "تنظیم نرخ مالیات بر ارزش افزوده" else "Set Sales Tax Rate",
+                confirmText = if (isPersian) "ثبت و ذخیره" else "Save Rate",
+                onConfirm = {
+                    val parsedRate = PersianFormatter.parsePrice(taxRateInputText)
+                    onUpdateTaxRate(parsedRate)
+                    isTaxDialogOpened = false
+                },
+                onDismissRequest = { isTaxDialogOpened = false }
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+                    Text(
+                        text = if (isPersian)
+                            "درصد مالیات بر ارزش افزوده را وارد کنید. این درصد به طور خودکار در محاسبات فاکتور فروش و ثبت کالا اعمال می‌شود."
+                        else
+                            "Enter sales tax rate percentage. This rate will apply automatically on sales calculations.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    RestoTextField(
+                        value = taxRateInputText,
+                        onValueChange = { taxRateInputText = it.filter { ch -> ch.isDigit() || ch == '.' || ch in '۰'..'۹' } },
+                        label = if (isPersian) "درصد مالیات (مثلاً ۹ یا ۰)" else "Tax Rate (%)",
+                        placeholder = "9"
+                    )
                 }
             }
         }

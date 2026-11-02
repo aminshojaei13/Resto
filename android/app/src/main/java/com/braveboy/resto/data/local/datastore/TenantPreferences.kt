@@ -34,6 +34,58 @@ class TenantPreferences(private val context: Context) {
         val ONBOARDING_DISMISSED = booleanPreferencesKey("onboarding_dismissed")
         val ONBOARDING_STEP_SUPPLIERS_SKIPPED = booleanPreferencesKey("onboarding_step_suppliers_skipped")
         val HAS_SEEN_ONBOARDING_DIALOG = booleanPreferencesKey("has_seen_onboarding_dialog")
+        val DEFAULT_TAX_RATE = stringPreferencesKey("default_tax_rate")
+        val CUSTOM_MESSAGE_TEMPLATES = stringPreferencesKey("custom_message_templates")
+    }
+
+    val defaultTaxRate: Flow<Double> = context.tenantDataStore.data.map { prefs ->
+        prefs[PreferenceKeys.DEFAULT_TAX_RATE]?.toDoubleOrNull() ?: 9.0
+    }
+
+    suspend fun setDefaultTaxRate(rate: Double) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.DEFAULT_TAX_RATE] = rate.toString()
+        }
+    }
+
+    val customMessageTemplates: Flow<List<com.braveboy.resto.data.model.MessageTemplate>> = context.tenantDataStore.data.map { prefs ->
+        val rawJson = prefs[PreferenceKeys.CUSTOM_MESSAGE_TEMPLATES] ?: ""
+        if (rawJson.isBlank()) {
+            emptyList()
+        } else {
+            try {
+                val moshi = com.squareup.moshi.Moshi.Builder().build()
+                val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, com.braveboy.resto.data.model.MessageTemplate::class.java)
+                val adapter = moshi.adapter<List<com.braveboy.resto.data.model.MessageTemplate>>(type)
+                adapter.fromJson(rawJson) ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    suspend fun saveCustomMessageTemplate(template: com.braveboy.resto.data.model.MessageTemplate) {
+        context.tenantDataStore.edit { prefs ->
+            val existingJson = prefs[PreferenceKeys.CUSTOM_MESSAGE_TEMPLATES] ?: ""
+            val moshi = com.squareup.moshi.Moshi.Builder().build()
+            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, com.braveboy.resto.data.model.MessageTemplate::class.java)
+            val adapter = moshi.adapter<List<com.braveboy.resto.data.model.MessageTemplate>>(type)
+            val currentList = try { adapter.fromJson(existingJson) ?: emptyList() } catch (_: Exception) { emptyList() }
+            val updatedList = currentList.filter { it.id != template.id } + template
+            prefs[PreferenceKeys.CUSTOM_MESSAGE_TEMPLATES] = adapter.toJson(updatedList)
+        }
+    }
+
+    suspend fun deleteCustomMessageTemplate(id: String) {
+        context.tenantDataStore.edit { prefs ->
+            val existingJson = prefs[PreferenceKeys.CUSTOM_MESSAGE_TEMPLATES] ?: ""
+            val moshi = com.squareup.moshi.Moshi.Builder().build()
+            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, com.braveboy.resto.data.model.MessageTemplate::class.java)
+            val adapter = moshi.adapter<List<com.braveboy.resto.data.model.MessageTemplate>>(type)
+            val currentList = try { adapter.fromJson(existingJson) ?: emptyList() } catch (_: Exception) { emptyList() }
+            val updatedList = currentList.filter { it.id != id }
+            prefs[PreferenceKeys.CUSTOM_MESSAGE_TEMPLATES] = adapter.toJson(updatedList)
+        }
     }
 
     val tenantState: Flow<TenantState> = context.tenantDataStore.data.map { prefs ->

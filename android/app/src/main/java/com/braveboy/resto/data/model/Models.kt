@@ -273,3 +273,11 @@ data class MetricsSummary(
     val totalInventoryValue: Double = 0.0,
     val lowStockCount: Int = 0
 )
+
+data class MessageTemplate(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val text: String,
+    val category: String = "پیش‌فرض",
+    val isUserCustom: Boolean = false
+)

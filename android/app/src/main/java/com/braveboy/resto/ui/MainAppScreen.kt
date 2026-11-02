@@ -1,5 +1,6 @@
 package com.braveboy.resto.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,17 +14,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Message
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Assessment
 import androidx.compose.material.icons.rounded.Domain
 import androidx.compose.material.icons.rounded.Inventory
-import androidx.compose.material.icons.rounded.Message
-import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PointOfSale
-import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Storefront
@@ -33,8 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,7 +48,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.di.AppContainer
@@ -84,10 +80,10 @@ enum class MainDestination(
     val icon: ImageVector
 ) {
     ACCOUNTING("Dashboard", "داشبورد", Icons.Rounded.Assessment),
-    ORDERS("Orders", "سفارش‌ها", Icons.Rounded.ReceiptLong),
+    ORDERS("Orders", "سفارش‌ها", Icons.AutoMirrored.Rounded.ReceiptLong),
     INVENTORY("Inventory", "موجودی", Icons.Rounded.Inventory),
     POS("New Sale", "ثبت سفارش", Icons.Rounded.PointOfSale),
-    MESSAGES("Social Orders", "سفارش پیامکی", Icons.Rounded.Message),
+    MESSAGES("Social Orders", "سفارش پیامکی", Icons.AutoMirrored.Rounded.Message),
     PURCHASES("Purchases", "خرید و تأمین", Icons.Rounded.ShoppingBag),
     CUSTOMERS("Customers", "مشتریان", Icons.Rounded.People),
     SUPPLIERS("Suppliers", "تأمین‌کنندگان", Icons.Rounded.Domain),
@@ -102,18 +98,48 @@ fun MainAppScreen(
     modifier: Modifier = Modifier,
     initialSharedText: String? = null
 ) {
-    // Default to Dashboard as requested by master prompt and product spec
-    var currentDestination by remember { mutableStateOf(MainDestination.ACCOUNTING) }
+    // Navigation stack state (defaults to Dashboard)
+    var navigationStack by remember { mutableStateOf(listOf(MainDestination.ACCOUNTING)) }
+    val currentDestination = navigationStack.lastOrNull() ?: MainDestination.ACCOUNTING
+
     var isTenantSwitcherOpen by remember { mutableStateOf(false) }
     var isMoreMenuOpen by remember { mutableStateOf(false) }
 
-    val tenantState by appContainer.tenantRepository.getTenantState().collectAsState(initial = TenantState())
+    fun navigateTo(destination: MainDestination) {
+        navigationStack = if (destination == MainDestination.ACCOUNTING) {
+            listOf(MainDestination.ACCOUNTING)
+        } else {
+            navigationStack.filter { it != destination } + destination
+        }
+    }
+
+    fun navigateBack() {
+        if (isMoreMenuOpen) {
+            isMoreMenuOpen = false
+        } else if (isTenantSwitcherOpen) {
+            isTenantSwitcherOpen = false
+        } else if (navigationStack.size > 1) {
+            navigationStack = navigationStack.dropLast(1)
+        } else if (currentDestination != MainDestination.ACCOUNTING) {
+            navigationStack = listOf(MainDestination.ACCOUNTING)
+        }
+    }
+
+    val isBackHandlerEnabled =
+        isMoreMenuOpen || isTenantSwitcherOpen || navigationStack.size > 1 || currentDestination != MainDestination.ACCOUNTING
+
+    BackHandler(enabled = isBackHandlerEnabled) {
+        navigateBack()
+    }
+
+    val tenantState by appContainer.tenantRepository.getTenantState()
+        .collectAsState(initial = TenantState())
     val isPersian = tenantState.language == "fa"
     val layoutDirection = if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
     LaunchedEffect(initialSharedText) {
         if (!initialSharedText.isNullOrBlank()) {
-            currentDestination = MainDestination.MESSAGES
+            navigateTo(MainDestination.MESSAGES)
         }
     }
 
@@ -170,7 +196,8 @@ fun MainAppScreen(
             appContainer.messageRepository,
             appContainer.salesOrderRepository,
             appContainer.customerRepository,
-            appContainer.productRepository
+            appContainer.productRepository,
+            appContainer.tenantPreferences
         )
     )
 
@@ -197,7 +224,7 @@ fun MainAppScreen(
             bottomBar = {
                 com.braveboy.resto.ui.components.RestoBottomNav(
                     currentDestination = currentDestination,
-                    onDestinationSelected = { currentDestination = it },
+                    onDestinationSelected = { navigateTo(it) },
                     onCenterFabClick = { dashboardViewModel.openRecordEntryDialog() },
                     onMoreClick = { isMoreMenuOpen = true },
                     isPersian = isPersian
@@ -217,67 +244,77 @@ fun MainAppScreen(
                                 if (openAddProduct) {
                                     inventoryViewModel.openAddProductDialog()
                                 }
-                                currentDestination = destination
+                                navigateTo(destination)
                             }
                         )
                     }
+
                     MainDestination.ORDERS -> {
                         SalesOrdersScreen(
                             viewModel = salesOrdersViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.INVENTORY -> {
                         InventoryScreen(
                             viewModel = inventoryViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.POS -> {
                         PosScreen(
                             viewModel = posViewModel,
                             onNavigateToTenantSwitch = { isTenantSwitcherOpen = true },
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.MESSAGES -> {
                         MessagesScreen(
                             viewModel = messagesViewModel,
                             initialSharedText = initialSharedText,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.PURCHASES -> {
                         PurchasesScreen(
                             viewModel = purchasesViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.CUSTOMERS -> {
                         CustomerScreen(
                             viewModel = customerViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.SUPPLIERS -> {
                         SupplierScreen(
                             viewModel = supplierViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.EXPENSES -> {
                         ExpensesScreen(
                             viewModel = expensesViewModel,
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
+
                     MainDestination.SETTINGS -> {
                         SettingsScreen(
                             tenantRepository = appContainer.tenantRepository,
                             authRepository = appContainer.authRepository,
+                            tenantPreferences = appContainer.tenantPreferences,
                             syncManager = appContainer.syncManager,
                             onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
-                            onBackClick = { currentDestination = MainDestination.ACCOUNTING }
+                            onBackClick = { navigateBack() }
                         )
                     }
                 }
@@ -327,7 +364,7 @@ fun MainAppScreen(
                             val isSelected = currentDestination == dest
                             Card(
                                 onClick = {
-                                    currentDestination = dest
+                                    navigateTo(dest)
                                     isMoreMenuOpen = false
                                 },
                                 colors = CardDefaults.cardColors(

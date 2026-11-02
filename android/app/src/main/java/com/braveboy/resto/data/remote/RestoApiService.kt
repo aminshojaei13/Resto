@@ -39,6 +39,9 @@ interface RestoApiService {
     @GET("business/settings")
     suspend fun getBusinessSettings(): Response<Map<String, Any>>
 
+    @PUT("business/settings")
+    suspend fun updateBusinessSettings(@Body payload: Map<String, Double>): Response<Map<String, Any>>
+
     @GET("organizations")
     suspend fun getOrganizations(): Response<List<OrganizationDto>>
 

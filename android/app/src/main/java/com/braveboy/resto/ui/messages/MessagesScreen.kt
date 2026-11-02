@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -24,6 +26,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Person
@@ -31,20 +35,25 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.braveboy.resto.ui.components.RestoTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import com.braveboy.resto.data.intake.ParsedCustomer
 import com.braveboy.resto.data.intake.ParsedItem
 import com.braveboy.resto.data.intake.ParsedOrderDraft
+import com.braveboy.resto.data.model.MessageTemplate
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.TenantState
@@ -75,6 +85,9 @@ import com.braveboy.resto.ui.components.RestoButton
 import com.braveboy.resto.ui.components.RestoButtonVariant
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoCardVariant
+import com.braveboy.resto.ui.components.RestoDialog
+import com.braveboy.resto.ui.components.RestoTextField
+import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
@@ -91,16 +104,20 @@ fun MessagesScreen(
     val uiState by viewModel.uiState.collectAsState()
     val catalogProducts by viewModel.catalogProducts.collectAsState()
     val warehouses by viewModel.warehouses.collectAsState()
+    val customTemplates by viewModel.customTemplates.collectAsState()
 
     MessagesScreenContent(
         tenantState = tenantState,
         uiState = uiState,
         catalogProducts = catalogProducts,
         warehouses = warehouses,
+        customTemplates = customTemplates,
         modifier = modifier,
         initialSharedText = initialSharedText,
         onBackClick = onBackClick,
         onSetRawText = { viewModel.setRawText(it) },
+        onSaveCustomTemplate = { title, text -> viewModel.saveCustomTemplate(title, text) },
+        onDeleteCustomTemplate = { viewModel.deleteCustomTemplate(it) },
         onParseMessage = { text, source ->
             if (text != null && source != null) {
                 viewModel.parseMessage(text, source)
@@ -135,10 +152,13 @@ fun MessagesScreenContent(
     uiState: MessagesUiState,
     catalogProducts: List<Product>,
     warehouses: List<Warehouse>,
+    customTemplates: List<MessageTemplate> = emptyList(),
     modifier: Modifier = Modifier,
     initialSharedText: String? = null,
     onBackClick: () -> Unit = {},
     onSetRawText: (String) -> Unit = {},
+    onSaveCustomTemplate: (title: String, text: String) -> Unit = { _, _ -> },
+    onDeleteCustomTemplate: (id: String) -> Unit = {},
     onParseMessage: (text: String?, source: String?) -> Unit = { _, _ -> },
     onCheckAndConsumePendingImport: () -> Unit = {},
     onClearErrorMessage: () -> Unit = {},
@@ -164,6 +184,9 @@ fun MessagesScreenContent(
 
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var isTemplatePickerOpen by remember { mutableStateOf(false) }
+    var isCreateTemplateOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialSharedText) {
         if (!initialSharedText.isNullOrBlank()) {
@@ -291,10 +314,19 @@ fun MessagesScreenContent(
                         horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                     ) {
                         RestoButton(
-                            text = if (isPersian) "نمونه پیام" else "Sample",
+                            text = if (isPersian) "قالب‌های نمونه پیامک" else "SMS Templates",
+                            leadingIcon = Icons.Rounded.Description,
                             variant = RestoButtonVariant.Outlined,
                             compact = true,
-                            onClick = { onSetRawText(sampleOrderText) },
+                            onClick = { isTemplatePickerOpen = true },
+                            modifier = Modifier.weight(1.2f)
+                        )
+
+                        RestoButton(
+                            text = if (isPersian) "+ قالب دلخواه" else "+ Custom",
+                            variant = RestoButtonVariant.Outlined,
+                            compact = true,
+                            onClick = { isCreateTemplateOpen = true },
                             modifier = Modifier.weight(1f)
                         )
 
@@ -305,7 +337,7 @@ fun MessagesScreenContent(
                                 variant = RestoButtonVariant.Text,
                                 compact = true,
                                 onClick = { onClearDraft() },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(0.8f)
                             )
                         }
                     }
@@ -354,7 +386,10 @@ fun MessagesScreenContent(
                             if (draft.customer.isNew) {
                                 RestoBadge(text = "مشتری جدید", variant = RestoBadgeVariant.Info)
                             } else {
-                                RestoBadge(text = "مشتری ثبت‌شده", variant = RestoBadgeVariant.Success)
+                                RestoBadge(
+                                    text = "مشتری ثبت‌شده",
+                                    variant = RestoBadgeVariant.Success
+                                )
                             }
                         }
 
@@ -511,7 +546,12 @@ fun MessagesScreenContent(
                                 FilterChip(
                                     selected = uiState.selectedPaymentMethod == method,
                                     onClick = { onSetPaymentMethod(method) },
-                                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                                    label = {
+                                        Text(
+                                            label,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -543,7 +583,11 @@ fun MessagesScreenContent(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("تخفیف:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                                    Text(
+                                        "تخفیف:",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
                                     Text(
                                         "-${PersianFormatter.formatTomans(draft.discountAmount)} $currencyUnit",
                                         style = MaterialTheme.typography.bodySmall,
@@ -557,7 +601,10 @@ fun MessagesScreenContent(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("مالیات (${draft.taxRate.toInt()}%):", style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        "مالیات (${draft.taxRate.toInt()}%):",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
                                     Text(
                                         "+${PersianFormatter.formatTomans(draft.taxAmount)} $currencyUnit",
                                         style = MaterialTheme.typography.bodySmall
@@ -697,6 +744,31 @@ fun MessagesScreenContent(
                         Text("متوجه شدم")
                     }
                 }
+            )
+        }
+
+        if (isTemplatePickerOpen) {
+            MessageTemplatePickerSheet(
+                builtInTemplates = DefaultMessageTemplates.builtInTemplates,
+                customTemplates = customTemplates,
+                onSelectTemplate = { template ->
+                    onSetRawText(template.text)
+                },
+                onDeleteCustomTemplate = onDeleteCustomTemplate,
+                onOpenCreateDialog = { isCreateTemplateOpen = true },
+                onDismiss = { isTemplatePickerOpen = false },
+                isPersian = isPersian
+            )
+        }
+
+        if (isCreateTemplateOpen) {
+            CreateCustomTemplateDialog(
+                onSaveTemplate = { title, text ->
+                    onSaveCustomTemplate(title, text)
+                    onSetRawText(text)
+                },
+                onDismiss = { isCreateTemplateOpen = false },
+                isPersian = isPersian
             )
         }
     }
@@ -982,6 +1054,317 @@ private fun ProductCatalogPickerDialog(
             }
         }
     )
+}
+
+object DefaultMessageTemplates {
+    val builtInTemplates = listOf(
+        MessageTemplate(
+            id = "template_structured",
+            title = "فاکتور ساختاریافته (اینستاگرام/تلگرام)",
+            category = "فاکتوری",
+            text = """
+                سلام وقت بخیر، سفارش جدید دارم:
+                نام و نام خانوادگی: علی رضایی
+                شماره تماس: 09121234567
+                آدرس ارسال: تهران، خیابان آزادی، پلاک ۱۲، واحد ۴
+                اقلام سفارش:
+                ۲ عدد قهوه اسپرسو
+                ۱ بسته چای لاهیجان
+                ۳ عدد کیک شکلاتی
+                توضیحات: پرداخت کارت به کارت انجام شد
+            """.trimIndent()
+        ),
+        MessageTemplate(
+            id = "template_chat",
+            title = "چت صمیمانه (واتس‌اپ/دایرکت)",
+            category = "چت آنلاین",
+            text = """
+                سلام وقتتون بخیر
+                لطفاً ۳ تا پیتزا مخصوص و ۲ تا نوشابه مشکی بفرستید برای آقای احمدی
+                شماره 09181112233
+                آدرس: کرج، عظیمیه، میدان اسبی، خیابان دوم پلاک ۱۵
+                ممنون از شما
+            """.trimIndent()
+        ),
+        MessageTemplate(
+            id = "template_short_sms",
+            title = "پیامک کوتاه و سریع",
+            category = "پیامک کوتاه",
+            text = """
+                سفارش:
+                ۲ کیلو پسته اکبری
+                ۱ کیلو بادام درختی
+                گیرنده: خانم علوی 09359876543
+                آدرس: شیراز، خیابان زند، کوچه ۸
+            """.trimIndent()
+        ),
+        MessageTemplate(
+            id = "template_corporate",
+            title = "سفارش عمده / شرکتی",
+            category = "عمده و شرکتی",
+            text = """
+                ثبت سفارش خرید عمده:
+                مشتری: شرکت بازرگانی پارس (مدیریت: آقای محمدی)
+                تلفن: 02188889999 / 09120001122
+                آدرس: اصفهان، شهرک صنعتی جی، خیابان چهارم
+                اقلام:
+                ۱۰ عدد کابل VGA
+                ۵ عدد ماوس بی‌سیم
+                نحوه پرداخت: نسیه / حساب دفتری
+            """.trimIndent()
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MessageTemplatePickerSheet(
+    builtInTemplates: List<MessageTemplate>,
+    customTemplates: List<MessageTemplate>,
+    onSelectTemplate: (MessageTemplate) -> Unit,
+    onDeleteCustomTemplate: (String) -> Unit,
+    onOpenCreateDialog: () -> Unit,
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true
+) {
+    var selectedCategory by remember { mutableStateOf("همه") }
+    val categories =
+        listOf("همه", "فاکتوری", "چت آنلاین", "پیامک کوتاه", "عمده و شرکتی", "سفارشی من")
+
+    val allTemplates = (builtInTemplates + customTemplates)
+    val filteredTemplates = allTemplates.filter {
+        selectedCategory == "همه" || it.category.contains(selectedCategory, ignoreCase = true) ||
+                (selectedCategory == "سفارشی من" && it.isUserCustom)
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isPersian) "قالب‌ها و الگوی نمونه پیامک" else "SMS Message Templates",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Rounded.Clear, contentDescription = null)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Category Chips
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(categories.size) { idx ->
+                    val cat = categories[idx]
+                    FilterChip(
+                        selected = selectedCategory == cat,
+                        onClick = { selectedCategory = cat },
+                        label = {
+                            Text(
+                                text = cat,
+                                fontWeight = if (selectedCategory == cat) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (filteredTemplates.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isPersian) "قالبی در این دسته‌بندی وجود ندارد." else "No templates in this category.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    filteredTemplates.forEach { template ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (template.isUserCustom) MaterialTheme.colorScheme.primaryContainer.copy(
+                                    alpha = 0.4f
+                                ) else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = template.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    if (template.isUserCustom) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(MaterialTheme.colorScheme.primary)
+                                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isPersian) "قالب شخصی شما" else "Custom",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+
+                                            IconButton(
+                                                onClick = { onDeleteCustomTemplate(template.id) },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.DeleteOutline,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = template.category,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = template.text,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 4,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Button(
+                                    onClick = {
+                                        onSelectTemplate(template)
+                                        onDismiss()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(if (isPersian) "درج و استفاده از این قالب" else "Use This Template")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onOpenCreateDialog()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isPersian) "+ ثبت و تعریف قالب پیامک دلخواه جدید" else "+ Create Custom Template")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun CreateCustomTemplateDialog(
+    onSaveTemplate: (title: String, text: String) -> Unit,
+    onDismiss: () -> Unit,
+    isPersian: Boolean = true
+) {
+    var titleText by remember { mutableStateOf("") }
+    var templateText by remember { mutableStateOf("") }
+
+    RestoDialog(
+        title = if (isPersian) "ثبت قالب پیامک دلخواه جدید" else "Create Custom SMS Template",
+        confirmText = if (isPersian) "ذخیره قالب" else "Save Template",
+        onConfirm = {
+            if (titleText.isNotBlank() && templateText.isNotBlank()) {
+                onSaveTemplate(titleText.trim(), templateText.trim())
+                onDismiss()
+            }
+        },
+        confirmEnabled = titleText.isNotBlank() && templateText.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            Text(
+                text = if (isPersian)
+                    "فرمت یا الگوی دلخواه پیامک مشتریان خود را وارد کنید تا همیشه در دسترس شما باشد."
+                else
+                    "Enter your custom SMS template pattern for quick reuse.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            RestoTextField(
+                value = titleText,
+                onValueChange = { titleText = it },
+                label = if (isPersian) "عنوان قالب (مثال: الگو واتس‌اپ مغازه)" else "Template Title",
+                placeholder = "مثلاً: قالب اختصاصی فروشگاه"
+            )
+
+            OutlinedTextField(
+                value = templateText,
+                onValueChange = { templateText = it },
+                label = { Text(if (isPersian) "متن نمونه یا الگوی پیامک" else "Template Text") },
+                placeholder = {
+                    Text(
+                        if (isPersian)
+                            "مثال:\nسفارش جدید:\nنام: ...\nتلفن: ...\nاقلام: ...\nآدرس: ..."
+                        else
+                            "Enter template text..."
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp),
+                shape = RestoShapes.medium
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)

@@ -7,9 +7,11 @@ import com.braveboy.resto.data.intake.PendingImportManager
 import com.braveboy.resto.data.intake.ParsedCustomer
 import com.braveboy.resto.data.intake.ParsedItem
 import com.braveboy.resto.data.intake.ParsedOrderDraft
+import com.braveboy.resto.data.local.datastore.TenantPreferences
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.FulfillmentStatus
+import com.braveboy.resto.data.model.MessageTemplate
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.PaymentStatus
 import com.braveboy.resto.data.model.Product
@@ -49,7 +51,8 @@ class MessagesViewModel(
     private val messageRepository: MessageRepository,
     private val salesOrderRepository: SalesOrderRepository,
     private val customerRepository: CustomerRepository,
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val tenantPreferences: TenantPreferences? = null
 ) : ViewModel() {
 
     val tenantState: StateFlow<TenantState> = tenantRepository.getTenantState().stateIn(
@@ -60,6 +63,12 @@ class MessagesViewModel(
 
     private val _uiState = MutableStateFlow(MessagesUiState())
     val uiState: StateFlow<MessagesUiState> = _uiState.asStateFlow()
+
+    val customTemplates: StateFlow<List<MessageTemplate>> = tenantPreferences?.customMessageTemplates?.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    ) ?: MutableStateFlow(emptyList())
 
     private val _catalogProducts = MutableStateFlow<List<Product>>(emptyList())
     val catalogProducts: StateFlow<List<Product>> = _catalogProducts.asStateFlow()
@@ -487,12 +496,37 @@ class MessagesViewModel(
         }
     }
 
+    fun saveCustomTemplate(title: String, text: String) {
+        viewModelScope.launch {
+            if (title.isBlank() || text.isBlank()) {
+                _uiState.value = _uiState.value.copy(errorMessage = "لطفاً عنوان و متن قالب را وارد کنید")
+                return@launch
+            }
+            val template = MessageTemplate(
+                title = title.trim(),
+                text = text.trim(),
+                category = "سفارشی من",
+                isUserCustom = true
+            )
+            tenantPreferences?.saveCustomMessageTemplate(template)
+            _uiState.value = _uiState.value.copy(infoMessage = "قالب '$title' با موفقیت ذخیره شد")
+        }
+    }
+
+    fun deleteCustomTemplate(id: String) {
+        viewModelScope.launch {
+            tenantPreferences?.deleteCustomMessageTemplate(id)
+            _uiState.value = _uiState.value.copy(infoMessage = "قالب پیامک با موفقیت حذف شد")
+        }
+    }
+
     class Factory(
         private val tenantRepository: TenantRepository,
         private val messageRepository: MessageRepository,
         private val salesOrderRepository: SalesOrderRepository,
         private val customerRepository: CustomerRepository,
-        private val productRepository: ProductRepository
+        private val productRepository: ProductRepository,
+        private val tenantPreferences: TenantPreferences? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -501,7 +535,8 @@ class MessagesViewModel(
                 messageRepository,
                 salesOrderRepository,
                 customerRepository,
-                productRepository
+                productRepository,
+                tenantPreferences
             ) as T
         }
     }
