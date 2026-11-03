@@ -70,6 +70,9 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE isSynced = 0")
     suspend fun getUnsyncedProducts(): List<ProductEntity>
 
+    @Query("SELECT * FROM products")
+    suspend fun getAllProductsDirect(): List<ProductEntity>
+
     @Query("UPDATE products SET isSynced = 1 WHERE id = :id")
     suspend fun markProductSynced(id: String)
 
@@ -96,6 +99,9 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE isSynced = 0")
     suspend fun getUnsyncedCustomers(): List<CustomerEntity>
+
+    @Query("SELECT * FROM customers")
+    suspend fun getAllCustomersDirect(): List<CustomerEntity>
 
     @Query("UPDATE customers SET isSynced = 1 WHERE id = :id")
     suspend fun markCustomerSynced(id: String)
@@ -124,6 +130,9 @@ interface SupplierDao {
     @Query("SELECT * FROM suppliers WHERE isSynced = 0")
     suspend fun getUnsyncedSuppliers(): List<SupplierEntity>
 
+    @Query("SELECT * FROM suppliers")
+    suspend fun getAllSuppliersDirect(): List<SupplierEntity>
+
     @Query("UPDATE suppliers SET isSynced = 1 WHERE id = :id")
     suspend fun markSupplierSynced(id: String)
 }
@@ -148,6 +157,9 @@ interface PurchaseDao {
     @Query("SELECT * FROM purchases WHERE isSynced = 0")
     suspend fun getUnsyncedPurchases(): List<PurchaseEntity>
 
+    @Query("SELECT * FROM purchases")
+    suspend fun getAllPurchasesDirect(): List<PurchaseEntity>
+
     @Query("UPDATE purchases SET isSynced = 1 WHERE id = :id")
     suspend fun markPurchaseSynced(id: String)
 }
@@ -171,6 +183,9 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses WHERE isSynced = 0")
     suspend fun getUnsyncedExpenses(): List<ExpenseEntity>
+
+    @Query("SELECT * FROM expenses")
+    suspend fun getAllExpensesDirect(): List<ExpenseEntity>
 
     @Query("UPDATE expenses SET isSynced = 1 WHERE id = :id")
     suspend fun markExpenseSynced(id: String)
@@ -202,6 +217,9 @@ interface SalesOrderDao {
     @Query("SELECT * FROM sales_orders WHERE isSynced = 0")
     suspend fun getUnsyncedSalesOrders(): List<SalesOrderEntity>
 
+    @Query("SELECT * FROM sales_orders")
+    suspend fun getAllSalesOrdersDirect(): List<SalesOrderEntity>
+
     @Query("UPDATE sales_orders SET isSynced = 1 WHERE id = :id")
     suspend fun markSalesOrderSynced(id: String)
 
@@ -222,6 +240,9 @@ interface LedgerDao {
 
     @Query("SELECT * FROM ledger_entries WHERE orgId = :orgId ORDER BY createdAt DESC")
     fun getLedgerEntriesByOrg(orgId: String): Flow<List<LedgerEntryEntity>>
+
+    @Query("SELECT * FROM ledger_entries")
+    suspend fun getAllLedgerEntriesDirect(): List<LedgerEntryEntity>
 }
 
 @Dao

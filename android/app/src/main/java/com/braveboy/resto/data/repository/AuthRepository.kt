@@ -10,10 +10,13 @@ import com.braveboy.resto.data.remote.dto.MembershipDto
 import com.braveboy.resto.data.remote.dto.MembershipStoreDto
 import com.braveboy.resto.data.remote.dto.MembershipWarehouseDto
 import com.braveboy.resto.data.remote.dto.UserDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface AuthResult {
     data class Success(val user: UserDto) : AuthResult
@@ -28,6 +31,7 @@ interface AuthRepository {
     suspend fun setupLocalBusiness(storeName: String, ownerName: String): AuthResult
     suspend fun getProfile(): Result<UserDto>
     suspend fun restoreSession(): Boolean
+    suspend fun isOnlineUserAndExists(): Boolean
     suspend fun logout()
     suspend fun invalidateSession()
 }
@@ -260,23 +264,43 @@ class AuthRepositoryImpl(
         }
     }
 
-    override suspend fun logout() {
+    override suspend fun isOnlineUserAndExists(): Boolean = withContext(Dispatchers.IO) {
         try {
-            apiService.logout()
+            val token = sessionStore.currentToken()
+            if (token.isBlank() || token == "OFFLINE_SESSION_TOKEN" || token.startsWith("OFFLINE_")) {
+                return@withContext false
+            }
+            val profileResult = getProfile()
+            return@withContext profileResult.isSuccess
         } catch (_: Exception) {
-            // Ignore network failures on logout; local cleanup must proceed
-        } finally {
-            invalidateSession()
+            return@withContext false
+        }
+    }
+
+    override suspend fun logout() {
+        withContext(Dispatchers.IO) {
+            _currentUser.value = null
+            try {
+                withTimeoutOrNull(1000L) {
+                    apiService.logout()
+                }
+            } catch (_: Exception) {
+                // Ignore network failures on logout; local cleanup must proceed
+            } finally {
+                invalidateSession()
+            }
         }
     }
 
     override suspend fun invalidateSession() {
-        _currentUser.value = null
-        sessionStore.clear()
-        sessionStore.updateCachedToken("")
-        tenantPreferences.clearActiveTenant()
-        NetworkModule.clearTenantContext()
-        database.clearAllTables()
+        withContext(Dispatchers.IO) {
+            _currentUser.value = null
+            sessionStore.clear()
+            sessionStore.updateCachedToken("")
+            tenantPreferences.clearActiveTenant()
+            NetworkModule.clearTenantContext()
+            database.clearAllTables()
+        }
     }
 
     private suspend fun ensureLocalOfflineTenantInitialized(): UserDto {

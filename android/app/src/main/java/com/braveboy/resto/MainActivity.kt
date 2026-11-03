@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,9 +37,13 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
 
         setContent {
-            RestoTheme {
-                val isSignedInState = appContainer.sessionStore.isSignedIn.collectAsState(initial = null)
-                val tenantStateNullable = appContainer.tenantPreferences.tenantState.collectAsState(initial = null)
+            val isDarkMode by appContainer.tenantPreferences.isDarkMode.collectAsState(initial = true)
+
+            RestoTheme(darkTheme = isDarkMode) {
+                val isSignedInState =
+                    appContainer.sessionStore.isSignedIn.collectAsState(initial = null)
+                val tenantStateNullable =
+                    appContainer.tenantPreferences.tenantState.collectAsState(initial = null)
                 val pendingImport by PendingImportManager.pendingImportFlow.collectAsState()
 
                 var isOnlineLoginRequested by remember { mutableStateOf(false) }
@@ -46,7 +52,12 @@ class MainActivity : ComponentActivity() {
                     appContainer.authRepository.restoreSession()
                 }
 
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                        .statusBarsPadding()
+                ) {
                     val isSignedIn = isSignedInState.value
                     val tenantState = tenantStateNullable.value
 
@@ -67,6 +78,9 @@ class MainActivity : ComponentActivity() {
                             LoginScreen(
                                 viewModel = loginViewModel,
                                 onLoginSuccess = {
+                                    isOnlineLoginRequested = false
+                                },
+                                onNavigateToBusinessSetup = {
                                     isOnlineLoginRequested = false
                                 }
                             )
@@ -106,14 +120,17 @@ class MainActivity : ComponentActivity() {
             action == Intent.ACTION_SEND && type?.startsWith("text/") == true -> {
                 intent.getStringExtra(Intent.EXTRA_TEXT)
             }
+
             action == Intent.ACTION_PROCESS_TEXT && type?.startsWith("text/") == true -> {
                 intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             }
+
             else -> null
         }
 
         if (!sharedText.isNullOrBlank()) {
-            val sourceHint = intent.getStringExtra("android.intent.extra.REFERRER_NAME") ?: "android_share"
+            val sourceHint =
+                intent.getStringExtra("android.intent.extra.REFERRER_NAME") ?: "android_share"
             PendingImportManager.setPendingImport(
                 rawText = sharedText,
                 source = sourceHint

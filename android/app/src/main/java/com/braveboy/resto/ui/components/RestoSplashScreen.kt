@@ -46,7 +46,7 @@ fun RestoSplashScreen(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onPrimaryContainer),
+                    .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
                 Image(

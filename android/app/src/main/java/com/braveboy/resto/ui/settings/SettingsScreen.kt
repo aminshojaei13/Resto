@@ -17,9 +17,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import com.braveboy.resto.ui.theme.RestoShapes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.CloudDone
@@ -56,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.braveboy.resto.data.local.datastore.TenantPreferences
+import com.braveboy.resto.data.local.db.AppDatabase
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.repository.AuthRepository
 import com.braveboy.resto.data.repository.TenantRepository
@@ -70,6 +77,7 @@ import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.ImageStorageManager
+import com.braveboy.resto.util.LocalBackupManager
 import com.braveboy.resto.util.PersianFormatter
 import kotlinx.coroutines.launch
 
@@ -80,6 +88,7 @@ fun SettingsScreen(
     authRepository: AuthRepository,
     tenantPreferences: TenantPreferences? = null,
     syncManager: SyncManager? = null,
+    database: AppDatabase? = null,
     onOpenTenantSwitcher: () -> Unit,
     onBackClick: () -> Unit = {},
 ) {
@@ -125,11 +134,40 @@ fun SettingsScreen(
     val unsyncedCount by syncManager?.unsyncedCount?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
 
+    val isDarkModeState = tenantPreferences?.isDarkMode?.collectAsState(initial = true)
+    val isDarkMode = isDarkModeState?.value ?: true
+
+    var isCheckingLogout by remember { mutableStateOf(false) }
+    var showOnlineLogoutDialog by remember { mutableStateOf(false) }
+    var showOfflineLogoutDialog by remember { mutableStateOf(false) }
+    var isLogoutInProgress by remember { mutableStateOf(false) }
+    var isBackupInProgress by remember { mutableStateOf(false) }
+
+    fun handleCreateBackup() {
+        if (database == null) return
+        scope.launch {
+            isBackupInProgress = true
+            val backupFile = LocalBackupManager.createLocalBackup(context, database, tenantPreferences)
+            isBackupInProgress = false
+            if (backupFile != null) {
+                LocalBackupManager.shareBackup(context, backupFile)
+            }
+        }
+    }
+
     SettingsScreenContent(
         tenantState = tenantState,
         syncStatus = syncStatus,
         unsyncedCount = unsyncedCount,
         currentTaxRate = currentTaxRate,
+        isBackupInProgress = isBackupInProgress,
+        isDarkMode = isDarkMode,
+        onToggleTheme = {
+            scope.launch {
+                tenantPreferences?.setDarkMode(!isDarkMode)
+            }
+        },
+        onCreateBackup = { handleCreateBackup() },
         onUpdateTaxRate = { newRate ->
             scope.launch {
                 tenantPreferences?.setDefaultTaxRate(newRate)
@@ -146,8 +184,17 @@ fun SettingsScreen(
             }
         },
         onLogout = {
-            scope.launch {
-                authRepository.logout()
+            if (!isCheckingLogout && !isLogoutInProgress) {
+                scope.launch {
+                    isCheckingLogout = true
+                    val isOnline = authRepository.isOnlineUserAndExists()
+                    isCheckingLogout = false
+                    if (isOnline) {
+                        showOnlineLogoutDialog = true
+                    } else {
+                        showOfflineLogoutDialog = true
+                    }
+                }
             }
         },
         onAvatarClick = {
@@ -157,6 +204,106 @@ fun SettingsScreen(
         modifier = modifier,
         onBackClick = onBackClick,
     )
+
+    if (showOnlineLogoutDialog) {
+        RestoDialog(
+            title = if (tenantState.language == "fa") "همگام‌سازی و خروج از حساب" else "Sync & Sign Out",
+            onDismissRequest = {
+                if (!isLogoutInProgress && !isBackupInProgress) showOnlineLogoutDialog = false
+            },
+            confirmText = if (tenantState.language == "fa") "همگام‌سازی و خروج" else "Sync & Sign Out",
+            confirmLoading = isLogoutInProgress,
+            onConfirm = {
+                scope.launch {
+                    isLogoutInProgress = true
+                    try {
+                        syncManager?.triggerSync(tenantState.activeOrgId)
+                    } catch (_: Exception) {}
+                    authRepository.logout()
+                    isLogoutInProgress = false
+                    showOnlineLogoutDialog = false
+                }
+            },
+            dismissText = if (tenantState.language == "fa") "انصراف" else "Cancel",
+            stackButtons = true
+        ) {
+            Column {
+                Text(
+                    text = if (tenantState.language == "fa")
+                        "حساب کاربری ابری شما فعال است. آیا مایلید اطلاعات با سرور ابری همگام‌سازی شده و سپس از حساب کاربری خارج شوید؟"
+                    else
+                        "Your cloud account is active. Would you like to sync data before signing out?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.md))
+                com.braveboy.resto.ui.components.RestoButton(
+                    text = if (tenantState.language == "fa") "پشتیبان‌گیری محلی (دانلود JSON)" else "Local Backup (JSON)",
+                    onClick = { handleCreateBackup() },
+                    isLoading = isBackupInProgress,
+                    enabled = !isLogoutInProgress && !isBackupInProgress,
+                    variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,
+                    fullWidth = true
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+                com.braveboy.resto.ui.components.RestoButton(
+                    text = if (tenantState.language == "fa") "خروج بدون همگام‌سازی" else "Sign Out Without Sync",
+                    onClick = {
+                        scope.launch {
+                            isLogoutInProgress = true
+                            authRepository.logout()
+                            isLogoutInProgress = false
+                            showOnlineLogoutDialog = false
+                        }
+                    },
+                    enabled = !isLogoutInProgress && !isBackupInProgress,
+                    variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,
+                    fullWidth = true
+                )
+            }
+        }
+    }
+
+    if (showOfflineLogoutDialog) {
+        RestoDialog(
+            title = if (tenantState.language == "fa") "پشتیبان‌گیری و خروج از حساب محلی" else "Backup & Sign Out",
+            onDismissRequest = {
+                if (!isLogoutInProgress && !isBackupInProgress) showOfflineLogoutDialog = false
+            },
+            confirmText = if (tenantState.language == "fa") "خروج و پاک‌سازی داده‌های محلی" else "Sign Out & Clear Data",
+            confirmLoading = isLogoutInProgress,
+            onConfirm = {
+                scope.launch {
+                    isLogoutInProgress = true
+                    authRepository.logout()
+                    isLogoutInProgress = false
+                    showOfflineLogoutDialog = false
+                }
+            },
+            dismissText = if (tenantState.language == "fa") "انصراف (ماندن در برنامه)" else "Cancel",
+            stackButtons = true
+        ) {
+            Column {
+                Text(
+                    text = if (tenantState.language == "fa")
+                        "شما به صورت آفلاین وارد شده‌اید و حساب ابری ندارید.\n\nدر صورت خروج، تمام اطلاعات محلی و فاکتورهای شما در این دستگاه پاک خواهد شد!\n\nپیشنهاد می‌شود ابتدا فایل پشتیبان محلی ذخیره کنید یا به اینترنت متصل شوید تا اطلاعات شما حفظ شود."
+                    else
+                        "You are signed in offline without a cloud account.\nSigning out will wipe all local data!\nWe recommend taking a local backup or connecting online to sync first.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.md))
+                com.braveboy.resto.ui.components.RestoButton(
+                    text = if (tenantState.language == "fa") "پشتیبان‌گیری محلی و اشتراک‌گذاری" else "Backup & Share Local File",
+                    onClick = { handleCreateBackup() },
+                    isLoading = isBackupInProgress,
+                    enabled = !isLogoutInProgress && !isBackupInProgress,
+                    variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,
+                    fullWidth = true
+                )
+            }
+        }
+    }
 }
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -166,6 +313,10 @@ fun SettingsScreenContent(
     syncStatus: SyncStatus,
     unsyncedCount: Int,
     currentTaxRate: Double = 9.0,
+    isBackupInProgress: Boolean = false,
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {},
+    onCreateBackup: () -> Unit = {},
     onUpdateTaxRate: (Double) -> Unit = {},
     onTriggerSync: () -> Unit,
     onLogout: () -> Unit,
@@ -198,8 +349,7 @@ fun SettingsScreenContent(
         ) {
             item {
                 RestoCard(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    onClick = onAvatarClick
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
                     Row(
                         modifier = Modifier
@@ -210,7 +360,10 @@ fun SettingsScreenContent(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RestoShapes.medium)
+                                .clickable { onAvatarClick() }
                         ) {
                             Box(
                                 modifier = Modifier
@@ -253,11 +406,34 @@ fun SettingsScreenContent(
                             }
                         }
 
-                        Icon(
-                            imageVector = Icons.Rounded.CameraAlt,
-                            contentDescription = "Change Photo",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
+                        IconButton(onClick = onAvatarClick) {
+                            Icon(
+                                imageVector = Icons.Rounded.CameraAlt,
+                                contentDescription = "Change Photo",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                RestoSection(
+                    title = if (isPersian) "ظاهر و پوسته برنامه" else "Appearance & Theme"
+                )
+                Spacer(modifier = Modifier.height(RestoSpacing.xs))
+                RestoCard {
+                    Column {
+                        RestoListItem(
+                            title = if (isPersian) "تم برنامه (روشن / تاریک)" else "App Theme",
+                            subtitle = if (isPersian) {
+                                if (isDarkMode) "حالت تاریک (شب) فعال است" else "حالت روشن (روز) فعال است"
+                            } else {
+                                if (isDarkMode) "Dark theme enabled" else "Light theme enabled"
+                            },
+                            leadingIcon = if (isDarkMode) Icons.Rounded.DarkMode else Icons.Rounded.LightMode,
+                            onClick = onToggleTheme
                         )
                     }
                 }
@@ -326,6 +502,17 @@ fun SettingsScreenContent(
                         ) {
                             Text(text = if (isPersian) "همگام‌سازی خودکار با سرور" else "Sync Now With Server")
                         }
+
+                        Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+                        com.braveboy.resto.ui.components.RestoButton(
+                            text = if (isPersian) "پشتیبان‌گیری محلی و استخراج فایل (JSON)" else "Create & Share Local Backup (JSON)",
+                            onClick = onCreateBackup,
+                            isLoading = isBackupInProgress,
+                            enabled = !isBackupInProgress,
+                            variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,
+                            fullWidth = true
+                        )
                     }
                 }
             }

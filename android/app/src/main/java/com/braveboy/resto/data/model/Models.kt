@@ -16,13 +16,13 @@ enum class SalesChannel(
     val defaultCustomerNameFa: String,
     val defaultCustomerNameEn: String
 ) {
-    WALK_IN("POS", "حضوری (صندوق)", "Walk-in (POS)", "مشتری حضوری", "Walk-in Customer"),
-    PHONE("PHONE", "تلفنی (سفارش تلفنی)", "Phone Order", "مشتری تلفنی", "Phone Customer"),
-    ONLINE("ONLINE", "اینترنتی (وب‌سایت)", "Online Order", "مشتری اینترنتی", "Online Customer"),
-    INSTAGRAM("INSTAGRAM", "اینستاگرام", "Instagram", "مشتری اینستاگرام", "Instagram Customer"),
-    WHATSAPP("WHATSAPP", "واتساپ", "WhatsApp", "مشتری واتساپ", "WhatsApp Customer"),
-    TELEGRAM("TELEGRAM", "تلگرام", "Telegram", "مشتری تلگرام", "Telegram Customer"),
-    OTHER("OTHER", "سایر کانال‌ها", "Other", "مشتری متفرقه", "Other Customer");
+    WALK_IN("POS", "مشتری حضوری", "Walk-in (POS)", "مشتری حضوری", "Walk-in Customer"),
+    PHONE("PHONE", "مشتری تلفنی", "Phone Order", "مشتری تلفنی", "Phone Customer"),
+    ONLINE("ONLINE", "مشتری اینترنتی", "Online Order", "مشتری اینترنتی", "Online Customer"),
+    INSTAGRAM("INSTAGRAM", "مشتری اینستاگرام", "Instagram", "مشتری اینستاگرام", "Instagram Customer"),
+    WHATSAPP("WHATSAPP", "مشتری واتساپ", "WhatsApp", "مشتری واتساپ", "WhatsApp Customer"),
+    TELEGRAM("TELEGRAM", "مشتری تلگرام", "Telegram", "مشتری تلگرام", "Telegram Customer"),
+    OTHER("OTHER", "مشتری متفرقه", "Other", "مشتری متفرقه", "Other Customer");
 
     companion object {
         fun fromCode(code: String?): SalesChannel {

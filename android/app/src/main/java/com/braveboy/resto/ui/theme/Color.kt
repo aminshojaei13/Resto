@@ -31,33 +31,54 @@ val WarmLightTextPrimary = Color(0xFF231F1C)
 val WarmLightTextSecondary = Color(0xFF635C53)
 val WarmLightTextMuted = Color(0xFF8C847B)
 
+// ---- Luxe Gold & Amber Brand ---------------------------------------------------
+val RestoGold = Color(0xFFF59E0B)
+val RestoGoldHover = Color(0xFFFBBF24)
+val RestoGoldPressed = Color(0xFFD97706)
+val RestoGoldContainer = Color(0xFF78350F)
+val OnRestoGoldContainer = Color(0xFFFEF3C7)
+
+// ---- Luxe Obsidian Dark surfaces -------------------------------------------------
+val LuxeDarkBackground = Color(0xFF0A0A0C)
+val LuxeDarkBackgroundSecondary = Color(0xFF101014)
+val LuxeDarkSurface = Color(0xFF16161A)
+val LuxeDarkSurfaceElevated = Color(0xFF222228)
+val LuxeDarkSurfaceHover = Color(0xFF2A2A32)
+val LuxeDarkBorder = Color(0xFF27272A)
+val LuxeDarkBorderStrong = Color(0xFF52525B)
+
+// ---- Luxe Obsidian Dark text -----------------------------------------------------
+val LuxeDarkTextPrimary = Color(0xFFFAFAFA)
+val LuxeDarkTextSecondary = Color(0xFFA1A1AA)
+val LuxeDarkTextMuted = Color(0xFF71717A)
+
 // ---- Warm Dark surfaces ----------------------------------------------------------
-val WarmDarkBackground = Color(0xFF171513)
-val WarmDarkBackgroundSecondary = Color(0xFF1D1A17)
-val WarmDarkSurface = Color(0xFF24211E)
-val WarmDarkSurfaceElevated = Color(0xFF2B2723)
-val WarmDarkSurfaceHover = Color(0xFF322D28)
-val WarmDarkBorder = Color(0xFF3A342E)
-val WarmDarkBorderStrong = Color(0xFF4D453E)
+val WarmDarkBackground = Color(0xFF0A0A0C)
+val WarmDarkBackgroundSecondary = Color(0xFF101014)
+val WarmDarkSurface = Color(0xFF16161A)
+val WarmDarkSurfaceElevated = Color(0xFF222228)
+val WarmDarkSurfaceHover = Color(0xFF2A2A32)
+val WarmDarkBorder = Color(0xFF27272A)
+val WarmDarkBorderStrong = Color(0xFF52525B)
 
 // ---- Warm Dark text --------------------------------------------------------------
-val WarmDarkTextPrimary = Color(0xFFF5F1EA)
-val WarmDarkTextSecondary = Color(0xFFC4BDB3)
-val WarmDarkTextMuted = Color(0xFF958D83)
+val WarmDarkTextPrimary = Color(0xFFFAFAFA)
+val WarmDarkTextSecondary = Color(0xFFA1A1AA)
+val WarmDarkTextMuted = Color(0xFF71717A)
 
 // ---- Warm Dark semantics ---------------------------------------------------------
-val WarmDarkSuccess = Color(0xFF35C98A)
-val WarmDarkSuccessContainer = Color(0xFF123223)
-val OnWarmDarkSuccessContainer = Color(0xFF9BE8C8)
-val WarmDarkWarning = Color(0xFFE7B85A)
-val WarmDarkWarningContainer = Color(0xFF382C13)
-val OnWarmDarkWarningContainer = Color(0xFFF4DCA8)
-val WarmDarkError = Color(0xFFE36A6A)
-val WarmDarkErrorContainer = Color(0xFF3B1A1A)
-val OnWarmDarkErrorContainer = Color(0xFFF3B8B8)
-val WarmDarkInfo = Color(0xFF5CA9E6)
-val WarmDarkInfoContainer = Color(0xFF132B42)
-val OnWarmDarkInfoContainer = Color(0xFFB4D9F6)
+val WarmDarkSuccess = Color(0xFF10B981)
+val WarmDarkSuccessContainer = Color(0xFF064E3B)
+val OnWarmDarkSuccessContainer = Color(0xFFA7F3D0)
+val WarmDarkWarning = Color(0xFFF59E0B)
+val WarmDarkWarningContainer = Color(0xFF78350F)
+val OnWarmDarkWarningContainer = Color(0xFFFEF3C7)
+val WarmDarkError = Color(0xFFEF4444)
+val WarmDarkErrorContainer = Color(0xFF7F1D1D)
+val OnWarmDarkErrorContainer = Color(0xFFFEE2E2)
+val WarmDarkInfo = Color(0xFF3B82F6)
+val WarmDarkInfoContainer = Color(0xFF1E3A8A)
+val OnWarmDarkInfoContainer = Color(0xFFBFDBFE)
 
 // ---- Black & White Monochrome Primary System -----------------------------------
 val PrimaryLight = Color(0xFF0F172A)          // Pure Obsidian Black
@@ -87,16 +108,16 @@ val OnSurfaceLight = Color(0xFF0F172A)
 val SurfaceVariantLight = Color(0xFFF1F5F9)
 val OnSurfaceVariantLight = Color(0xFF64748B)
 
-// ---- Dark Theme (Exact Reverse of Light Theme) --------------------------------
-val PrimaryDark = Color(0xFFFFFFFF)           // Crisp White
-val OnPrimaryDark = Color(0xFF0F172A)         // Pure Obsidian Black
-val PrimaryContainerDark = Color(0xFFF8FAFC)  // Light Container
-val OnPrimaryContainerDark = Color(0xFF0F172A)
+// ---- Dark Theme (Luxe Amber & Obsidian Gold) ------------------------------------
+val PrimaryDark = Color(0xFFF59E0B)           // Amber Champagne Gold
+val OnPrimaryDark = Color(0xFF451A03)         // Deep Amber Brown
+val PrimaryContainerDark = Color(0xFF78350F)  // Warm Gold Container
+val OnPrimaryContainerDark = Color(0xFFFEF3C7)
 
-val SecondaryDark = Color(0xFFCBD5E1)
-val OnSecondaryDark = Color(0xFF0F172A)
-val SecondaryContainerDark = Color(0xFF1E293B)
-val OnSecondaryContainerDark = Color(0xFFF8FAFC)
+val SecondaryDark = Color(0xFFFBBF24)
+val OnSecondaryDark = Color(0xFF451A03)
+val SecondaryContainerDark = Color(0xFF92400E)
+val OnSecondaryContainerDark = Color(0xFFFDE68A)
 
 val TertiaryDark = Color(0xFF34D399)
 val OnTertiaryDark = Color(0xFF064B33)
@@ -108,9 +129,9 @@ val OnErrorDark = Color(0xFF450A0A)
 val ErrorContainerDark = Color(0xFF7F1D1D)
 val OnErrorContainerDark = Color(0xFFFEE2E2)
 
-val BackgroundDark = Color(0xFF0F172A)        // Deep Obsidian Canvas
-val OnBackgroundDark = Color(0xFFF8FAFC)       // Crisp White Text
-val SurfaceDark = Color(0xFF1E293B)          // Dark Slate Surface for Cards
-val OnSurfaceDark = Color(0xFFF8FAFC)         // Crisp White Text
-val SurfaceVariantDark = Color(0xFF334155)
-val OnSurfaceVariantDark = Color(0xFF94A3B8)
+val BackgroundDark = Color(0xFF0A0A0C)        // Deep Dark Obsidian Canvas
+val OnBackgroundDark = Color(0xFFFAFAFA)       // Crisp Light Text
+val SurfaceDark = Color(0xFF16161A)          // Dark Surface for Cards
+val OnSurfaceDark = Color(0xFFFAFAFA)         // Crisp Light Text
+val SurfaceVariantDark = Color(0xFF222228)
+val OnSurfaceVariantDark = Color(0xFFA1A1AA)

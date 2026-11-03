@@ -63,6 +63,7 @@ import com.braveboy.resto.ui.theme.RestoSpacing
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
+    onNavigateToBusinessSetup: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -262,7 +263,7 @@ fun LoginScreen(
                                 text = "استفاده به صورت آفلاین (بدون اینترنت)",
                                 onClick = {
                                     focusManager.clearFocus()
-                                    viewModel.continueOffline()
+                                    onNavigateToBusinessSetup()
                                 },
                                 isLoading = uiState.isLoading,
                                 enabled = !uiState.isLoading,

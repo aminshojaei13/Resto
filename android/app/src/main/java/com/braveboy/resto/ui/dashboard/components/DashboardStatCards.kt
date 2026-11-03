@@ -100,7 +100,7 @@ fun DashboardStatCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val trendColor = if (isPositiveTrend) RestoTheme.colors.success else RestoTheme.colors.warning
+                val trendColor = if (isPositiveTrend) RestoTheme.colors.success else MaterialTheme.colorScheme.error
                 val arrow = if (isPositiveTrend) "↑" else "↓"
 
                 Text(

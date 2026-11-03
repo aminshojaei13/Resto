@@ -63,10 +63,15 @@ import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
+import com.braveboy.resto.data.local.datastore.TenantPreferences
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     modifier: Modifier = Modifier,
+    tenantPreferences: TenantPreferences? = null,
     onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> }
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
@@ -77,6 +82,10 @@ fun DashboardScreen(
     val snackBarMessage by viewModel.snackbarMessage.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
+    val isDarkModeState = tenantPreferences?.isDarkMode?.collectAsState(initial = true)
+    val isDarkMode = isDarkModeState?.value ?: true
+    val scope = rememberCoroutineScope()
+
     DashboardScreenContent(
         tenantState = tenantState,
         metrics = metrics,
@@ -85,6 +94,12 @@ fun DashboardScreen(
         isRecordEntryDialogOpen = isRecordEntryDialogOpen,
         snackBarMessage = snackBarMessage,
         isSaving = isSaving,
+        isDarkMode = isDarkMode,
+        onToggleTheme = {
+            scope.launch {
+                tenantPreferences?.setDarkMode(!isDarkMode)
+            }
+        },
         modifier = modifier,
         onNavigateToDestination = onNavigateToDestination,
         onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
@@ -107,6 +122,8 @@ fun DashboardScreenContent(
     isRecordEntryDialogOpen: Boolean,
     snackBarMessage: String?,
     isSaving: Boolean = false,
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {},
     onNavigateToDestination: (destination: MainDestination, openAddProduct: Boolean) -> Unit = { _, _ -> },
     onClearSnackbarMessage: () -> Unit = {},
     onOpenRecordEntryDialog: () -> Unit = {},
@@ -142,7 +159,9 @@ fun DashboardScreenContent(
                     userName = tenantState.userName,
                     userAvatarUrl = tenantState.userAvatarUrl,
                     notificationCount = metrics.lowStockCount,
+                    isDarkMode = isDarkMode,
                     isPersian = isPersian,
+                    onToggleTheme = onToggleTheme,
                     onProfileClick = {
                         onNavigateToDestination(MainDestination.SETTINGS, false)
                     }

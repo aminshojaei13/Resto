@@ -36,6 +36,17 @@ class TenantPreferences(private val context: Context) {
         val HAS_SEEN_ONBOARDING_DIALOG = booleanPreferencesKey("has_seen_onboarding_dialog")
         val DEFAULT_TAX_RATE = stringPreferencesKey("default_tax_rate")
         val CUSTOM_MESSAGE_TEMPLATES = stringPreferencesKey("custom_message_templates")
+        val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
+    }
+
+    val isDarkMode: Flow<Boolean> = context.tenantDataStore.data.map { prefs ->
+        prefs[PreferenceKeys.IS_DARK_MODE] ?: true
+    }
+
+    suspend fun setDarkMode(isDark: Boolean) {
+        context.tenantDataStore.edit { prefs ->
+            prefs[PreferenceKeys.IS_DARK_MODE] = isDark
+        }
     }
 
     val defaultTaxRate: Flow<Double> = context.tenantDataStore.data.map { prefs ->

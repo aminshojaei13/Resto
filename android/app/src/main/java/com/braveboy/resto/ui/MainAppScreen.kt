@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -255,6 +256,7 @@ fun MainAppScreen(
                     MainDestination.ACCOUNTING -> {
                         DashboardScreen(
                             viewModel = dashboardViewModel,
+                            tenantPreferences = appContainer.tenantPreferences,
                             onNavigateToDestination = { destination, openAddProduct ->
                                 if (openAddProduct) {
                                     inventoryViewModel.openAddProductDialog()
@@ -335,6 +337,7 @@ fun MainAppScreen(
                             authRepository = appContainer.authRepository,
                             tenantPreferences = appContainer.tenantPreferences,
                             syncManager = appContainer.syncManager,
+                            database = appContainer.database,
                             onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
                             onBackClick = { navigateBack() }
                         )
@@ -346,6 +349,9 @@ fun MainAppScreen(
         // Secondary Modules Bottom Sheet
         if (isMoreMenuOpen) {
             ModalBottomSheet(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .navigationBarsPadding(),
                 onDismissRequest = { isMoreMenuOpen = false },
                 shape = RestoShapes.extraLarge,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh

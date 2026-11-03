@@ -219,6 +219,7 @@ class AuthAndSessionUnitTest {
         }
 
         override suspend fun restoreSession(): Boolean = true
+        override suspend fun isOnlineUserAndExists(): Boolean = false
         override suspend fun logout() {}
         override suspend fun invalidateSession() {}
     }

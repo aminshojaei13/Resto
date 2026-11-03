@@ -1,6 +1,6 @@
 package com.braveboy.resto.ui.pos
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,22 +19,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Discount
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.ShoppingCartCheckout
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,17 +38,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
+import com.braveboy.resto.data.model.SalesChannel
+import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
 @Composable
 fun CartPanel(
+    modifier: Modifier = Modifier,
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
-    selectedChannel: com.braveboy.resto.data.model.SalesChannel = com.braveboy.resto.data.model.SalesChannel.WALK_IN,
+    selectedChannel: SalesChannel = SalesChannel.WALK_IN,
     customGuestName: String = "",
     onUpdateQuantity: (CartItem, Int) -> Unit,
     onApplyDiscount: (String, Double) -> Unit,
@@ -60,7 +59,6 @@ fun CartPanel(
     onClearCart: () -> Unit,
     onSelectCustomerClick: () -> Unit,
     onCheckoutClick: () -> Unit,
-    modifier: Modifier = Modifier,
     isPersian: Boolean = true,
     currencyUnit: String = "تومان"
 ) {
@@ -109,7 +107,9 @@ fun CartPanel(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(totalItemCount) else "$totalItemCount",
+                            text = if (isPersian) toPersianDigits(
+                                totalItemCount
+                            ) else "$totalItemCount",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -154,23 +154,27 @@ fun CartPanel(
                     Column(modifier = Modifier.weight(1f)) {
                         val headerText = when {
                             selectedCustomer != null -> selectedCustomer.name
-                            customGuestName.isNotBlank() -> if (isPersian) "$customGuestName (${selectedChannel.titleFa})" else "$customGuestName (${selectedChannel.titleEn})"
-                            else -> if (isPersian) "${selectedChannel.defaultCustomerNameFa} (${selectedChannel.titleFa})" else "${selectedChannel.defaultCustomerNameEn} (${selectedChannel.titleEn})"
+                            customGuestName.isNotBlank() -> selectedChannel.titleFa
+                            else -> selectedChannel.titleFa
                         }
                         Text(
                             text = headerText,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis
                         )
                         if (selectedCustomer != null) {
                             Text(
-                                text = "${if (isPersian) "امتیاز:" else "Points:"} ${if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(selectedCustomer.loyaltyPoints) else selectedCustomer.loyaltyPoints} | ${selectedCustomer.phone.ifBlank { selectedCustomer.email }}",
+                                text = "${if (isPersian) "امتیاز:" else "Points:"} ${
+                                    if (isPersian) toPersianDigits(
+                                        selectedCustomer.loyaltyPoints
+                                    ) else selectedCustomer.loyaltyPoints
+                                } | ${selectedCustomer.phone.ifBlank { selectedCustomer.email }}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis
                             )
                         } else {
                             Text(
@@ -178,7 +182,7 @@ fun CartPanel(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -255,9 +259,16 @@ fun CartPanel(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(if (isPersian) "جمع اقلام" else "Subtotal", style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(subtotal)} $currencyUnit" else "$${String.format("%.2f", subtotal)}",
+                        if (isPersian) "جمع اقلام" else "Subtotal",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        if (isPersian) "${
+                            com.braveboy.resto.util.PersianFormatter.formatTomans(
+                                subtotal
+                            )
+                        } $currencyUnit" else "$${String.format("%.2f", subtotal)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -267,9 +278,17 @@ fun CartPanel(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(if (isPersian) "تخفیف" else "Discount", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary)
                         Text(
-                            if (isPersian) "-${com.braveboy.resto.util.PersianFormatter.formatTomans(discountTotal)} $currencyUnit" else "-$${String.format("%.2f", discountTotal)}",
+                            if (isPersian) "تخفیف" else "Discount",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                        Text(
+                            if (isPersian) "-${
+                                com.braveboy.resto.util.PersianFormatter.formatTomans(
+                                    discountTotal
+                                )
+                            } $currencyUnit" else "-$${String.format("%.2f", discountTotal)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -281,9 +300,16 @@ fun CartPanel(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(if (isPersian) "مالیات" else "Tax", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(taxTotal)} $currencyUnit" else "$${String.format("%.2f", taxTotal)}",
+                            if (isPersian) "مالیات" else "Tax",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            if (isPersian) "${
+                                com.braveboy.resto.util.PersianFormatter.formatTomans(
+                                    taxTotal
+                                )
+                            } $currencyUnit" else "$${String.format("%.2f", taxTotal)}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -304,12 +330,16 @@ fun CartPanel(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(grandTotal)} $currencyUnit" else "$${String.format("%.2f", grandTotal)}",
+                        text = if (isPersian) "${
+                            com.braveboy.resto.util.PersianFormatter.formatTomans(
+                                grandTotal
+                            )
+                        } $currencyUnit" else "$${String.format("%.2f", grandTotal)}",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -331,11 +361,15 @@ fun CartPanel(
                 Icon(imageVector = Icons.Rounded.ShoppingCartCheckout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isPersian) "تسویه و صدور فاکتور (${com.braveboy.resto.util.PersianFormatter.formatTomans(grandTotal)} $currencyUnit)" else "Checkout ($${String.format("%.2f", grandTotal)})",
+                    text = if (isPersian) "تسویه و صدور فاکتور (${
+                        com.braveboy.resto.util.PersianFormatter.formatTomans(
+                            grandTotal
+                        )
+                    } $currencyUnit)" else "Checkout ($${String.format("%.2f", grandTotal)})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -352,6 +386,7 @@ fun CartItemRow(
     currencyUnit: String = "تومان"
 ) {
     Card(
+        border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.primary),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -374,7 +409,7 @@ fun CartItemRow(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (item.variantName != null) {
                         Text(
@@ -385,7 +420,11 @@ fun CartItemRow(
                         )
                     }
                     Text(
-                        text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(item.price)} $currencyUnit" else "$${String.format("%.2f", item.price)} ea",
+                        text = if (isPersian) "${
+                            com.braveboy.resto.util.PersianFormatter.formatTomans(
+                                item.price
+                            )
+                        } $currencyUnit" else "$${String.format("%.2f", item.price)} ea",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -433,7 +472,9 @@ fun CartItemRow(
                     }
 
                     Text(
-                        text = if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(item.quantity) else "${item.quantity}",
+                        text = if (isPersian) toPersianDigits(
+                            item.quantity
+                        ) else "${item.quantity}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 12.dp)
@@ -452,12 +493,16 @@ fun CartItemRow(
                 }
 
                 Text(
-                    text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(item.total)} $currencyUnit" else "$${String.format("%.2f", item.total)}",
+                    text = if (isPersian) "${
+                        com.braveboy.resto.util.PersianFormatter.formatTomans(
+                            item.total
+                        )
+                    } $currencyUnit" else "$${String.format("%.2f", item.total)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

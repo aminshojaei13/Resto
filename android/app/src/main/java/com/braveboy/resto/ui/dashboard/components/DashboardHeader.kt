@@ -41,13 +41,19 @@ import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material3.IconButton
+
 @Composable
 fun DashboardHeader(
     modifier: Modifier = Modifier,
     userName: String = "",
     userAvatarUrl: String = "",
     notificationCount: Int = 0,
+    isDarkMode: Boolean = true,
     isPersian: Boolean = true,
+    onToggleTheme: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
@@ -79,10 +85,10 @@ fun DashboardHeader(
                 )
             }
 
-            // Avatar & Notification Bell
+            // Theme Toggle & Avatar
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // User Avatar Placeholder or AsyncImage
                 Box(
@@ -108,6 +114,22 @@ fun DashboardHeader(
                             fontSize = 17.sp
                         )
                     }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clickable { onToggleTheme() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isDarkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
+                        contentDescription = if (isDarkMode) "Light Mode" else "Dark Mode",
+                        tint = if (isDarkMode) Color(0xFFFFB74D) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
