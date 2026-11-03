@@ -3,6 +3,7 @@ package com.braveboy.resto.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ fun RestoBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(),
     title: String? = null,
     subtitle: String? = null,
+    contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.windowInsets },
     content: @Composable ColumnScope.() -> Unit
 ) {
     ModalBottomSheet(
@@ -35,6 +37,7 @@ fun RestoBottomSheet(
         shape = RestoShapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         dragHandle = { BottomSheetDefaults.DragHandle() },
+        contentWindowInsets = contentWindowInsets,
         modifier = modifier
     ) {
         Column(

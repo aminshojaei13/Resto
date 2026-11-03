@@ -81,9 +81,9 @@ class SalesOrderRepositoryImpl(
                         discountAmount = dto.discountAmount,
                         taxAmount = dto.taxAmount,
                         totalAmount = dto.totalAmount,
-                        paymentMethod = try { PaymentMethod.valueOf(dto.paymentMethod) } catch (_: Exception) { PaymentMethod.CASH },
-                        paymentStatus = try { PaymentStatus.valueOf(dto.paymentStatus) } catch (_: Exception) { PaymentStatus.PAID },
-                        fulfillmentStatus = try { FulfillmentStatus.valueOf(dto.fulfillmentStatus) } catch (_: Exception) { FulfillmentStatus.COMPLETED },
+                        paymentMethod = try { PaymentMethod.valueOf(dto.paymentMethod.uppercase()) } catch (_: Exception) { PaymentMethod.CASH },
+                        paymentStatus = try { PaymentStatus.valueOf(dto.paymentStatus.uppercase()) } catch (_: Exception) { PaymentStatus.PAID },
+                        fulfillmentStatus = try { FulfillmentStatus.valueOf(dto.fulfillmentStatus.uppercase()) } catch (_: Exception) { FulfillmentStatus.COMPLETED },
                         notes = dto.notes ?: "",
                         createdAt = System.currentTimeMillis()
                     )
@@ -208,8 +208,8 @@ class SalesOrderRepositoryImpl(
             taxAmount = taxAmount,
             totalAmount = totalAmount,
             paymentMethod = paymentMethod,
-            paymentStatus = remoteOrder?.paymentStatus?.let { runCatching { PaymentStatus.valueOf(it) }.getOrNull() } ?: paymentStatus,
-            fulfillmentStatus = remoteOrder?.fulfillmentStatus?.let { runCatching { FulfillmentStatus.valueOf(it) }.getOrNull() } ?: fulfillmentStatus,
+            paymentStatus = remoteOrder?.paymentStatus?.let { runCatching { PaymentStatus.valueOf(it.uppercase()) }.getOrNull() } ?: paymentStatus,
+            fulfillmentStatus = remoteOrder?.fulfillmentStatus?.let { runCatching { FulfillmentStatus.valueOf(it.uppercase()) }.getOrNull() } ?: fulfillmentStatus,
             notes = notes,
             createdAt = System.currentTimeMillis()
         )

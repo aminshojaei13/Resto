@@ -23,8 +23,8 @@ android {
         applicationId = "com.braveboy.resto"
         minSdk = 24
         targetSdk = 36
-        versionCode = 100000
-        versionName = "1.0.0"
+        versionCode = 100010
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

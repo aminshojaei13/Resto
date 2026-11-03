@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.PointOfSale
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -364,12 +365,10 @@ fun MainAppScreen(
         // Secondary Modules Bottom Sheet
         if (isMoreMenuOpen) {
             ModalBottomSheet(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .navigationBarsPadding(),
                 onDismissRequest = { isMoreMenuOpen = false },
                 shape = RestoShapes.extraLarge,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentWindowInsets = { BottomSheetDefaults.windowInsets }
             ) {
                 Column(
                     modifier = Modifier

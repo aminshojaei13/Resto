@@ -182,10 +182,11 @@
     <!-- Additional Orders -->
     <string name="orders_screen_title">سفارش‌ها</string>
     <string name="all_orders_chip">همه سفارش‌ها</string>
+    <string name="pending_fulfillment_chip">در صف ارسال</string>
+    <string name="processing_chip">در حال پردازش</string>
+    <string name="completed_chip">تکمیل شده</string>
     <string name="paid_chip">پرداخت شده</string>
     <string name="pending_payment_chip">در انتظار پرداخت</string>
-    <string name="completed_chip">تکمیل شده</string>
-    <string name="processing_chip">در صف ارسال</string>
     <string name="no_orders_title">هنوز سفارشی ثبت نشده است</string>
     <string name="no_orders_desc">وقتی مشتریان سفارش ثبت کنند یا از بخش فروش ثبت سفارش کنید، اینجا نمایش داده می‌شود.</string>
     <string name="order_details_title">جزئیات سفارش</string>

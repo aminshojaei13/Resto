@@ -172,17 +172,9 @@ fun SalesOrdersScreenContent(
 
                 item {
                     RestoChip(
-                        text = stringResource(R.string.paid_chip),
-                        selected = selectedPaymentStatus == PaymentStatus.PAID,
-                        onClick = { onPaymentStatusFilterChange(PaymentStatus.PAID) }
-                    )
-                }
-
-                item {
-                    RestoChip(
-                        text = stringResource(R.string.pending_payment_chip),
-                        selected = selectedPaymentStatus == PaymentStatus.PENDING,
-                        onClick = { onPaymentStatusFilterChange(PaymentStatus.PENDING) }
+                        text = stringResource(R.string.pending_fulfillment_chip),
+                        selected = selectedFulfillmentStatus == FulfillmentStatus.PENDING,
+                        onClick = { onFulfillmentStatusFilterChange(FulfillmentStatus.PENDING) }
                     )
                 }
 
@@ -199,6 +191,22 @@ fun SalesOrdersScreenContent(
                         text = stringResource(R.string.completed_chip),
                         selected = selectedFulfillmentStatus == FulfillmentStatus.COMPLETED,
                         onClick = { onFulfillmentStatusFilterChange(FulfillmentStatus.COMPLETED) }
+                    )
+                }
+
+                item {
+                    RestoChip(
+                        text = stringResource(R.string.paid_chip),
+                        selected = selectedPaymentStatus == PaymentStatus.PAID,
+                        onClick = { onPaymentStatusFilterChange(PaymentStatus.PAID) }
+                    )
+                }
+
+                item {
+                    RestoChip(
+                        text = stringResource(R.string.pending_payment_chip),
+                        selected = selectedPaymentStatus == PaymentStatus.PENDING,
+                        onClick = { onPaymentStatusFilterChange(PaymentStatus.PENDING) }
                     )
                 }
 

@@ -114,8 +114,8 @@ class Converters {
 
     @TypeConverter
     fun toPaymentStatus(value: String): PaymentStatus = try {
-        PaymentStatus.valueOf(value)
-    } catch (e: Exception) {
+        PaymentStatus.valueOf(value.uppercase())
+    } catch (_: Exception) {
         PaymentStatus.PAID
     }
 
@@ -124,8 +124,8 @@ class Converters {
 
     @TypeConverter
     fun toFulfillmentStatus(value: String): FulfillmentStatus = try {
-        FulfillmentStatus.valueOf(value)
-    } catch (e: Exception) {
+        FulfillmentStatus.valueOf(value.uppercase())
+    } catch (_: Exception) {
         FulfillmentStatus.COMPLETED
     }
 

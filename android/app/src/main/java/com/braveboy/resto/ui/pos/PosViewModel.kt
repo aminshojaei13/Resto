@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
+import com.braveboy.resto.data.model.FulfillmentStatus
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.ProductVariant
@@ -309,6 +310,12 @@ class PosViewModel(
                     Customer(orgId = state.activeOrgId, name = guestName)
                 }
 
+                val fulfillmentStatus = if (channel == SalesChannel.WALK_IN) {
+                    FulfillmentStatus.COMPLETED
+                } else {
+                    FulfillmentStatus.PENDING
+                }
+
                 val order = salesOrderRepository.processCheckout(
                     orgId = state.activeOrgId,
                     storeId = state.activeStoreId,
@@ -317,7 +324,8 @@ class PosViewModel(
                     cartItems = items,
                     paymentMethod = paymentMethod,
                     notes = notes,
-                    source = channel.code
+                    source = channel.code,
+                    fulfillmentStatus = fulfillmentStatus
                 )
 
                 _lastCompletedOrder.value = order
