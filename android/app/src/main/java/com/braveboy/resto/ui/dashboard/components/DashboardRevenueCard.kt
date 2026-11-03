@@ -16,19 +16,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
 fun DashboardRevenueCard(
     modifier: Modifier = Modifier,
     revenueValue: String = "۰ تومان",
-    trendText: String = "۰٪",
-    isPersian: Boolean = true
+    trendText: String = "۰٪"
 ) {
     Box(
         modifier = modifier
@@ -42,7 +43,7 @@ fun DashboardRevenueCard(
         ) {
             // Label
             Text(
-                text = if (isPersian) "درآمد کل" else "Total Revenue",
+                text = stringResource(R.string.total_revenue_title),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
@@ -62,7 +63,7 @@ fun DashboardRevenueCard(
                 )
 
                 Text(
-                    text = "↑ $trendText ${if (isPersian) "نسبت به ماه قبل" else "vs last month"}",
+                    text = "↑ $trendText ${stringResource(R.string.vs_last_month)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = RestoTheme.colors.success,
@@ -81,8 +82,7 @@ fun DashboardRevenueCardPreview() {
             Box(modifier = Modifier.padding(16.dp)) {
                 DashboardRevenueCard(
                     revenueValue = "۰ تومان",
-                    trendText = "۰٪",
-                    isPersian = true
+                    trendText = "۰٪"
                 )
             }
         }

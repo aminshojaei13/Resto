@@ -2,12 +2,10 @@ package com.braveboy.resto.ui.pos
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +50,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,12 +60,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.SalesChannel
-import com.braveboy.resto.ui.theme.RestoShapes
-import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
@@ -77,13 +73,12 @@ import com.braveboy.resto.util.PersianFormatter
 fun CheckoutModal(
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
-    initialChannel: SalesChannel = SalesChannel.WALK_IN,
+    selectedChannel: SalesChannel = SalesChannel.WALK_IN,
     customGuestName: String = "",
-    onProcessCheckout: (PaymentMethod, String, SalesChannel) -> Unit,
+    currencyUnit: String = stringResource(R.string.currency_unit),
+    isCheckingOut: Boolean = false,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان",
-    isCheckingOut: Boolean = false
+    onProcessCheckout: (PaymentMethod, String, SalesChannel) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -96,13 +91,12 @@ fun CheckoutModal(
         CheckoutSheetContent(
             cartItems = cartItems,
             selectedCustomer = selectedCustomer,
-            initialChannel = initialChannel,
+            initialSelectedChannel = selectedChannel,
             customGuestName = customGuestName,
-            onProcessCheckout = onProcessCheckout,
-            onDismiss = onDismiss,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
-            isCheckingOut = isCheckingOut
+            isCheckingOut = isCheckingOut,
+            onDismiss = onDismiss,
+            onProcessCheckout = onProcessCheckout
         )
     }
 }
@@ -111,29 +105,28 @@ fun CheckoutModal(
 fun CheckoutSheetContent(
     cartItems: List<CartItem>,
     selectedCustomer: Customer?,
-    initialChannel: SalesChannel = SalesChannel.WALK_IN,
+    initialSelectedChannel: SalesChannel = SalesChannel.WALK_IN,
     customGuestName: String = "",
-    onProcessCheckout: (PaymentMethod, String, SalesChannel) -> Unit = { _, _, _ -> },
-    onDismiss: () -> Unit = {},
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان",
-    isCheckingOut: Boolean = false
+    currencyUnit: String = stringResource(R.string.currency_unit),
+    isCheckingOut: Boolean = false,
+    onDismiss: () -> Unit,
+    onProcessCheckout: (PaymentMethod, String, SalesChannel) -> Unit
 ) {
-    val totalAmount = cartItems.sumOf { it.total }
-    var selectedChannel by remember { mutableStateOf(initialChannel) }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
-    var cashTenderedText by remember { mutableStateOf(totalAmount.toLong().toString()) }
+    var selectedChannel by remember { mutableStateOf(initialSelectedChannel) }
+    var cashTenderedText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
 
+    val totalAmount = cartItems.sumOf { it.total }
     val cashTendered = PersianFormatter.parsePrice(cashTenderedText)
     val changeDue = (cashTendered - totalAmount).coerceAtLeast(0.0)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Header
+        // Header Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -144,7 +137,7 @@ fun CheckoutSheetContent(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -156,7 +149,7 @@ fun CheckoutSheetContent(
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = if (isPersian) "تسویه حساب و پرداخت فاکتور" else "Checkout & Payment",
+                    text = stringResource(R.string.checkout_and_payment_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -165,7 +158,7 @@ fun CheckoutSheetContent(
             IconButton(onClick = onDismiss) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = if (isPersian) "انصراف و بستن" else "Close"
+                    contentDescription = stringResource(R.string.close)
                 )
             }
         }
@@ -185,22 +178,22 @@ fun CheckoutSheetContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isPersian) "مبلغ کل قابل پرداخت" else "Total Payable Amount",
+                    text = stringResource(R.string.total_payable_amount),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (isPersian) "${PersianFormatter.formatTomans(totalAmount)} $currencyUnit" else "$${String.format("%.2f", totalAmount)}",
+                    text = "${PersianFormatter.formatTomans(totalAmount)} $currencyUnit",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
                 val customerBannerText = when {
-                    selectedCustomer != null -> "${if (isPersian) "مشتری:" else "Customer:"} ${selectedCustomer.name}"
-                    customGuestName.isNotBlank() -> "${if (isPersian) "مشتری مهمان:" else "Guest:"} $customGuestName (${if (isPersian) selectedChannel.titleFa else selectedChannel.titleEn})"
-                    else -> "${if (isPersian) "کانال فروش:" else "Sales Channel:"} ${if (isPersian) selectedChannel.titleFa else selectedChannel.titleEn}"
+                    selectedCustomer != null -> "مشتری: ${selectedCustomer.name}"
+                    customGuestName.isNotBlank() -> "مشتری مهمان: $customGuestName (${selectedChannel.titleFa})"
+                    else -> "کانال فروش: ${selectedChannel.titleFa}"
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -228,7 +221,7 @@ fun CheckoutSheetContent(
 
         // Sales Channel Selection Row
         Text(
-            text = if (isPersian) "کانال ثبت سفارش:" else "Sales Channel:",
+            text = stringResource(R.string.sales_channel_label),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -245,7 +238,7 @@ fun CheckoutSheetContent(
                     onClick = { selectedChannel = ch },
                     label = {
                         Text(
-                            text = if (isPersian) ch.titleFa else ch.titleEn,
+                            text = ch.titleFa,
                             fontWeight = if (selectedChannel == ch) FontWeight.Bold else FontWeight.Normal
                         )
                     }
@@ -255,9 +248,9 @@ fun CheckoutSheetContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Payment Method Selection Grid (2 Columns)
+        // Payment Method Selection Grid
         Text(
-            text = if (isPersian) "روش پرداخت و تسویه:" else "Payment Method:",
+            text = stringResource(R.string.payment_method_label_simple),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -273,7 +266,6 @@ fun CheckoutSheetContent(
                     icon = Icons.Rounded.Money,
                     selected = selectedPaymentMethod == PaymentMethod.CASH,
                     onClick = { selectedPaymentMethod = PaymentMethod.CASH },
-                    isPersian = isPersian,
                     modifier = Modifier.weight(1f)
                 )
                 PaymentMethodGridCard(
@@ -281,7 +273,6 @@ fun CheckoutSheetContent(
                     icon = Icons.Rounded.CreditCard,
                     selected = selectedPaymentMethod == PaymentMethod.CARD,
                     onClick = { selectedPaymentMethod = PaymentMethod.CARD },
-                    isPersian = isPersian,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -295,7 +286,6 @@ fun CheckoutSheetContent(
                     icon = Icons.Rounded.QrCodeScanner,
                     selected = selectedPaymentMethod == PaymentMethod.MOBILE_PAYMENT,
                     onClick = { selectedPaymentMethod = PaymentMethod.MOBILE_PAYMENT },
-                    isPersian = isPersian,
                     modifier = Modifier.weight(1f)
                 )
                 PaymentMethodGridCard(
@@ -303,7 +293,6 @@ fun CheckoutSheetContent(
                     icon = Icons.Rounded.Storefront,
                     selected = selectedPaymentMethod == PaymentMethod.STORE_CREDIT,
                     onClick = { selectedPaymentMethod = PaymentMethod.STORE_CREDIT },
-                    isPersian = isPersian,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -324,8 +313,8 @@ fun CheckoutSheetContent(
                 OutlinedTextField(
                     value = cashTenderedText,
                     onValueChange = { cashTenderedText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
-                    label = { Text(if (isPersian) "مبلغ پرداختی نقدی مشتری ($currencyUnit)" else "Cash Tendered ($)") },
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
+                    label = { Text(stringResource(R.string.cash_tendered_label, currencyUnit)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -337,12 +326,12 @@ fun CheckoutSheetContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isPersian) "عودت (پول خرد):" else "Change Due:",
+                        text = stringResource(R.string.change_due_label),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "${PersianFormatter.formatTomans(changeDue)} $currencyUnit" else "$${String.format("%.2f", changeDue)}",
+                        text = "${PersianFormatter.formatTomans(changeDue)} $currencyUnit",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
@@ -356,7 +345,7 @@ fun CheckoutSheetContent(
         OutlinedTextField(
             value = notesText,
             onValueChange = { notesText = it },
-            label = { Text(if (isPersian) "یادداشت فاکتور یا کد پیگیری (اختیاری)" else "Notes / Reference (Optional)") },
+            label = { Text(stringResource(R.string.invoice_notes_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 1
         )
@@ -373,7 +362,7 @@ fun CheckoutSheetContent(
                 enabled = !isCheckingOut,
                 modifier = Modifier.weight(1f)
             ) {
-                Text(if (isPersian) "انصراف" else "Cancel")
+                Text(stringResource(R.string.cancel))
             }
 
             Button(
@@ -396,7 +385,7 @@ fun CheckoutSheetContent(
                     Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isPersian) "تأیید و صدور فاکتور" else "Complete Sale",
+                        text = stringResource(R.string.confirm_and_issue_invoice),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -409,54 +398,45 @@ fun CheckoutSheetContent(
 }
 
 @Composable
-fun PaymentMethodGridCard(
+private fun PaymentMethodGridCard(
     method: PaymentMethod,
     icon: ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
-    isPersian: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val methodTitle = if (isPersian) {
-        when (method) {
-            PaymentMethod.CASH -> "نقدی"
-            PaymentMethod.CARD -> "پوز / کارت‌خوان"
-            PaymentMethod.MOBILE_PAYMENT -> "کارت به کارت"
-            PaymentMethod.STORE_CREDIT -> "نسیه / دفتری"
-        }
-    } else {
-        method.displayName
+    val methodTitle = when (method) {
+        PaymentMethod.CASH -> stringResource(R.string.cash)
+        PaymentMethod.CARD -> stringResource(R.string.card)
+        PaymentMethod.MOBILE_PAYMENT -> stringResource(R.string.mobile_pay)
+        PaymentMethod.STORE_CREDIT -> stringResource(R.string.store_credit)
     }
 
-    Box(
+    val containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+    val contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(12.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-            )
-            .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable { onClick() }
-            .padding(12.dp)
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                tint = contentColor,
+                modifier = Modifier.size(22.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = methodTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -493,13 +473,15 @@ fun CheckoutBottomSheetPreview() {
                     )
                 ),
                 selectedCustomer = Customer(
+                    id = "c1",
                     orgId = "org1",
-                    name = "علی رضایی",
-                    phone = "09121234567"
+                    name = "رضا احمدی",
+                    phone = "09121111111",
+                    loyaltyPoints = 200
                 ),
-                initialChannel = SalesChannel.WALK_IN,
-                isPersian = true,
-                currencyUnit = "تومان"
+                initialSelectedChannel = SalesChannel.WALK_IN,
+                onDismiss = {},
+                onProcessCheckout = { _, _, _ -> }
             )
         }
     }

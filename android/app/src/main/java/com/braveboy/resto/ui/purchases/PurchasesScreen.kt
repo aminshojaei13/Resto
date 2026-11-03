@@ -1,6 +1,5 @@
 package com.braveboy.resto.ui.purchases
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.LocalShipping
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -44,9 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,13 +71,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurchasesScreen(
     viewModel: PurchasesViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val purchases by viewModel.purchases.collectAsState()
@@ -91,7 +87,6 @@ fun PurchasesScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -133,7 +128,7 @@ fun PurchasesScreen(
         ) {
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            // Informational Card clarifying Purchase vs Receiving
+            // Informational Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -193,7 +188,6 @@ fun PurchasesScreen(
                     items(purchases, key = { it.id }) { purchase ->
                         PurchaseItemCard(
                             purchase = purchase,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit,
                             onClick = { viewModel.selectPurchaseDetail(purchase) },
                             onReceive = { viewModel.receiveGoods(purchase) }
@@ -209,7 +203,6 @@ fun PurchasesScreen(
         CreatePurchaseDialog(
             suppliers = suppliers,
             products = products,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             confirmLoading = isSaving,
             onSubmit = { supplierId, supplierName, items ->
@@ -228,7 +221,6 @@ fun PurchasesScreen(
     selectedPurchaseDetail?.let { purchase ->
         PurchaseDetailSheet(
             purchase = purchase,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             onReceive = {
                 viewModel.receiveGoods(purchase)
@@ -242,7 +234,6 @@ fun PurchasesScreen(
 @Composable
 fun PurchaseItemCard(
     purchase: Purchase,
-    isPersian: Boolean,
     currencyUnit: String,
     onClick: () -> Unit,
     onReceive: () -> Unit
@@ -256,49 +247,46 @@ fun PurchaseItemCard(
     val statusBg = if (isReceived) com.braveboy.resto.ui.theme.RestoTheme.colors.successContainer else com.braveboy.resto.ui.theme.RestoTheme.colors.warningContainer
     val statusTextColor = if (isReceived) com.braveboy.resto.ui.theme.RestoTheme.colors.onSuccessContainer else com.braveboy.resto.ui.theme.RestoTheme.colors.onWarningContainer
 
-    val formattedAmount = if (isPersian) {
-        "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", purchase.totalAmount)}"
-    }
+    val formattedAmount = "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
 
     val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-    val dateStr = if (isPersian) {
-        PersianFormatter.toPersianDigits(dateFormat.format(Date(purchase.createdAt)))
-    } else {
-        dateFormat.format(Date(purchase.createdAt))
-    }
+    val dateStr = PersianFormatter.toPersianDigits(dateFormat.format(Date(purchase.createdAt)))
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = purchase.purchaseNumber,
-                    fontSize = 16.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.LocalShipping,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = purchase.purchaseNumber,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Text(
                     text = formattedAmount,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -308,13 +296,15 @@ fun PurchaseItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${stringResource(R.string.company_supplier_label)} ${purchase.supplierName}",
-                    fontSize = 13.sp,
+                    text = "تأمین‌کننده: ${purchase.supplierName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 Text(
                     text = dateStr,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -339,20 +329,12 @@ fun PurchaseItemCard(
                 }
 
                 if (!isReceived) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable { onReceive() }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.receive_stock),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                    RestoButton(
+                        text = stringResource(R.string.receive_stock),
+                        onClick = onReceive,
+                        variant = RestoButtonVariant.Primary,
+                        compact = true
+                    )
                 }
             }
         }
@@ -364,7 +346,6 @@ fun PurchaseItemCard(
 fun CreatePurchaseDialog(
     suppliers: List<Supplier>,
     products: List<Product>,
-    isPersian: Boolean,
     currencyUnit: String,
     onSubmit: (supplierId: String, supplierName: String, items: List<PurchaseItem>) -> Unit,
     onDismiss: () -> Unit,
@@ -410,7 +391,7 @@ fun CreatePurchaseDialog(
                 onExpandedChange = { supplierDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedSupplier?.name ?: (if (isPersian) "انتخاب تأمین‌کننده..." else "Select Supplier..."),
+                    value = selectedSupplier?.name ?: "انتخاب تأمین‌کننده...",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.company_supplier_label)) },
@@ -442,7 +423,7 @@ fun CreatePurchaseDialog(
                 onExpandedChange = { productDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedProduct?.name ?: (if (isPersian) "انتخاب کالا..." else "Select Product..."),
+                    value = selectedProduct?.name ?: "انتخاب کالا...",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.product_name_label)) },
@@ -481,7 +462,7 @@ fun CreatePurchaseDialog(
                 RestoTextField(
                     value = unitCostText,
                     onValueChange = { unitCostText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -495,22 +476,17 @@ fun CreatePurchaseDialog(
 @Composable
 fun PurchaseDetailSheet(
     purchase: Purchase,
-    isPersian: Boolean,
     currencyUnit: String,
     onReceive: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val isReceived = purchase.status == "RECEIVED"
-    val formattedAmount = if (isPersian) {
-        "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", purchase.totalAmount)}"
-    }
+    val formattedAmount = "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
 
     RestoBottomSheet(
         onDismissRequest = onDismiss,
         title = purchase.purchaseNumber,
-        subtitle = "${if (isPersian) "فاکتور خرید از" else "From"} ${purchase.supplierName}"
+        subtitle = "فاکتور خرید از ${purchase.supplierName}"
     ) {
         Column(
             modifier = Modifier
@@ -565,10 +541,7 @@ fun PurchaseDetailSheet(
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
-                        val qtyText = if (isPersian)
-                            "${PersianFormatter.toPersianDigits(item.quantity)} عدد × ${PersianFormatter.formatTomans(item.unitCost)} $currencyUnit"
-                        else
-                            "${item.quantity}x @ $${String.format("%.2f", item.unitCost)}"
+                        val qtyText = "${PersianFormatter.toPersianDigits(item.quantity)} عدد × ${PersianFormatter.formatTomans(item.unitCost)} $currencyUnit"
                         Text(
                             text = qtyText,
                             style = MaterialTheme.typography.bodySmall,
@@ -576,11 +549,7 @@ fun PurchaseDetailSheet(
                         )
                     }
 
-                    val totalText = if (isPersian) {
-                        "${PersianFormatter.formatTomans(item.totalCost)} $currencyUnit"
-                    } else {
-                        "$${String.format("%.2f", item.totalCost)}"
-                    }
+                    val totalText = "${PersianFormatter.formatTomans(item.totalCost)} $currencyUnit"
 
                     Text(
                         text = totalText,
@@ -600,13 +569,6 @@ fun PurchaseDetailSheet(
                     fullWidth = true
                 )
             }
-
-            RestoButton(
-                text = stringResource(R.string.close),
-                onClick = onDismiss,
-                variant = RestoButtonVariant.Outlined,
-                fullWidth = true
-            )
         }
     }
 }

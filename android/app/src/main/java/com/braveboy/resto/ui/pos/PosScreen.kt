@@ -1,8 +1,9 @@
 package com.braveboy.resto.ui.pos
 
-import android.annotation.SuppressLint
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,15 +14,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,68 +42,83 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.SalesChannel
+import com.braveboy.resto.ui.components.RestoChip
+import com.braveboy.resto.ui.components.RestoDialog
+import com.braveboy.resto.ui.components.RestoEmptyState
 import com.braveboy.resto.ui.components.RestoLoadingState
+import com.braveboy.resto.ui.components.RestoSearchField
 import com.braveboy.resto.ui.components.RestoTopBar
+import com.braveboy.resto.ui.theme.RestoSpacing
+import com.braveboy.resto.ui.theme.RestoTheme
+import com.braveboy.resto.util.PersianFormatter
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PosScreen(
     viewModel: PosViewModel,
-    onNavigateToTenantSwitch: () -> Unit,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNavigateToTenantSwitch: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedCategory by viewModel.selectedCategory.collectAsState()
     val products by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
-    val customers by viewModel.customers.collectAsState()
     val selectedCustomer by viewModel.selectedCustomer.collectAsState()
     val selectedChannel by viewModel.selectedChannel.collectAsState()
     val customGuestName by viewModel.customGuestName.collectAsState()
-    val customerSearchQuery by viewModel.customerSearchQuery.collectAsState()
-    val selectedVariantProduct by viewModel.selectedVariantProduct.collectAsState()
     val isCheckoutModalOpen by viewModel.isCheckoutModalOpen.collectAsState()
-    val isBarcodeScannerOpen by viewModel.isBarcodeScannerOpen.collectAsState()
-    val lastCompletedOrder by viewModel.lastCompletedOrder.collectAsState()
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
     val isCheckingOut by viewModel.isCheckingOut.collectAsState()
+    val lastCompletedOrder by viewModel.lastCompletedOrder.collectAsState()
+    val selectedVariantProduct by viewModel.selectedVariantProduct.collectAsState()
+    val isBarcodeScannerOpen by viewModel.isBarcodeScannerOpen.collectAsState()
+    val customerSearchQuery by viewModel.customerSearchQuery.collectAsState()
+    val customers by viewModel.customers.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
-    val snackbarHostState = remember { SnackbarHostState() }
     var isMobileCartSheetOpen by remember { mutableStateOf(false) }
     var isCustomerPickerOpen by remember { mutableStateOf(false) }
+    var wasMobileCartOpenBeforePicker by remember { mutableStateOf(false) }
 
-    val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    fun closeCustomerPicker() {
+        isCustomerPickerOpen = false
+        if (wasMobileCartOpenBeforePicker) {
+            isMobileCartSheetOpen = true
+            wasMobileCartOpenBeforePicker = false
+        }
+    }
 
-    val windowInfo = currentWindowAdaptiveInfo()
-    val isExpandedWidth =
-        windowInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val currencyUnit = stringResource(R.string.currency_unit)
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
@@ -108,311 +127,286 @@ fun PosScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            RestoTopBar(
-                title = if (isPersian) "کاتالوگ فروش" else "Point of Sale",
-                onNavigationClick = onBackClick,
-                actions = {
-                    IconButton(onClick = { viewModel.openBarcodeScanner() }) {
-                        Icon(
-                            imageVector = Icons.Rounded.QrCodeScanner,
-                            contentDescription = if (isPersian) "اسکن بارکد" else "Barcode Scanner",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+    val totalCartCount = cartItems.sumOf { it.quantity }
 
-                    IconButton(onClick = onNavigateToTenantSwitch) {
-                        Icon(
-                            imageVector = Icons.Rounded.Storefront,
-                            contentDescription = if (isPersian) "تغییر شعبه / فروشگاه" else "Switch Store",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            if (!isExpandedWidth) {
-                val totalItems = cartItems.sumOf { it.quantity }
-                BadgedBox(
-                    badge = {
-                        if (totalItems > 0) {
-                            Badge {
-                                Text(
-                                    if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
-                                        totalItems
-                                    ) else "$totalItems"
-                                )
-                            }
+    BoxWithConstraints {
+        val isExpandedWidth = maxWidth >= 720.dp
+
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                RestoTopBar(
+                    title = stringResource(R.string.pos_catalog_title),
+                    onNavigationClick = onBackClick,
+                    actions = {
+                        IconButton(onClick = { viewModel.openBarcodeScanner() }) {
+                            Icon(
+                                imageVector = Icons.Rounded.QrCodeScanner,
+                                contentDescription = stringResource(R.string.barcode_scanner_title),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(onClick = onNavigateToTenantSwitch) {
+                            Icon(
+                                imageVector = Icons.Rounded.Storefront,
+                                contentDescription = stringResource(R.string.switch_tenant),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                ) {
-                    FloatingActionButton(
-                        onClick = { isMobileCartSheetOpen = true },
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ShoppingCart,
-                            contentDescription = if (isPersian) "مشاهده سبد خرید" else "View Cart"
-                        )
-                    }
-                }
-            }
-        }
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier
-                .padding(top = innerPadding.calculateTopPadding())
-                .fillMaxSize()
-        ) {
-            // Main Product Catalog Area
-            Column(
-                modifier = Modifier
-                    .weight(if (isExpandedWidth) 1.5f else 1f)
-                    .fillMaxHeight()
-                    .padding(12.dp)
-            ) {
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = {
-                        Text(
-                            text = if (isPersian) "جستجوی کالا، بارکد یا کد SKU..." else "Search product name, SKU, barcode, category...",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = null
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Clear,
-                                    contentDescription = if (isPersian) "پاک کردن جستجو" else "Clear search"
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Category Chips
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    item {
-                        FilterChip(
-                            selected = selectedCategory == null,
-                            onClick = { viewModel.selectCategory(null) },
-                            label = {
-                                Text(
-                                    if (isPersian) "همه دسته‌ها" else "All Categories",
-                                    maxLines = 1
-                                )
+            },
+            floatingActionButton = {
+                if (!isExpandedWidth) {
+                    BadgedBox(
+                        badge = {
+                            if (totalCartCount > 0) {
+                                Badge {
+                                    Text(PersianFormatter.toPersianDigits(totalCartCount))
+                                }
                             }
-                        )
-                    }
-                    items(categories) { category ->
-                        FilterChip(
-                            selected = selectedCategory == category,
-                            onClick = { viewModel.selectCategory(category) },
-                            label = { Text(category, maxLines = 1) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Product Grid / Loading / Empty
-                if (isLoading && products.isEmpty()) {
-                    RestoLoadingState(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f),
-                        message = if (isPersian) "در حال دریافت محصولات..." else "Loading products..."
-                    )
-                } else if (products.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
+                        }
                     ) {
-                        Text(
-                            text = if (isPersian) "کالایی در این دسته‌بندی یافت نشد" else "No products found",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 88.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(products, key = { it.id }) { product ->
-                            ProductCard(
-                                product = product,
-                                activeWarehouseId = tenantState.activeWarehouseId,
-                                onProductClick = { viewModel.onProductClicked(it) },
-                                isPersian = isPersian,
-                                currencyUnit = currencyUnit
+                        FloatingActionButton(
+                            onClick = { isMobileCartSheetOpen = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ShoppingCart,
+                                contentDescription = stringResource(R.string.cart_title)
                             )
                         }
                     }
                 }
             }
-
-            // Expanded Tablet / Desktop Side Cart Panel
-            if (isExpandedWidth) {
-                Box(
+        ) { innerPadding ->
+            Row(
+                modifier = Modifier
+                    .padding(top = innerPadding.calculateTopPadding())
+                    .fillMaxSize()
+            ) {
+                // LEFT SIDE: Product Catalog Grid
+                Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        .padding(horizontal = RestoSpacing.md)
                 ) {
-                    CartPanel(
-                        cartItems = cartItems,
-                        selectedCustomer = selectedCustomer,
-                        selectedChannel = selectedChannel,
-                        customGuestName = customGuestName,
-                        onUpdateQuantity = { item, delta ->
-                            viewModel.updateCartQuantity(
-                                item,
-                                delta
-                            )
-                        },
-                        onApplyDiscount = { id, percent ->
-                            viewModel.applyCartItemDiscount(
-                                id,
-                                percent
-                            )
-                        },
-                        onRemoveItem = { id -> viewModel.removeFromCart(id) },
-                        onClearCart = { viewModel.clearCart() },
-                        onSelectCustomerClick = { isCustomerPickerOpen = true },
-                        onCheckoutClick = { viewModel.openCheckoutModal() },
-                        isPersian = isPersian,
-                        currencyUnit = currencyUnit
+                    Spacer(modifier = Modifier.height(RestoSpacing.xs))
+
+                    RestoSearchField(
+                        query = searchQuery,
+                        onQueryChange = { viewModel.setSearchQuery(it) },
+                        placeholder = stringResource(R.string.search_product_hint)
                     )
+
+                    Spacer(modifier = Modifier.height(RestoSpacing.xs))
+
+                    // Categories LazyRow
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        item {
+                            RestoChip(
+                                text = stringResource(R.string.all_categories_chip),
+                                selected = selectedCategory == null,
+                                onClick = { viewModel.selectCategory(null) }
+                            )
+                        }
+                        items(categories) { cat ->
+                            RestoChip(
+                                text = cat,
+                                selected = selectedCategory == cat,
+                                onClick = { viewModel.selectCategory(cat) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(RestoSpacing.sm))
+
+                    if (isLoading && products.isEmpty()) {
+                        RestoLoadingState(
+                            modifier = Modifier.weight(1f),
+                            message = stringResource(R.string.loading_pos_catalog)
+                        )
+                    } else if (products.isEmpty()) {
+                        RestoEmptyState(
+                            title = stringResource(R.string.no_products_title),
+                            description = stringResource(R.string.no_products_desc),
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(if (isExpandedWidth) 3 else 2),
+                            horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                            verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm),
+                            contentPadding = PaddingValues(bottom = 100.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(products, key = { it.id }) { product ->
+                                ProductCard(
+                                    product = product,
+                                    activeWarehouseId = tenantState.activeWarehouseId,
+                                    onProductClick = { viewModel.onProductClicked(it) },
+                                    currencyUnit = currencyUnit
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // RIGHT SIDE: Desktop/Tablet Expanded Cart
+                if (isExpandedWidth) {
+                    Box(
+                        modifier = Modifier
+                            .width(360.dp)
+                            .fillMaxHeight()
+                            .border(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        CartPanel(
+                            cartItems = cartItems,
+                            selectedCustomer = selectedCustomer,
+                            selectedChannel = selectedChannel,
+                            customGuestName = customGuestName,
+                            onSelectCustomerClick = { isCustomerPickerOpen = true },
+                            onUpdateQuantity = { item, delta ->
+                                viewModel.updateCartQuantity(
+                                    item,
+                                    delta
+                                )
+                            },
+                            onApplyDiscount = { itemId, pct ->
+                                viewModel.applyCartItemDiscount(
+                                    itemId,
+                                    pct
+                                )
+                            },
+                            onRemoveItem = { viewModel.removeFromCart(it) },
+                            onClearCart = { viewModel.clearCart() },
+                            onCheckoutClick = { viewModel.openCheckoutModal() },
+                            currencyUnit = currencyUnit
+                        )
+                    }
                 }
             }
         }
-    }
 
-    // Mobile Bottom Sheet Cart
-    if (!isExpandedWidth && isMobileCartSheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { isMobileCartSheetOpen = false }
-        ) {
-            CartPanel(
+        // Mobile Bottom Sheet Cart
+        if (!isExpandedWidth && isMobileCartSheetOpen) {
+            ModalBottomSheet(
+                onDismissRequest = { isMobileCartSheetOpen = false }
+            ) {
+                CartPanel(
+                    cartItems = cartItems,
+                    selectedCustomer = selectedCustomer,
+                    selectedChannel = selectedChannel,
+                    customGuestName = customGuestName,
+                    onSelectCustomerClick = {
+                        wasMobileCartOpenBeforePicker = true
+                        isCustomerPickerOpen = true
+                        isMobileCartSheetOpen = false
+                    },
+                    onUpdateQuantity = { item, delta -> viewModel.updateCartQuantity(item, delta) },
+                    onApplyDiscount = { itemId, pct ->
+                        viewModel.applyCartItemDiscount(
+                            itemId,
+                            pct
+                        )
+                    },
+                    onRemoveItem = { viewModel.removeFromCart(it) },
+                    onClearCart = { viewModel.clearCart() },
+                    onCheckoutClick = {
+                        isMobileCartSheetOpen = false
+                        viewModel.openCheckoutModal()
+                    },
+                    currencyUnit = currencyUnit
+                )
+            }
+        }
+
+        // Simplified Customer Picker Modal
+        if (isCustomerPickerOpen) {
+            CustomerPickerModal(
+                customers = customers,
+                selectedCustomer = selectedCustomer,
+                selectedChannel = selectedChannel,
+                customGuestName = customGuestName,
+                searchQuery = customerSearchQuery,
+                onSearchQueryChange = { viewModel.setCustomerSearchQuery(it) },
+                onSelectChannel = { viewModel.selectSalesChannel(it) },
+                onCustomGuestNameChange = { viewModel.setCustomGuestName(it) },
+                onSelectCustomer = {
+                    viewModel.selectCustomer(it)
+                    closeCustomerPicker()
+                },
+                onCreateQuickCustomer = { name, phone, address ->
+                    viewModel.createQuickCustomer(name, phone, address) {
+                        closeCustomerPicker()
+                    }
+                },
+                onDismiss = { closeCustomerPicker() }
+            )
+        }
+
+        // Product Variants Dialog
+        selectedVariantProduct?.let { product ->
+            VariantSelectionDialog(
+                product = product,
+                onVariantSelected = { variant -> viewModel.onVariantSelected(product, variant) },
+                onDismiss = { viewModel.dismissVariantDialog() },
+                currencyUnit = currencyUnit
+            )
+        }
+
+        // Checkout Modal
+        if (isCheckoutModalOpen) {
+            CheckoutModal(
                 cartItems = cartItems,
                 selectedCustomer = selectedCustomer,
                 selectedChannel = selectedChannel,
                 customGuestName = customGuestName,
-                onUpdateQuantity = { item, delta -> viewModel.updateCartQuantity(item, delta) },
-                onApplyDiscount = { id, percent -> viewModel.applyCartItemDiscount(id, percent) },
-                onRemoveItem = { id -> viewModel.removeFromCart(id) },
-                onClearCart = { viewModel.clearCart() },
-                onSelectCustomerClick = {
-                    isCustomerPickerOpen = true
+                isCheckingOut = isCheckingOut,
+                onProcessCheckout = { method, notes, channel ->
+                    viewModel.processCheckout(
+                        method,
+                        notes,
+                        channel
+                    )
                 },
-                onCheckoutClick = {
-                    isMobileCartSheetOpen = false
-                    viewModel.openCheckoutModal()
-                },
-                isPersian = isPersian,
+                onDismiss = { viewModel.closeCheckoutModal() },
                 currencyUnit = currencyUnit
             )
         }
-    }
 
-    // Customer Selection Modal
-    if (isCustomerPickerOpen) {
-        CustomerPickerModal(
-            customers = customers,
-            selectedCustomer = selectedCustomer,
-            selectedChannel = selectedChannel,
-            customGuestName = customGuestName,
-            searchQuery = customerSearchQuery,
-            onSearchQueryChange = { viewModel.setCustomerSearchQuery(it) },
-            onSelectChannel = { viewModel.selectSalesChannel(it) },
-            onCustomGuestNameChange = { viewModel.setCustomGuestName(it) },
-            onSelectCustomer = {
-                viewModel.selectCustomer(it)
-                isCustomerPickerOpen = false
-            },
-            onCreateQuickCustomer = { name, phone, address ->
-                viewModel.createQuickCustomer(name, phone, address) {
-                    isCustomerPickerOpen = false
-                }
-            },
-            onDismiss = { isCustomerPickerOpen = false },
-            isPersian = isPersian
-        )
-    }
+        // Receipt Dialog
+        lastCompletedOrder?.let { order ->
+            ReceiptDialog(
+                order = order,
+                onDismiss = { viewModel.dismissReceipt() },
+                currencyUnit = currencyUnit
+            )
+        }
 
-    // Variant Selection Dialog
-    selectedVariantProduct?.let { product ->
-        VariantSelectionDialog(
-            product = product,
-            onVariantSelected = { variant -> viewModel.onVariantSelected(product, variant) },
-            onDismiss = { viewModel.dismissVariantDialog() },
-            isPersian = isPersian,
-            currencyUnit = currencyUnit
-        )
-    }
-
-    // Checkout Modal
-    if (isCheckoutModalOpen) {
-        CheckoutModal(
-            cartItems = cartItems,
-            selectedCustomer = selectedCustomer,
-            initialChannel = selectedChannel,
-            customGuestName = customGuestName,
-            onProcessCheckout = { method, notes, channel -> viewModel.processCheckout(method, notes, channel) },
-            onDismiss = { viewModel.closeCheckoutModal() },
-            isPersian = isPersian,
-            currencyUnit = currencyUnit,
-            isCheckingOut = isCheckingOut
-        )
-    }
-
-    // Receipt Modal
-    lastCompletedOrder?.let { order ->
-        ReceiptDialog(
-            order = order,
-            onDismiss = { viewModel.dismissReceipt() },
-            isPersian = isPersian,
-            currencyUnit = currencyUnit
-        )
-    }
-
-    // Barcode Scanner Dialog
-    if (isBarcodeScannerOpen) {
-        BarcodeScannerDialog(
-            onBarcodeScanned = { barcode -> viewModel.onBarcodeScanned(barcode) },
-            onDismiss = { viewModel.closeBarcodeScanner() }
-        )
+        // Barcode Scanner Dialog Placeholder
+        if (isBarcodeScannerOpen) {
+            BarcodeScannerModal(
+                onBarcodeScanned = { barcode ->
+                    viewModel.onBarcodeScanned(barcode)
+                    viewModel.closeBarcodeScanner()
+                },
+                onDismiss = { viewModel.closeBarcodeScanner() }
+            )
+        }
     }
 }
 
+/**
+ * Simplified 2-Tab Customer & Sales Channel Picker Modal.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerPickerModal(
@@ -426,249 +420,417 @@ fun CustomerPickerModal(
     onCustomGuestNameChange: (String) -> Unit,
     onSelectCustomer: (Customer?) -> Unit,
     onCreateQuickCustomer: (name: String, phone: String, address: String) -> Unit,
-    onDismiss: () -> Unit,
-    isPersian: Boolean = true
+    onDismiss: () -> Unit
 ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        CustomerPickerContent(
+            customers = customers,
+            selectedCustomer = selectedCustomer,
+            selectedChannel = selectedChannel,
+            customGuestName = customGuestName,
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            onSelectChannel = onSelectChannel,
+            onCustomGuestNameChange = onCustomGuestNameChange,
+            onSelectCustomer = onSelectCustomer,
+            onCreateQuickCustomer = onCreateQuickCustomer,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+@Composable
+fun CustomerPickerContent(
+    customers: List<Customer>,
+    selectedCustomer: Customer?,
+    selectedChannel: SalesChannel,
+    customGuestName: String,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onSelectChannel: (SalesChannel) -> Unit,
+    onCustomGuestNameChange: (String) -> Unit,
+    onSelectCustomer: (Customer?) -> Unit,
+    onCreateQuickCustomer: (name: String, phone: String, address: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedTabIndex by remember { mutableIntStateOf(if (selectedCustomer != null) 0 else 1) }
     var isQuickAddOpen by remember { mutableStateOf(false) }
     var newCustomerName by remember { mutableStateOf("") }
     var newCustomerPhone by remember { mutableStateOf("") }
     var newCustomerAddress by remember { mutableStateOf("") }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-        ) {
-            Text(
-                text = if (isPersian) "انتخاب مشتری یا کانال ثبت سفارش" else "Attach Customer or Sales Channel",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = stringResource(R.string.customer_and_channel_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
 
-            // SECTION 1: Sales Channel Selection (Non-registered / Guest Channel)
-            Text(
-                text = if (isPersian) "۱. تعیین کانال ثبت سفارش (مشتری مهمان / تلفنی / اینترنتی)" else "1. Order Channel (Guest / Phone / Online)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(SalesChannel.entries.size) { idx ->
-                    val channel = SalesChannel.entries[idx]
-                    FilterChip(
-                        selected = selectedChannel == channel && selectedCustomer == null,
-                        onClick = {
-                            onSelectChannel(channel)
-                            onSelectCustomer(null)
-                        },
-                        label = {
-                            Text(
-                                text = if (isPersian) channel.titleFa else channel.titleEn,
-                                fontWeight = if (selectedChannel == channel && selectedCustomer == null) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+        // 2-Tab Segmented Switcher
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            Tab(
+                selected = selectedTabIndex == 0,
+                onClick = { selectedTabIndex = 0 },
+                text = {
+                    Text(
+                        text = stringResource(R.string.crm_customers_tab),
+                        fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = customGuestName,
-                onValueChange = {
-                    onCustomGuestNameChange(it)
-                    if (it.isNotBlank()) onSelectCustomer(null)
-                },
-                label = {
-                    Text(if (isPersian) "نام یا شماره تماس مشتری مهمان / سفارشی (اختیاری)" else "Custom Guest Name / Phone (Optional)")
-                },
-                placeholder = {
-                    Text(if (isPersian) "مثلاً: آقای علوی (تلفنی) یا سفارش اینستاگرام" else "e.g., John (Phone) or Insta Order")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // SECTION 2: Search & Select Registered Customer (CRM)
-            Text(
-                text = if (isPersian) "۲. یا انتخاب از مشتریان ثبت‌شده (CRM)" else "2. Select Registered Customer",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+            Tab(
+                selected = selectedTabIndex == 1,
+                onClick = { selectedTabIndex = 1 },
+                text = {
+                    Text(
+                        text = stringResource(R.string.channel_guest_tab),
+                        fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             )
-            Spacer(modifier = Modifier.height(8.dp))
+        }
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = {
-                    Text(if (isPersian) "جستجوی نام، تلفن یا ایمیل مشتری..." else "Search customer name or phone...")
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(imageVector = Icons.Rounded.Clear, contentDescription = null)
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+        Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (customers.isEmpty()) {
-                Text(
-                    text = if (isPersian) "مشتری متناسب با جستجو یافت نشد" else "No matching registered customer found",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    customers.take(5).forEach { customer ->
-                        val isSelected = selectedCustomer?.id == customer.id
-                        Card(
-                            onClick = { onSelectCustomer(customer) },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = customer.name,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    if (customer.phone.isNotBlank()) {
-                                        Text(
-                                            text = customer.phone,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = "${if (isPersian) "امتیاز:" else "Pts:"} ${
-                                        if (isPersian) com.braveboy.resto.util.PersianFormatter.toPersianDigits(
-                                            customer.loyaltyPoints
-                                        ) else customer.loyaltyPoints
-                                    }",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 24.dp)
+        ) {
+            if (selectedTabIndex == 0) {
+                // TAB 1: Registered CRM Customers
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = {
+                        Text(stringResource(R.string.search_customer_hint_simple))
+                    },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(imageVector = Icons.Rounded.Clear, contentDescription = null)
                             }
                         }
-                    }
-                }
-            }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // SECTION 3: Quick Add New Customer
-            if (!isQuickAddOpen) {
-                androidx.compose.material3.OutlinedButton(
-                    onClick = { isQuickAddOpen = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Rounded.PersonAdd, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isPersian) "+ ثبت مشتری جدید در دیتابیس" else "+ Add New Customer")
-                }
-            } else {
+                // Walk-in / Guest Clear Option
                 Card(
+                    onClick = {
+                        onSelectCustomer(null)
+                        onSelectChannel(SalesChannel.WALK_IN)
+                    },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        containerColor = if (selectedCustomer == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = if (isPersian) "ثبت مشتری جدید" else "Quick New Customer",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Person,
+                            contentDescription = null,
+                            tint = if (selectedCustomer == null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.walk_in_guest_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedCustomer == null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(R.string.walk_in_guest_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selectedCustomer == null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (selectedCustomer == null) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
 
-                        OutlinedTextField(
-                            value = newCustomerName,
-                            onValueChange = { newCustomerName = it },
-                            label = { Text(if (isPersian) "نام و نام خانوادگی" else "Full Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                        OutlinedTextField(
-                            value = newCustomerPhone,
-                            onValueChange = { newCustomerPhone = it },
-                            label = { Text(if (isPersian) "شماره تلفن" else "Phone Number") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = newCustomerAddress,
-                            onValueChange = { newCustomerAddress = it },
-                            label = { Text(if (isPersian) "آدرس" else "Address") },
-                            modifier = Modifier.fillMaxWidth(),
-                            maxLines = 2
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.TextButton(
-                                onClick = { isQuickAddOpen = false },
-                                modifier = Modifier.weight(1f)
+                if (customers.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_matching_customer_found),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        customers.take(5).forEach { customer ->
+                            val isSelected = selectedCustomer?.id == customer.id
+                            Card(
+                                onClick = { onSelectCustomer(customer) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+                                ),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(if (isPersian) "انصراف" else "Cancel")
-                            }
-
-                            androidx.compose.material3.Button(
-                                onClick = {
-                                    if (newCustomerName.isNotBlank()) {
-                                        onCreateQuickCustomer(newCustomerName, newCustomerPhone, newCustomerAddress)
-                                        isQuickAddOpen = false
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = customer.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (customer.phone.isNotBlank()) {
+                                            Text(
+                                                text = PersianFormatter.toPersianDigits(customer.phone),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(if (isPersian) "ثبت و انتخاب" else "Save & Select")
+
+                                    Text(
+                                        text = "امتیاز: ${PersianFormatter.toPersianDigits(customer.loyaltyPoints)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Quick Add New Customer
+                if (!isQuickAddOpen) {
+                    OutlinedButton(
+                        onClick = { isQuickAddOpen = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Rounded.PersonAdd, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_new_customer_db))
+                    }
+                } else {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(R.string.quick_new_customer),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = newCustomerName,
+                                onValueChange = { newCustomerName = it },
+                                label = { Text(stringResource(R.string.full_name_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = newCustomerPhone,
+                                onValueChange = { newCustomerPhone = it },
+                                label = { Text(stringResource(R.string.phone_number_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = newCustomerAddress,
+                                onValueChange = { newCustomerAddress = it },
+                                label = { Text(stringResource(R.string.address_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 2
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TextButton(
+                                    onClick = { isQuickAddOpen = false },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+
+                                Button(
+                                    onClick = {
+                                        if (newCustomerName.isNotBlank()) {
+                                            onCreateQuickCustomer(
+                                                newCustomerName,
+                                                newCustomerPhone,
+                                                newCustomerAddress
+                                            )
+                                            isQuickAddOpen = false
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.save_info))
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // TAB 2: Order Sales Channel & Custom Guest Name
+                Text(
+                    text = stringResource(R.string.select_sales_channel_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(SalesChannel.entries.size) { idx ->
+                        val channel = SalesChannel.entries[idx]
+                        FilterChip(
+                            selected = selectedChannel == channel,
+                            onClick = { onSelectChannel(channel) },
+                            label = {
+                                Text(
+                                    text = channel.titleFa,
+                                    fontWeight = if (selectedChannel == channel) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = customGuestName,
+                    onValueChange = onCustomGuestNameChange,
+                    label = {
+                        Text(stringResource(R.string.guest_name_hint))
+                    },
+                    placeholder = {
+                        Text(stringResource(R.string.guest_name_placeholder))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = {
+                        onSelectCustomer(null)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.confirm_channel))
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun BarcodeScannerModal(
+    onBarcodeScanned: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var manualBarcode by remember { mutableStateOf("") }
+
+    RestoDialog(
+        title = stringResource(R.string.scan_or_enter_barcode_title),
+        confirmText = stringResource(R.string.add_to_cart),
+        onConfirm = {
+            if (manualBarcode.isNotBlank()) {
+                onBarcodeScanned(manualBarcode.trim())
+            }
+        },
+        confirmEnabled = manualBarcode.isNotBlank(),
+        onDismissRequest = onDismiss
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = stringResource(R.string.scan_or_enter_barcode_desc),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            OutlinedTextField(
+                value = manualBarcode,
+                onValueChange = { manualBarcode = it },
+                label = { Text(stringResource(R.string.barcode_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Customer Picker Content Preview")
+@Composable
+fun CustomerPickerContentPreview() {
+    RestoTheme {
+        CustomerPickerContent(
+            customers = listOf(
+                Customer(
+                    id = "c1",
+                    orgId = "org1",
+                    name = "علی محمدی",
+                    phone = "09123456789",
+                    loyaltyPoints = 120
+                )
+            ),
+            selectedCustomer = null,
+            selectedChannel = SalesChannel.WALK_IN,
+            customGuestName = "",
+            searchQuery = "",
+            onSearchQueryChange = {},
+            onSelectChannel = {},
+            onCustomGuestNameChange = {},
+            onSelectCustomer = {},
+            onCreateQuickCustomer = { _, _, _ -> },
+            onDismiss = {}
+        )
     }
 }

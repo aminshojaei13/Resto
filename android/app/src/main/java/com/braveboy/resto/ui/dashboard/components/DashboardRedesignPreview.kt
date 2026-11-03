@@ -58,7 +58,6 @@ fun DashboardRedesignView(
         )
     ),
     ledgerEntries: List<LedgerEntry> = emptyList(),
-    isPersian: Boolean = true,
     currencyUnit: String = "تومان",
     onAddProductClick: () -> Unit = {},
     onImportDropshippingClick: () -> Unit = {},
@@ -86,7 +85,6 @@ fun DashboardRedesignView(
             DashboardHeader(
                 userName = userName,
                 notificationCount = notificationCount,
-                isPersian = isPersian,
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
@@ -96,20 +94,17 @@ fun DashboardRedesignView(
                 netProfitValue = netProfitValue,
                 netProfitTrend = netProfitTrend,
                 totalOrdersValue = totalOrdersValue,
-                totalOrdersTrend = totalOrdersTrend,
-                isPersian = isPersian
+                totalOrdersTrend = totalOrdersTrend
             )
 
             // Total Revenue Dark Green Card
             DashboardRevenueCard(
                 revenueValue = revenueValue,
-                trendText = revenueTrend,
-                isPersian = isPersian
+                trendText = revenueTrend
             )
 
             // Quick Actions List
             DashboardQuickActions(
-                isPersian = isPersian,
                 onAddProductClick = onAddProductClick,
                 onImportDropshippingClick = onImportDropshippingClick,
                 onViewOrdersClick = onViewOrdersClick,
@@ -119,7 +114,6 @@ fun DashboardRedesignView(
             // Recent Orders List
             DashboardRecentOrders(
                 orders = recentOrders,
-                isPersian = isPersian,
                 onSeeAllClick = onSeeAllOrdersClick,
                 onOrderClick = onOrderClick
             )
@@ -127,7 +121,6 @@ fun DashboardRedesignView(
             // Redesigned Financial Activity Section
             DashboardFinancialActivity(
                 ledgerEntries = ledgerEntries,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 onNewEntryClick = onNewEntryClick
             )

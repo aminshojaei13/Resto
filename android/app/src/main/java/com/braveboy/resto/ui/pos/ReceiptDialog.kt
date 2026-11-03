@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Print
-import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -31,29 +30,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.braveboy.resto.R
+import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.SalesOrder
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.braveboy.resto.util.PersianFormatter.formatShamsiDate
+import com.braveboy.resto.util.PersianFormatter.formatTomans
+import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
 @Composable
 fun ReceiptDialog(
     order: SalesOrder,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
-    val dateStr = if (isPersian) {
-        com.braveboy.resto.util.PersianFormatter.formatShamsiDate(order.createdAt, isPersian = true)
-    } else {
-        val dateFormat = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault())
-        dateFormat.format(Date(order.createdAt))
-    }
+    val dateStr = formatShamsiDate(order.createdAt, isPersian = true)
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -91,14 +87,14 @@ fun ReceiptDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (isPersian) "پرداخت با موفقیت انجام شد!" else "Payment Successful!",
+                    text = stringResource(R.string.payment_successful),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = if (isPersian) "شماره فاکتور: ${order.orderNumber}" else "Order #${order.orderNumber}",
+                    text = "شماره فاکتور: ${order.orderNumber}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -120,7 +116,7 @@ fun ReceiptDialog(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = if (isPersian) "رسید رسمی فروشگاه" else "OFFICIAL RECEIPT",
+                            text = stringResource(R.string.official_store_receipt),
                             style = MaterialTheme.typography.titleSmall,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
@@ -141,25 +137,21 @@ fun ReceiptDialog(
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        val paymentMethodTitle = if (isPersian) {
-                            when (order.paymentMethod) {
-                                com.braveboy.resto.data.model.PaymentMethod.CASH -> "نقدی"
-                                com.braveboy.resto.data.model.PaymentMethod.CARD -> "کارت‌خوان"
-                                com.braveboy.resto.data.model.PaymentMethod.MOBILE_PAYMENT -> "کارت به کارت / آنلاین"
-                                com.braveboy.resto.data.model.PaymentMethod.STORE_CREDIT -> "نسیه"
-                            }
-                        } else {
-                            order.paymentMethod.displayName
+                        val paymentMethodTitle = when (order.paymentMethod) {
+                            PaymentMethod.CASH -> stringResource(R.string.cash)
+                            PaymentMethod.CARD -> stringResource(R.string.card)
+                            PaymentMethod.MOBILE_PAYMENT -> stringResource(R.string.mobile_pay)
+                            PaymentMethod.STORE_CREDIT -> stringResource(R.string.store_credit)
                         }
 
                         Text(
-                            text = "${if (isPersian) "مشتری:" else "Customer:"} ${order.customerName}",
+                            text = "مشتری: ${order.customerName}",
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${if (isPersian) "روش پرداخت:" else "Payment:"} $paymentMethodTitle",
+                            text = "روش پرداخت: $paymentMethodTitle",
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace
                         )
@@ -182,14 +174,14 @@ fun ReceiptDialog(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.toPersianDigits(item.quantity)} × ${com.braveboy.resto.util.PersianFormatter.formatTomans(item.unitPrice)} $currencyUnit" else "${item.quantity} x $${String.format("%.2f", item.unitPrice)}",
+                                        text = "${toPersianDigits(item.quantity)} × ${formatTomans(item.unitPrice)} $currencyUnit",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontFamily = FontFamily.Monospace,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
-                                    text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(item.totalPrice)} $currencyUnit" else "$${String.format("%.2f", item.totalPrice)}",
+                                    text = "${formatTomans(item.totalPrice)} $currencyUnit",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold
@@ -205,9 +197,9 @@ fun ReceiptDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(if (isPersian) "جمع جزئی" else "Subtotal", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                            Text(stringResource(R.string.subtotal_items), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                             Text(
-                                if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(order.subtotal)} $currencyUnit" else "$${String.format("%.2f", order.subtotal)}",
+                                "${formatTomans(order.subtotal)} $currencyUnit",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -218,9 +210,9 @@ fun ReceiptDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(if (isPersian) "تخفیف" else "Discount", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                                Text(stringResource(R.string.discount), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                                 Text(
-                                    if (isPersian) "-${com.braveboy.resto.util.PersianFormatter.formatTomans(order.discountAmount)} $currencyUnit" else "-$${String.format("%.2f", order.discountAmount)}",
+                                    "-${formatTomans(order.discountAmount)} $currencyUnit",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -232,9 +224,9 @@ fun ReceiptDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(if (isPersian) "مالیات" else "Tax", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+                                Text(stringResource(R.string.tax_plain), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                                 Text(
-                                    if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(order.taxAmount)} $currencyUnit" else "$${String.format("%.2f", order.taxAmount)}",
+                                    "${formatTomans(order.taxAmount)} $currencyUnit",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -249,13 +241,13 @@ fun ReceiptDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (isPersian) "مبلغ کل پرداختی" else "TOTAL PAID",
+                                text = stringResource(R.string.total_paid),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(order.totalAmount)} $currencyUnit" else "$${String.format("%.2f", order.totalAmount)}",
+                                text = "${formatTomans(order.totalAmount)} $currencyUnit",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.ExtraBold,
@@ -277,14 +269,14 @@ fun ReceiptDialog(
                     ) {
                         Icon(imageVector = Icons.Rounded.Print, contentDescription = null)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (isPersian) "چاپ رسید" else "Print", maxLines = 1)
+                        Text(stringResource(R.string.print), maxLines = 1)
                     }
 
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (isPersian) "فروش جدید" else "New Sale", maxLines = 1)
+                        Text(stringResource(R.string.new_sale), maxLines = 1)
                     }
                 }
             }

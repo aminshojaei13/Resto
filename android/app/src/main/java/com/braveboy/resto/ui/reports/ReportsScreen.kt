@@ -34,7 +34,6 @@ import androidx.compose.material.icons.rounded.PieChart
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -73,8 +72,8 @@ import com.braveboy.resto.data.model.InventoryReportData
 import com.braveboy.resto.data.model.PurchasesReportData
 import com.braveboy.resto.data.model.ReportTab
 import com.braveboy.resto.data.model.ReportTimeFrame
-import com.braveboy.resto.data.model.SalesChannel
 import com.braveboy.resto.data.model.SalesReportData
+import com.braveboy.resto.data.model.SalesChannel
 import com.braveboy.resto.ui.components.RestoCard
 import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
@@ -82,16 +81,13 @@ import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 import com.braveboy.resto.util.ReportExportManager
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val tenantState by viewModel.tenantState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val selectedTimeFrame by viewModel.selectedTimeFrame.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
@@ -103,7 +99,6 @@ fun ReportsScreen(
     val purchasesData by viewModel.purchasesData.collectAsState()
     val customersData by viewModel.customersData.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -120,7 +115,7 @@ fun ReportsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
-                title = if (isPersian) "گزارش‌ها" else "Reports & Analytics",
+                title = "گزارش‌ها و تحلیل مالی",
                 onNavigationClick = onBackClick
             )
         }
@@ -135,7 +130,6 @@ fun ReportsScreen(
             expensesData = expensesData,
             purchasesData = purchasesData,
             customersData = customersData,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             onSelectTab = { viewModel.selectTab(it) },
             onSelectTimeFrame = { viewModel.selectTimeFrame(it) },
@@ -164,8 +158,7 @@ fun ReportsScreenContent(
     expensesData: ExpensesReportData,
     purchasesData: PurchasesReportData,
     customersData: CustomersReportData,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان",
+    currencyUnit: String,
     onSelectTab: (ReportTab) -> Unit = {},
     onSelectTimeFrame: (ReportTimeFrame) -> Unit = {},
     onExportPdf: () -> Unit = {},
@@ -180,22 +173,22 @@ fun ReportsScreenContent(
     ) {
         Spacer(modifier = Modifier.height(RestoSpacing.xs))
 
-        // CLEAN COMPACT HEADER: Compact Date Dropdown Pill + Export Buttons
+        // TimeFrame & Export Actions Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Compact Date Range Dropdown Pill
+            // TimeFrame Dropdown Pill
             Box {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .border(
                             1.dp,
                             MaterialTheme.colorScheme.outlineVariant,
-                            RoundedCornerShape(20.dp)
+                            RoundedCornerShape(12.dp)
                         )
                         .clickable { timeFrameDropdownExpanded = true }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -209,7 +202,7 @@ fun ReportsScreenContent(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isPersian) selectedTimeFrame.labelFa else selectedTimeFrame.labelEn,
+                            text = selectedTimeFrame.labelFa,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -230,7 +223,7 @@ fun ReportsScreenContent(
                 ) {
                     ReportTimeFrame.entries.forEach { tf ->
                         DropdownMenuItem(
-                            text = { Text(if (isPersian) tf.labelFa else tf.labelEn) },
+                            text = { Text(tf.labelFa) },
                             onClick = {
                                 onSelectTimeFrame(tf)
                                 timeFrameDropdownExpanded = false
@@ -258,7 +251,7 @@ fun ReportsScreenContent(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isPersian) "PDF" else "PDF",
+                            text = "PDF",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -287,7 +280,7 @@ fun ReportsScreenContent(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isPersian) "اکسل" else "Excel",
+                            text = "اکسل",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -322,7 +315,7 @@ fun ReportsScreenContent(
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = if (isPersian) tab.labelFa else tab.labelEn,
+                        text = tab.labelFa,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -345,7 +338,6 @@ fun ReportsScreenContent(
                         ComprehensiveReportView(
                             data = comprehensiveData,
                             salesData = salesData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -355,7 +347,6 @@ fun ReportsScreenContent(
                     item {
                         SalesReportView(
                             data = salesData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -365,7 +356,6 @@ fun ReportsScreenContent(
                     item {
                         InventoryReportView(
                             data = inventoryData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -375,7 +365,6 @@ fun ReportsScreenContent(
                     item {
                         ExpensesReportView(
                             data = expensesData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -385,7 +374,6 @@ fun ReportsScreenContent(
                     item {
                         PurchasesReportView(
                             data = purchasesData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -395,7 +383,6 @@ fun ReportsScreenContent(
                     item {
                         CustomersReportView(
                             data = customersData,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit
                         )
                     }
@@ -405,12 +392,10 @@ fun ReportsScreenContent(
     }
 }
 
-@SuppressLint("DefaultLocale")
 @Composable
 private fun ComprehensiveReportView(
     data: ComprehensiveReportData,
     salesData: SalesReportData = SalesReportData(),
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -445,7 +430,7 @@ private fun ComprehensiveReportView(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = if (isPersian) "سود خالص عملیاتی" else "Net Operating Profit",
+                            text = "سود خالص عملیاتی",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -467,7 +452,7 @@ private fun ComprehensiveReportView(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isPersian) "سوددهی مثبت" else "+18%",
+                                text = "سوددهی مثبت",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = RestoTheme.colors.onSuccessContainer
@@ -477,12 +462,7 @@ private fun ComprehensiveReportView(
                 }
 
                 Text(
-                    text = if (isPersian) "${PersianFormatter.formatTomans(data.netProfit)} $currencyUnit" else "$${
-                        String.format(
-                            "%.2f",
-                            data.netProfit
-                        )
-                    }",
+                    text = "${PersianFormatter.formatTomans(data.netProfit)} $currencyUnit",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -495,20 +475,12 @@ private fun ComprehensiveReportView(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${if (isPersian) "تعداد کل سفارشات:" else "Total Orders:"} ${
-                            if (isPersian) PersianFormatter.toPersianDigits(
-                                data.totalOrdersCount
-                            ) else data.totalOrdersCount
-                        }",
+                        text = "تعداد کل سفارشات: ${PersianFormatter.toPersianDigits(data.totalOrdersCount)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                     Text(
-                        text = "${if (isPersian) "میانگین فاکتور:" else "Avg Factor:"} ${
-                            if (isPersian) PersianFormatter.formatTomans(
-                                data.averageOrderValue
-                            ) else String.format("%.2f", data.averageOrderValue)
-                        } $currencyUnit",
+                        text = "میانگین فاکتور: ${PersianFormatter.formatTomans(data.averageOrderValue)} $currencyUnit",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -523,26 +495,16 @@ private fun ComprehensiveReportView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isPersian) "فروش کل" else "Total Sales",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalRevenue)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalRevenue
-                    )
-                }",
+                title = "فروش کل",
+                value = "${PersianFormatter.formatTomans(data.totalRevenue)} $currencyUnit",
                 icon = Icons.Rounded.ArrowUpward,
                 iconBgColor = RestoTheme.colors.successContainer,
                 iconTint = RestoTheme.colors.success,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = if (isPersian) "سود ناخالص" else "Gross Profit",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.grossProfit)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.grossProfit
-                    )
-                }",
+                title = "سود ناخالص",
+                value = "${PersianFormatter.formatTomans(data.grossProfit)} $currencyUnit",
                 icon = Icons.Rounded.PieChart,
                 iconBgColor = MaterialTheme.colorScheme.primaryContainer,
                 iconTint = MaterialTheme.colorScheme.primary,
@@ -555,26 +517,16 @@ private fun ComprehensiveReportView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isPersian) "قیمت تمام‌شده" else "Total COGS",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalCogs)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalCogs
-                    )
-                }",
+                title = "قیمت تمام‌شده",
+                value = "${PersianFormatter.formatTomans(data.totalCogs)} $currencyUnit",
                 icon = Icons.Rounded.Inventory2,
                 iconBgColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = if (isPersian) "هزینه‌های جاری" else "Expenses",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalExpenses)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalExpenses
-                    )
-                }",
+                title = "هزینه‌های جاری",
+                value = "${PersianFormatter.formatTomans(data.totalExpenses)} $currencyUnit",
                 icon = Icons.Rounded.ArrowDownward,
                 iconBgColor = MaterialTheme.colorScheme.errorContainer,
                 iconTint = MaterialTheme.colorScheme.error,
@@ -582,10 +534,10 @@ private fun ComprehensiveReportView(
             )
         }
 
-        // VISUAL DISTRIBUTION BARS FOR SALES CHANNELS (COMBINED FROM PREVIEW B)
+        // VISUAL DISTRIBUTION BARS FOR SALES CHANNELS
         if (salesData.channelBreakdown.isNotEmpty()) {
             Text(
-                if (isPersian) "سهم کانال‌های فروش (توزیع بصری درصدی)" else "Sales By Channel Distribution",
+                "سهم کانال‌های فروش (توزیع بصری درصدی)",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -608,21 +560,12 @@ private fun ComprehensiveReportView(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "$ch (${
-                                        if (isPersian) PersianFormatter.toPersianDigits(
-                                            percentInt
-                                        ) else percentInt
-                                    }٪)",
+                                    text = "$ch (${PersianFormatter.toPersianDigits(percentInt)}٪)",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (isPersian) "${PersianFormatter.formatTomans(amt)} $currencyUnit" else "$${
-                                        String.format(
-                                            "%.2f",
-                                            amt
-                                        )
-                                    }",
+                                    text = "${PersianFormatter.formatTomans(amt)} $currencyUnit",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary
@@ -643,9 +586,9 @@ private fun ComprehensiveReportView(
             }
         }
 
-        // UNCLUTTERED FINANCIAL CARDS (2-Line Separated Layout)
+        // UNCLUTTERED FINANCIAL CARDS
         Text(
-            text = if (isPersian) "محاسبات خلوت و مجزای سود و زیان (P&L)" else "P&L Statement Calculation Cards",
+            text = "محاسبات خلوت و مجزای سود و زیان (P&L)",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -654,7 +597,6 @@ private fun ComprehensiveReportView(
             SpaciousFinancialCard(
                 title = "۱. درآمد کل حاصل از فروش",
                 amount = data.totalRevenue,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 tagColor = RestoTheme.colors.success
             )
@@ -662,7 +604,6 @@ private fun ComprehensiveReportView(
             SpaciousFinancialCard(
                 title = "۲. قیمت تمام‌شده کالاهای فروخته‌شده",
                 amount = -data.totalCogs,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 isNegative = true
             )
@@ -670,7 +611,6 @@ private fun ComprehensiveReportView(
             SpaciousFinancialCard(
                 title = "۳. سود ناخالص محاسبه‌شده",
                 amount = data.grossProfit,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 isHighlight = true
             )
@@ -678,7 +618,6 @@ private fun ComprehensiveReportView(
             SpaciousFinancialCard(
                 title = "۴. مجموع هزینه‌های جاری و عملیاتی",
                 amount = -data.totalExpenses,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 isNegative = true
             )
@@ -686,7 +625,6 @@ private fun ComprehensiveReportView(
             SpaciousFinancialCard(
                 title = "۵. سود خالص نهایی عملیاتی",
                 amount = data.netProfit,
-                isPersian = isPersian,
                 currencyUnit = currencyUnit,
                 isHighlight = true,
                 isFinalResult = true
@@ -700,7 +638,6 @@ private fun ComprehensiveReportView(
 private fun SpaciousFinancialCard(
     title: String,
     amount: Double,
-    isPersian: Boolean,
     currencyUnit: String,
     isNegative: Boolean = false,
     isHighlight: Boolean = false,
@@ -738,20 +675,9 @@ private fun SpaciousFinancialCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val amtStr = if (isPersian) {
-                    "${if (isNegative && amount < 0) "-" else ""}${
-                        PersianFormatter.formatTomans(
-                            kotlin.math.abs(amount)
-                        )
-                    } $currencyUnit"
-                } else {
-                    "${if (isNegative && amount < 0) "-" else ""}$${
-                        String.format(
-                            "%.2f",
-                            kotlin.math.abs(amount)
-                        )
-                    }"
-                }
+                val amtStr = "${if (isNegative && amount < 0) "-" else ""}${
+                    PersianFormatter.formatTomans(kotlin.math.abs(amount))
+                } $currencyUnit"
 
                 Text(
                     text = amtStr,
@@ -773,7 +699,7 @@ private fun SpaciousFinancialCard(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = if (isPersian) "نتیجه نهایی" else "Final Net",
+                            text = "نتیجه نهایی",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
@@ -789,7 +715,6 @@ private fun SpaciousFinancialCard(
 @Composable
 private fun SalesReportView(
     data: SalesReportData,
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.md)) {
@@ -798,21 +723,16 @@ private fun SalesReportView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isPersian) "فروش کل" else "Total Sales",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalRevenue)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalRevenue
-                    )
-                }",
+                title = "فروش کل",
+                value = "${PersianFormatter.formatTomans(data.totalRevenue)} $currencyUnit",
                 icon = Icons.Rounded.ArrowUpward,
                 iconBgColor = RestoTheme.colors.successContainer,
                 iconTint = RestoTheme.colors.success,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = if (isPersian) "تعداد فاکتورها" else "Total Orders",
-                value = if (isPersian) PersianFormatter.toPersianDigits(data.totalOrdersCount) else "${data.totalOrdersCount}",
+                title = "تعداد فاکتورها",
+                value = PersianFormatter.toPersianDigits(data.totalOrdersCount),
                 icon = Icons.Rounded.AccountBalanceWallet,
                 iconBgColor = MaterialTheme.colorScheme.primaryContainer,
                 iconTint = MaterialTheme.colorScheme.primary,
@@ -823,7 +743,7 @@ private fun SalesReportView(
         // VISUAL DISTRIBUTION BARS FOR SALES CHANNELS
         if (data.channelBreakdown.isNotEmpty()) {
             Text(
-                if (isPersian) "سهم کانال‌های فروش (توزیع درصدی)" else "Sales By Channel Distribution",
+                "سهم کانال‌های فروش (توزیع درصدی)",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -846,21 +766,12 @@ private fun SalesReportView(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "$ch (${
-                                        if (isPersian) PersianFormatter.toPersianDigits(
-                                            percentInt
-                                        ) else percentInt
-                                    }٪)",
+                                    text = "$ch (${PersianFormatter.toPersianDigits(percentInt)}٪)",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (isPersian) "${PersianFormatter.formatTomans(amt)} $currencyUnit" else "$${
-                                        String.format(
-                                            "%.2f",
-                                            amt
-                                        )
-                                    }",
+                                    text = "${PersianFormatter.formatTomans(amt)} $currencyUnit",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary
@@ -883,13 +794,13 @@ private fun SalesReportView(
 
         // Table List
         Text(
-            if (isPersian) "لیست فاکتورهای اخیر فروش" else "Orders List",
+            "لیست فاکتورهای اخیر فروش",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
         if (data.orders.isEmpty()) {
             Text(
-                if (isPersian) "سفارشی در این بازه یافت نشد" else "No orders in this period",
+                "سفارشی در این بازه یافت نشد",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -927,12 +838,7 @@ private fun SalesReportView(
                                 )
                             }
                             Text(
-                                if (isPersian) "${PersianFormatter.formatTomans(o.totalAmount)} $currencyUnit" else "$${
-                                    String.format(
-                                        "%.2f",
-                                        o.totalAmount
-                                    )
-                                }",
+                                "${PersianFormatter.formatTomans(o.totalAmount)} $currencyUnit",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary
@@ -949,7 +855,6 @@ private fun SalesReportView(
 @Composable
 private fun InventoryReportView(
     data: InventoryReportData,
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -958,21 +863,16 @@ private fun InventoryReportView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isPersian) "ارزش دارایی انبار" else "Total Asset",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalInventoryValue)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalInventoryValue
-                    )
-                }",
+                title = "ارزش دارایی انبار",
+                value = "${PersianFormatter.formatTomans(data.totalInventoryValue)} $currencyUnit",
                 icon = Icons.Rounded.Inventory2,
                 iconBgColor = MaterialTheme.colorScheme.primaryContainer,
                 iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = if (isPersian) "تعداد فیزیکی موجودی" else "Total Units",
-                value = if (isPersian) PersianFormatter.toPersianDigits(data.totalPhysicalStockUnits) else "${data.totalPhysicalStockUnits}",
+                title = "تعداد فیزیکی موجودی",
+                value = PersianFormatter.toPersianDigits(data.totalPhysicalStockUnits),
                 icon = Icons.Rounded.PieChart,
                 iconBgColor = RestoTheme.colors.successContainer,
                 iconTint = RestoTheme.colors.success,
@@ -981,7 +881,7 @@ private fun InventoryReportView(
         }
 
         Text(
-            if (isPersian) "ارزش ریالی موجودی کالاها" else "Inventory Items Asset Value",
+            "ارزش ریالی موجودی کالاها",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -1012,22 +912,13 @@ private fun InventoryReportView(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "کد: ${p.sku} | موجودی: ${
-                                    if (isPersian) PersianFormatter.toPersianDigits(
-                                        stock
-                                    ) else stock
-                                } ${p.unit}",
+                                "کد: ${p.sku} | موجودی: ${PersianFormatter.toPersianDigits(stock)} ${p.unit}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
-                            if (isPersian) "${PersianFormatter.formatTomans(stock * p.costPrice)} $currencyUnit" else "$${
-                                String.format(
-                                    "%.2f",
-                                    stock * p.costPrice
-                                )
-                            }",
+                            "${PersianFormatter.formatTomans(stock * p.costPrice)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
@@ -1043,25 +934,19 @@ private fun InventoryReportView(
 @Composable
 private fun ExpensesReportView(
     data: ExpensesReportData,
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         MetricCard(
-            title = if (isPersian) "مجموع هزینه‌های جاری" else "Total Expenses",
-            value = if (isPersian) "${PersianFormatter.formatTomans(data.totalExpenses)} $currencyUnit" else "$${
-                String.format(
-                    "%.2f",
-                    data.totalExpenses
-                )
-            }",
+            title = "مجموع هزینه‌های جاری",
+            value = "${PersianFormatter.formatTomans(data.totalExpenses)} $currencyUnit",
             icon = Icons.Rounded.ArrowDownward,
             iconBgColor = MaterialTheme.colorScheme.errorContainer,
             iconTint = MaterialTheme.colorScheme.error
         )
 
         Text(
-            if (isPersian) "لیست هزینه‌ها" else "Expenses List",
+            "لیست هزینه‌ها",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -1097,12 +982,7 @@ private fun ExpensesReportView(
                             )
                         }
                         Text(
-                            if (isPersian) "${PersianFormatter.formatTomans(e.amount)} $currencyUnit" else "$${
-                                String.format(
-                                    "%.2f",
-                                    e.amount
-                                )
-                            }",
+                            "${PersianFormatter.formatTomans(e.amount)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.error
@@ -1118,25 +998,19 @@ private fun ExpensesReportView(
 @Composable
 private fun PurchasesReportView(
     data: PurchasesReportData,
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         MetricCard(
-            title = if (isPersian) "مجموع خریدهای انبار" else "Total Purchases",
-            value = if (isPersian) "${PersianFormatter.formatTomans(data.totalPurchasesValue)} $currencyUnit" else "$${
-                String.format(
-                    "%.2f",
-                    data.totalPurchasesValue
-                )
-            }",
+            title = "مجموع خریدهای انبار",
+            value = "${PersianFormatter.formatTomans(data.totalPurchasesValue)} $currencyUnit",
             icon = Icons.Rounded.Inventory2,
             iconBgColor = MaterialTheme.colorScheme.primaryContainer,
             iconTint = MaterialTheme.colorScheme.primary
         )
 
         Text(
-            if (isPersian) "فاکتورهای خرید" else "Purchase Orders",
+            "فاکتورهای خرید",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -1172,12 +1046,7 @@ private fun PurchasesReportView(
                             )
                         }
                         Text(
-                            if (isPersian) "${PersianFormatter.formatTomans(p.totalAmount)} $currencyUnit" else "$${
-                                String.format(
-                                    "%.2f",
-                                    p.totalAmount
-                                )
-                            }",
+                            "${PersianFormatter.formatTomans(p.totalAmount)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -1192,7 +1061,6 @@ private fun PurchasesReportView(
 @Composable
 private fun CustomersReportView(
     data: CustomersReportData,
-    isPersian: Boolean,
     currencyUnit: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1201,21 +1069,16 @@ private fun CustomersReportView(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             MetricCard(
-                title = if (isPersian) "حجم خرید مشتریان" else "Total Customer Spend",
-                value = if (isPersian) "${PersianFormatter.formatTomans(data.totalCustomerSpentValue)} $currencyUnit" else "$${
-                    String.format(
-                        "%.2f",
-                        data.totalCustomerSpentValue
-                    )
-                }",
+                title = "حجم خرید مشتریان",
+                value = "${PersianFormatter.formatTomans(data.totalCustomerSpentValue)} $currencyUnit",
                 icon = Icons.Rounded.AccountBalanceWallet,
                 iconBgColor = MaterialTheme.colorScheme.primaryContainer,
                 iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
-                title = if (isPersian) "تعداد کل مشتریان" else "Total Customers",
-                value = if (isPersian) PersianFormatter.toPersianDigits(data.totalCustomersCount) else "${data.totalCustomersCount}",
+                title = "تعداد کل مشتریان",
+                value = PersianFormatter.toPersianDigits(data.totalCustomersCount),
                 icon = Icons.Rounded.PieChart,
                 iconBgColor = RestoTheme.colors.infoContainer,
                 iconTint = RestoTheme.colors.info,
@@ -1224,7 +1087,7 @@ private fun CustomersReportView(
         }
 
         Text(
-            if (isPersian) "پرفروش‌ترین مشتریان" else "Top Customers",
+            "پرفروش‌ترین مشتریان",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
@@ -1260,12 +1123,7 @@ private fun CustomersReportView(
                             )
                         }
                         Text(
-                            if (isPersian) "${PersianFormatter.formatTomans(c.totalPurchases)} $currencyUnit" else "$${
-                                String.format(
-                                    "%.2f",
-                                    c.totalPurchases
-                                )
-                            }",
+                            "${PersianFormatter.formatTomans(c.totalPurchases)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -1367,7 +1225,6 @@ fun ReportsCombinedPreview() {
                 expensesData = ExpensesReportData(),
                 purchasesData = PurchasesReportData(),
                 customersData = CustomersReportData(),
-                isPersian = true,
                 currencyUnit = "تومان"
             )
         }

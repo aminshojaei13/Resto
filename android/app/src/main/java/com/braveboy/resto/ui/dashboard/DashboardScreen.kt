@@ -130,7 +130,6 @@ fun DashboardScreenContent(
     onCloseRecordEntryDialog: () -> Unit = {},
     onRecordLedgerEntry: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit = { _, _, _, _ -> }
 ) {
-    val isPersian = tenantState.language == "fa"
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -160,7 +159,6 @@ fun DashboardScreenContent(
                     userAvatarUrl = tenantState.userAvatarUrl,
                     notificationCount = metrics.lowStockCount,
                     isDarkMode = isDarkMode,
-                    isPersian = isPersian,
                     onToggleTheme = onToggleTheme,
                     onProfileClick = {
                         onNavigateToDestination(MainDestination.SETTINGS, false)
@@ -192,10 +190,7 @@ fun DashboardScreenContent(
                                     color = RestoTheme.colors.warning
                                 )
                                 Text(
-                                    text = if (isPersian)
-                                        "${PersianFormatter.toPersianDigits(metrics.lowStockCount)} کالا رو به اتمام است؛ نیاز به شارژ موجودی دارید."
-                                    else
-                                        "${metrics.lowStockCount} products are running low on stock.",
+                                    text = "${PersianFormatter.toPersianDigits(metrics.lowStockCount)} کالا رو به اتمام است؛ نیاز به شارژ موجودی دارید.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -206,46 +201,30 @@ fun DashboardScreenContent(
             }
 
             item {
-                val formattedNetProfit = if (isPersian) {
-                    "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
-                } else {
-                    "$${String.format("%.2f", metrics.netProfit)}"
-                }
-
-                val formattedOrdersCount = if (isPersian) {
-                    PersianFormatter.toPersianDigits(metrics.todaySalesCount)
-                } else {
-                    metrics.todaySalesCount.toString()
-                }
+                val formattedNetProfit = "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
+                val formattedOrdersCount = PersianFormatter.toPersianDigits(metrics.todaySalesCount)
 
                 DashboardStatCardsRow(
                     netProfitValue = formattedNetProfit,
                     netProfitTrend = if (metrics.netProfit > 0) "+12%" else "۰٪",
                     totalOrdersValue = formattedOrdersCount,
-                    totalOrdersTrend = if (metrics.todaySalesCount > 0) "+5%" else "۰٪",
-                    isPersian = isPersian
+                    totalOrdersTrend = if (metrics.todaySalesCount > 0) "+5%" else "۰٪"
                 )
             }
 
             // 3. Total Revenue Card (Dark Forest Green)
             item {
-                val formattedTodayRevenue = if (isPersian) {
-                    "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
-                } else {
-                    "$${String.format("%.2f", metrics.todayRevenue)}"
-                }
+                val formattedTodayRevenue = "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
 
                 DashboardRevenueCard(
                     revenueValue = formattedTodayRevenue,
-                    trendText = if (metrics.todayRevenue > 0) "+8%" else "۰٪",
-                    isPersian = isPersian
+                    trendText = if (metrics.todayRevenue > 0) "+8%" else "۰٪"
                 )
             }
 
             // 4. Quick Actions
             item {
                 DashboardQuickActions(
-                    isPersian = false,
                     onNewManualOrderClick = {
                         onNavigateToDestination(MainDestination.POS, false)
                     },
@@ -266,7 +245,6 @@ fun DashboardScreenContent(
             item {
                 DashboardRecentOrders(
                     orders = recentSalesOrders.take(5),
-                    isPersian = isPersian,
                     currencySymbol = currencyUnit,
                     onSeeAllClick = {
                         onNavigateToDestination(MainDestination.ORDERS, false)
@@ -281,7 +259,6 @@ fun DashboardScreenContent(
             item {
                 DashboardFinancialActivity(
                     ledgerEntries = ledgerEntries,
-                    isPersian = isPersian,
                     currencyUnit = currencyUnit,
                     onNewEntryClick = onOpenRecordEntryDialog
                 )
@@ -294,7 +271,6 @@ fun DashboardScreenContent(
         ModernRecordEntryDialog(
             onSubmit = onRecordLedgerEntry,
             onDismiss = onCloseRecordEntryDialog,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             confirmLoading = isSaving
         )
@@ -306,7 +282,6 @@ fun DashboardScreenContent(
 private fun ModernRecordEntryDialog(
     onSubmit: (type: LedgerType, category: LedgerCategory, amount: Double, description: String) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean,
     currencyUnit: String,
     confirmLoading: Boolean = false
 ) {
@@ -415,7 +390,7 @@ private fun ModernRecordEntryDialog(
             RestoTextField(
                 value = amountText,
                 onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                 label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 placeholder = "0"
@@ -426,7 +401,7 @@ private fun ModernRecordEntryDialog(
                 value = descriptionText,
                 onValueChange = { descriptionText = it },
                 label = stringResource(R.string.notes_description_label),
-                placeholder = if (isPersian) "مثال: پرداخت قبض اینترنت دفتر" else "e.g. Office internet bill",
+                placeholder = stringResource(R.string.office_bill_placeholder),
                 singleLine = false,
                 maxLines = 3
             )

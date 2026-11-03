@@ -52,11 +52,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
+import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.model.Warehouse
 import com.braveboy.resto.ui.components.RestoChip
 import com.braveboy.resto.ui.components.RestoDialog
@@ -74,8 +76,8 @@ import com.braveboy.resto.util.PersianFormatter
 @Composable
 fun InventoryScreen(
     viewModel: InventoryViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -90,14 +92,106 @@ fun InventoryScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
+    InventoryScreenContent(
+        tenantState = tenantState,
+        searchQuery = searchQuery,
+        selectedCategory = selectedCategory,
+        products = products,
+        warehouses = warehouses,
+        selectedProductForAdjustment = selectedProductForAdjustment,
+        selectedProductForEdit = selectedProductForEdit,
+        selectedProductForDelete = selectedProductForDelete,
+        isAddProductDialogOpen = isAddProductDialogOpen,
+        snackbarMessage = snackbarMessage,
+        isLoading = isLoading,
+        isSaving = isSaving,
+        onBackClick = onBackClick,
+        onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
+        onOpenAddProductDialog = { viewModel.openAddProductDialog() },
+        onCloseAddProductDialog = { viewModel.closeAddProductDialog() },
+        onSearchQueryChange = { viewModel.setSearchQuery(it) },
+        onSelectCategory = { viewModel.selectCategory(it) },
+        onOpenEditProduct = { viewModel.openEditProduct(it) },
+        onCloseEditProduct = { viewModel.closeEditProduct() },
+        onOpenDeleteProduct = { viewModel.openDeleteProduct(it) },
+        onCloseDeleteProduct = { viewModel.closeDeleteProduct() },
+        onOpenStockAdjustment = { viewModel.openStockAdjustment(it) },
+        onCloseStockAdjustment = { viewModel.closeStockAdjustment() },
+        onAddProduct = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId, imageUrl ->
+            viewModel.addProduct(
+                name = name,
+                sku = sku,
+                barcode = barcode,
+                price = price,
+                costPrice = costPrice,
+                category = category,
+                unit = unit,
+                description = description,
+                initialStock = initialStock,
+                warehouseId = warehouseId,
+                imageUrl = imageUrl
+            )
+        },
+        onSubmitStockAdjustment = { productId, warehouseId, delta, reason ->
+            viewModel.submitStockAdjustment(productId, warehouseId, delta, reason)
+        },
+        onUpdateProduct = { viewModel.updateProduct(it) },
+        onDeleteProduct = { viewModel.deleteProduct(it) },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun InventoryScreenContent(
+    tenantState: TenantState,
+    searchQuery: String,
+    selectedCategory: String?,
+    products: List<Product>,
+    warehouses: List<Warehouse>,
+    selectedProductForAdjustment: Product?,
+    selectedProductForEdit: Product?,
+    selectedProductForDelete: Product?,
+    isAddProductDialogOpen: Boolean,
+    snackbarMessage: String?,
+    isLoading: Boolean,
+    isSaving: Boolean,
+    onBackClick: () -> Unit = {},
+    onClearSnackbarMessage: () -> Unit = {},
+    onOpenAddProductDialog: () -> Unit = {},
+    onCloseAddProductDialog: () -> Unit = {},
+    onSearchQueryChange: (String) -> Unit = {},
+    onSelectCategory: (String?) -> Unit = {},
+    onOpenEditProduct: (Product) -> Unit = {},
+    onCloseEditProduct: () -> Unit = {},
+    onOpenDeleteProduct: (Product) -> Unit = {},
+    onCloseDeleteProduct: () -> Unit = {},
+    onOpenStockAdjustment: (Product) -> Unit = {},
+    onCloseStockAdjustment: () -> Unit = {},
+    onAddProduct: (
+        name: String,
+        sku: String,
+        barcode: String,
+        price: Double,
+        costPrice: Double,
+        category: String,
+        unit: String,
+        description: String,
+        initialStock: Int,
+        warehouseId: String,
+        imageUrl: String
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
+    onSubmitStockAdjustment: (productId: String, warehouseId: String, delta: Int, reason: String) -> Unit = { _, _, _, _ -> },
+    onUpdateProduct: (Product) -> Unit = {},
+    onDeleteProduct: (Product) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
-            viewModel.clearSnackbarMessage()
+            onClearSnackbarMessage()
         }
     }
 
@@ -122,7 +216,7 @@ fun InventoryScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.openAddProductDialog() },
+                onClick = onOpenAddProductDialog,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -159,7 +253,7 @@ fun InventoryScreen(
             ) {
                 RestoStatCard(
                     title = stringResource(R.string.total_skus),
-                    value = if (isPersian) PersianFormatter.toPersianDigits(totalSkus) else "$totalSkus",
+                    value = PersianFormatter.toPersianDigits(totalSkus),
                     subtitle = stringResource(R.string.active_items),
                     icon = Icons.Rounded.Inventory,
                     modifier = Modifier.weight(1f)
@@ -167,7 +261,7 @@ fun InventoryScreen(
 
                 RestoStatCard(
                     title = stringResource(R.string.units_in_stock),
-                    value = if (isPersian) PersianFormatter.toPersianDigits(totalStockUnits) else "$totalStockUnits",
+                    value = PersianFormatter.toPersianDigits(totalStockUnits),
                     subtitle = stringResource(R.string.units_in_stock),
                     icon = Icons.Rounded.Inventory2,
                     modifier = Modifier.weight(1f)
@@ -177,8 +271,8 @@ fun InventoryScreen(
                     val alertTotal = lowStockCount + outOfStockCount
                     RestoStatCard(
                         title = stringResource(R.string.low_stock_warning),
-                        value = if (isPersian) PersianFormatter.toPersianDigits(alertTotal) else "$alertTotal",
-                        subtitle = if (isPersian) "$outOfStockCount ${stringResource(R.string.empty_items)}" else "$outOfStockCount empty",
+                        value = PersianFormatter.toPersianDigits(alertTotal),
+                        subtitle = "$outOfStockCount ${stringResource(R.string.empty_items)}",
                         icon = Icons.Rounded.Warning,
                         modifier = Modifier.weight(1f)
                     )
@@ -190,7 +284,7 @@ fun InventoryScreen(
             // SEARCH
             RestoSearchField(
                 query = searchQuery,
-                onQueryChange = { viewModel.setSearchQuery(it) },
+                onQueryChange = onSearchQueryChange,
                 placeholder = stringResource(R.string.search_product_hint)
             )
 
@@ -205,14 +299,14 @@ fun InventoryScreen(
                     RestoChip(
                         text = stringResource(R.string.all_categories_chip),
                         selected = selectedCategory == null,
-                        onClick = { viewModel.selectCategory(null) }
+                        onClick = { onSelectCategory(null) }
                     )
                 }
                 items(categories) { category ->
                     RestoChip(
                         text = category,
                         selected = selectedCategory == category,
-                        onClick = { viewModel.selectCategory(category) }
+                        onClick = { onSelectCategory(category) }
                     )
                 }
             }
@@ -230,7 +324,7 @@ fun InventoryScreen(
                     title = stringResource(R.string.no_products_title),
                     description = stringResource(R.string.no_products_desc),
                     actionText = stringResource(R.string.add_first_product),
-                    onActionClick = { viewModel.openAddProductDialog() },
+                    onActionClick = onOpenAddProductDialog,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -242,11 +336,10 @@ fun InventoryScreen(
                     items(products, key = { it.id }) { product ->
                         InventoryItemCard(
                             product = product,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit,
-                            onEditProductClick = { viewModel.openEditProduct(product) },
-                            onDeleteProductClick = { viewModel.openDeleteProduct(product) },
-                            onAdjustStockClick = { viewModel.openStockAdjustment(product) }
+                            onEditProductClick = { onOpenEditProduct(product) },
+                            onDeleteProductClick = { onOpenDeleteProduct(product) },
+                            onAdjustStockClick = { onOpenStockAdjustment(product) }
                         )
                     }
                 }
@@ -260,23 +353,8 @@ fun InventoryScreen(
             warehouses = warehouses,
             activeWarehouseId = tenantState.activeWarehouseId,
             confirmLoading = isSaving,
-            onSubmit = { name, sku, barcode, price, costPrice, category, unit, description, initialStock, warehouseId, imageUrl ->
-                viewModel.addProduct(
-                    name = name,
-                    sku = sku,
-                    barcode = barcode,
-                    price = price,
-                    costPrice = costPrice,
-                    category = category,
-                    unit = unit,
-                    description = description,
-                    initialStock = initialStock,
-                    warehouseId = warehouseId,
-                    imageUrl = imageUrl
-                )
-            },
-            onDismiss = { viewModel.closeAddProductDialog() },
-            isPersian = isPersian,
+            onSubmit = onAddProduct,
+            onDismiss = onCloseAddProductDialog,
             currencyUnit = currencyUnit
         )
     }
@@ -288,11 +366,8 @@ fun InventoryScreen(
             warehouses = warehouses,
             activeWarehouseId = tenantState.activeWarehouseId,
             confirmLoading = isSaving,
-            onSubmitAdjustment = { productId, warehouseId, delta, reason ->
-                viewModel.submitStockAdjustment(productId, warehouseId, delta, reason)
-            },
-            onDismiss = { viewModel.closeStockAdjustment() },
-            isPersian = isPersian
+            onSubmitAdjustment = onSubmitStockAdjustment,
+            onDismiss = onCloseStockAdjustment
         )
     }
 
@@ -301,11 +376,8 @@ fun InventoryScreen(
         EditProductDialog(
             product = product,
             confirmLoading = isSaving,
-            onSubmit = { updatedProduct ->
-                viewModel.updateProduct(updatedProduct)
-            },
-            onDismiss = { viewModel.closeEditProduct() },
-            isPersian = isPersian,
+            onSubmit = onUpdateProduct,
+            onDismiss = onCloseEditProduct,
             currencyUnit = currencyUnit
         )
     }
@@ -316,15 +388,12 @@ fun InventoryScreen(
             title = stringResource(R.string.delete_product_title),
             confirmText = stringResource(R.string.delete),
             confirmLoading = isSaving,
-            onConfirm = {
-                viewModel.deleteProduct(product)
-            },
-            onDismissRequest = { viewModel.closeDeleteProduct() }
+            onConfirm = { onDeleteProduct(product) },
+            onDismissRequest = onCloseDeleteProduct
         ) {
             Text(
-                text = String.format(stringResource(R.string.delete_product_confirm_message), product.name),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                text = stringResource(R.string.delete_product_confirm_message, product.name),
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -333,7 +402,6 @@ fun InventoryScreen(
 @Composable
 fun InventoryItemCard(
     product: Product,
-    isPersian: Boolean,
     currencyUnit: String,
     onEditProductClick: () -> Unit,
     onDeleteProductClick: () -> Unit,
@@ -357,15 +425,11 @@ fun InventoryItemCard(
 
     val stockBadgeText = when {
         isOutOfStock -> stringResource(R.string.out_of_stock)
-        isLowStock -> if (isPersian) "کمبود موجودی (${PersianFormatter.toPersianDigits(totalStock)})" else "Low ($totalStock)"
-        else -> if (isPersian) "${PersianFormatter.toPersianDigits(totalStock)} ${product.unit}" else "$totalStock ${product.unit}"
+        isLowStock -> "کمبود موجودی (${PersianFormatter.toPersianDigits(totalStock)})"
+        else -> "${PersianFormatter.toPersianDigits(totalStock)} ${product.unit}"
     }
 
-    val formattedPrice = if (isPersian) {
-        "${PersianFormatter.formatTomans(product.price)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", product.price)}"
-    }
+    val formattedPrice = "${PersianFormatter.formatTomans(product.price)} $currencyUnit"
 
     Box(
         modifier = Modifier
@@ -506,7 +570,6 @@ fun EditProductDialog(
     product: Product,
     onSubmit: (updatedProduct: Product) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
     currencyUnit: String = stringResource(R.string.currency_unit),
     confirmLoading: Boolean = false
 ) {
@@ -602,13 +665,13 @@ fun EditProductDialog(
 
                 Column {
                     Text(
-                        text = if (imageUrl.isNotBlank()) (if (isPersian) "تصویر کالا انتخاب شد" else "Image Selected") else (if (isPersian) "افزودن تصویر کالا" else "Add Product Image"),
+                        text = if (imageUrl.isNotBlank()) stringResource(R.string.image_selected) else "افزودن تصویر کالا",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (isPersian) "لمس کنید تا عکس کالا را تغییر دهید" else "Tap to change photo",
+                        text = stringResource(R.string.tap_to_change_photo),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -640,7 +703,7 @@ fun EditProductDialog(
                 RestoTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -648,7 +711,7 @@ fun EditProductDialog(
                 RestoTextField(
                     value = costPriceStr,
                     onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -699,7 +762,6 @@ fun AddProductDialog(
         imageUrl: String
     ) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
     currencyUnit: String = stringResource(R.string.currency_unit),
     confirmLoading: Boolean = false
 ) {
@@ -806,13 +868,13 @@ fun AddProductDialog(
 
                 Column {
                     Text(
-                        text = if (imageUrl.isNotBlank()) (if (isPersian) "تصویر کالا انتخاب شد" else "Image Selected") else (if (isPersian) "افزودن تصویر کالا" else "Add Product Image"),
+                        text = if (imageUrl.isNotBlank()) stringResource(R.string.image_selected) else "افزودن تصویر کالا",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (isPersian) "لمس کنید تا عکس کالا را انتخاب کنید" else "Tap to choose photo from gallery",
+                        text = stringResource(R.string.tap_to_choose_photo),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -844,7 +906,7 @@ fun AddProductDialog(
                 RestoTextField(
                     value = priceStr,
                     onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -852,7 +914,7 @@ fun AddProductDialog(
                 RestoTextField(
                     value = costPriceStr,
                     onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                    visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -890,3 +952,161 @@ fun AddProductDialog(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun InventoryItemCardPreview() {
+    RestoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            InventoryItemCard(
+                product = Product(
+                    id = "1",
+                    orgId = "org1",
+                    sku = "PRD-1001",
+                    barcode = "123456789",
+                    name = "اسپرسو سینگل",
+                    description = "قهوه اسپرسو ۱۰۰٪ عربیکا",
+                    price = 45000.0,
+                    costPrice = 20000.0,
+                    category = "نوشیدنی",
+                    unit = "عدد",
+                    stockQuantityByWarehouse = mapOf("w1" to 15)
+                ),
+                currencyUnit = "تومان",
+                onEditProductClick = {},
+                onDeleteProductClick = {},
+                onAdjustStockClick = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "Edit Product Dialog Preview", showBackground = true)
+@Composable
+fun EditProductDialogPreview() {
+    RestoTheme {
+        EditProductDialog(
+            product = Product(
+                id = "1",
+                orgId = "org1",
+                sku = "PRD-1001",
+                barcode = "123456789",
+                name = "اسپرسو سینگل",
+                description = "قهوه اسپرسو ۱۰۰٪ عربیکا",
+                price = 45000.0,
+                costPrice = 20000.0,
+                category = "نوشیدنی",
+                unit = "عدد",
+                imageUrl = "",
+                stockQuantityByWarehouse = mapOf("w1" to 15)
+            ),
+            onSubmit = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Preview(name = "Add Product Dialog Preview", showBackground = true)
+@Composable
+fun AddProductDialogPreview() {
+    RestoTheme {
+        AddProductDialog(
+            warehouses = listOf(
+                Warehouse(
+                    id = "wh-1",
+                    storeId = "store-1",
+                    orgId = "org-1",
+                    name = "انبار مرکزی",
+                    code = "WH-01",
+                    address = "تهران، خیابان اصلی"
+                ),
+                Warehouse(
+                    id = "wh-2",
+                    storeId = "store-1",
+                    orgId = "org-1",
+                    name = "انبار شماره ۲",
+                    code = "WH-02",
+                    address = "تهران، خیابان دوم"
+                )
+            ),
+            activeWarehouseId = "wh-1",
+            onSubmit = { _, _, _, _, _, _, _, _, _, _, _ -> },
+            onDismiss = {}
+        )
+    }
+}
+
+@Preview(name = "Inventory Screen Preview", showBackground = true)
+@Composable
+fun InventoryScreenPreview() {
+    val sampleWarehouse = Warehouse(
+        id = "w1",
+        storeId = "s1",
+        orgId = "o1",
+        name = "انبار مرکزی",
+        code = "WH-01",
+        address = "تهران، خیابان اصلی"
+    )
+    val sampleProducts = listOf(
+        Product(
+            id = "p1",
+            orgId = "o1",
+            sku = "PRD-1001",
+            barcode = "626000000001",
+            name = "پیتزا پپرونی",
+            description = "پیتزا پپرونی تند با پنیر موزارلا",
+            price = 280000.0,
+            costPrice = 180000.0,
+            category = "پیتزا",
+            unit = "عدد",
+            stockQuantityByWarehouse = mapOf("w1" to 25)
+        ),
+        Product(
+            id = "p2",
+            orgId = "o1",
+            sku = "PRD-1002",
+            barcode = "626000000002",
+            name = "همبرگر مخصوص",
+            description = "برگر گوشت تازه به همراه قارچ و پنیر",
+            price = 220000.0,
+            costPrice = 140000.0,
+            category = "برگر",
+            unit = "عدد",
+            stockQuantityByWarehouse = mapOf("w1" to 5)
+        ),
+        Product(
+            id = "p3",
+            orgId = "o1",
+            sku = "PRD-1003",
+            barcode = "626000000003",
+            name = "نوشابه قوطی",
+            description = "نوشابه کوکاکولا ۳۳۰ میلی‌لیتر",
+            price = 30000.0,
+            costPrice = 20000.0,
+            category = "نوشیدنی",
+            unit = "عدد",
+            stockQuantityByWarehouse = mapOf("w1" to 0)
+        )
+    )
+
+    RestoTheme {
+        InventoryScreenContent(
+            tenantState = TenantState(
+                activeOrgId = "o1",
+                activeWarehouseId = "w1"
+            ),
+            searchQuery = "",
+            selectedCategory = null,
+            products = sampleProducts,
+            warehouses = listOf(sampleWarehouse),
+            selectedProductForAdjustment = null,
+            selectedProductForEdit = null,
+            selectedProductForDelete = null,
+            isAddProductDialogOpen = false,
+            snackbarMessage = null,
+            isLoading = false,
+            isSaving = false
+        )
+    }
+}
+

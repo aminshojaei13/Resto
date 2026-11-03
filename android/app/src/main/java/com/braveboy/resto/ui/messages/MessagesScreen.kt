@@ -67,7 +67,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.braveboy.resto.R
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -179,8 +181,7 @@ fun MessagesScreenContent(
     onAddProductToDraft: (product: Product) -> Unit = {},
     onDismissSuccess: () -> Unit = {}
 ) {
-    val isPersian = tenantState.language == "fa"
-    val currencyUnit = if (isPersian) "تومان" else "$"
+    val currencyUnit = stringResource(R.string.currency_unit)
 
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -215,14 +216,14 @@ fun MessagesScreenContent(
         پرداخت: کارت به کارت انجام شد
     """.trimIndent()
 
-    CompositionLocalProvider(LocalLayoutDirection provides if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 RestoTopBar(
-                    title = if (isPersian) "سفارش پیامکی" else "Social Orders",
+                    title = stringResource(R.string.sms_orders),
                     onNavigationClick = onBackClick
                 )
             }
@@ -296,7 +297,7 @@ fun MessagesScreenContent(
 
                     // Quick action buttons: Paste (full width), Sample & Clear (secondary row)
                     RestoButton(
-                        text = if (isPersian) "چسباندن از حافظه" else "Paste from Clipboard",
+                        text = stringResource(R.string.paste_from_clipboard),
                         leadingIcon = Icons.Rounded.ContentPaste,
                         variant = RestoButtonVariant.Outlined,
                         compact = true,
@@ -314,7 +315,7 @@ fun MessagesScreenContent(
                         horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
                     ) {
                         RestoButton(
-                            text = if (isPersian) "قالب‌های نمونه پیامک" else "SMS Templates",
+                            text = stringResource(R.string.sms_templates),
                             leadingIcon = Icons.Rounded.Description,
                             variant = RestoButtonVariant.Outlined,
                             compact = true,
@@ -323,7 +324,7 @@ fun MessagesScreenContent(
                         )
 
                         RestoButton(
-                            text = if (isPersian) "+ قالب دلخواه" else "+ Custom",
+                            text = stringResource(R.string.custom_template_btn),
                             variant = RestoButtonVariant.Outlined,
                             compact = true,
                             onClick = { isCreateTemplateOpen = true },
@@ -332,7 +333,7 @@ fun MessagesScreenContent(
 
                         if (uiState.rawText.isNotBlank()) {
                             RestoButton(
-                                text = if (isPersian) "پاک‌سازی" else "Clear",
+                                text = stringResource(R.string.clear_text),
                                 leadingIcon = Icons.Rounded.Clear,
                                 variant = RestoButtonVariant.Text,
                                 compact = true,
@@ -757,8 +758,7 @@ fun MessagesScreenContent(
                 },
                 onDeleteCustomTemplate = onDeleteCustomTemplate,
                 onOpenCreateDialog = { isCreateTemplateOpen = true },
-                onDismiss = { isTemplatePickerOpen = false },
-                isPersian = isPersian
+                onDismiss = { isTemplatePickerOpen = false }
             )
         }
 
@@ -768,8 +768,7 @@ fun MessagesScreenContent(
                     onSaveCustomTemplate(title, text)
                     onSetRawText(text)
                 },
-                onDismiss = { isCreateTemplateOpen = false },
-                isPersian = isPersian
+                onDismiss = { isCreateTemplateOpen = false }
             )
         }
     }
@@ -1125,8 +1124,7 @@ fun MessageTemplatePickerSheet(
     onSelectTemplate: (MessageTemplate) -> Unit,
     onDeleteCustomTemplate: (String) -> Unit,
     onOpenCreateDialog: () -> Unit,
-    onDismiss: () -> Unit,
-    isPersian: Boolean = true
+    onDismiss: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("همه") }
     val categories =
@@ -1151,7 +1149,7 @@ fun MessageTemplatePickerSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isPersian) "قالب‌ها و الگوی نمونه پیامک" else "SMS Message Templates",
+                    text = stringResource(R.string.sms_templates),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -1192,7 +1190,7 @@ fun MessageTemplatePickerSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isPersian) "قالبی در این دسته‌بندی وجود ندارد." else "No templates in this category.",
+                        text = "قالبی در این دسته‌بندی وجود ندارد.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1229,7 +1227,7 @@ fun MessageTemplatePickerSheet(
                                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
-                                                    text = if (isPersian) "قالب شخصی شما" else "Custom",
+                                                    text = "قالب شخصی شما",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.onPrimary
                                                 )
@@ -1282,7 +1280,7 @@ fun MessageTemplatePickerSheet(
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(if (isPersian) "درج و استفاده از این قالب" else "Use This Template")
+                                    Text(stringResource(R.string.use_this_template))
                                 }
                             }
                         }
@@ -1301,7 +1299,7 @@ fun MessageTemplatePickerSheet(
             ) {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isPersian) "+ ثبت و تعریف قالب پیامک دلخواه جدید" else "+ Create Custom Template")
+                Text(stringResource(R.string.create_custom_template))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1312,15 +1310,14 @@ fun MessageTemplatePickerSheet(
 @Composable
 fun CreateCustomTemplateDialog(
     onSaveTemplate: (title: String, text: String) -> Unit,
-    onDismiss: () -> Unit,
-    isPersian: Boolean = true
+    onDismiss: () -> Unit
 ) {
     var titleText by remember { mutableStateOf("") }
     var templateText by remember { mutableStateOf("") }
 
     RestoDialog(
-        title = if (isPersian) "ثبت قالب پیامک دلخواه جدید" else "Create Custom SMS Template",
-        confirmText = if (isPersian) "ذخیره قالب" else "Save Template",
+        title = stringResource(R.string.create_template_title),
+        confirmText = stringResource(R.string.save_template),
         onConfirm = {
             if (titleText.isNotBlank() && templateText.isNotBlank()) {
                 onSaveTemplate(titleText.trim(), templateText.trim())
@@ -1332,10 +1329,7 @@ fun CreateCustomTemplateDialog(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
             Text(
-                text = if (isPersian)
-                    "فرمت یا الگوی دلخواه پیامک مشتریان خود را وارد کنید تا همیشه در دسترس شما باشد."
-                else
-                    "Enter your custom SMS template pattern for quick reuse.",
+                text = "فرمت یا الگوی دلخواه پیامک مشتریان خود را وارد کنید تا همیشه در دسترس شما باشد.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1343,26 +1337,19 @@ fun CreateCustomTemplateDialog(
             RestoTextField(
                 value = titleText,
                 onValueChange = { titleText = it },
-                label = if (isPersian) "عنوان قالب (مثال: الگو واتس‌اپ مغازه)" else "Template Title",
+                label = stringResource(R.string.template_title_label),
                 placeholder = "مثلاً: قالب اختصاصی فروشگاه"
             )
 
             OutlinedTextField(
                 value = templateText,
                 onValueChange = { templateText = it },
-                label = { Text(if (isPersian) "متن نمونه یا الگوی پیامک" else "Template Text") },
+                label = { Text(stringResource(R.string.template_text_label)) },
                 placeholder = {
                     Text(
-                        if (isPersian)
-                            "مثال:\nسفارش جدید:\nنام: ...\nتلفن: ...\nاقلام: ...\nآدرس: ..."
-                        else
-                            "Enter template text..."
+                        "مثال:\nسفارش جدید:\nنام: ...\nتلفن: ...\nاقلام: ...\nآدرس: ..."
                     )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp),
-                shape = RestoShapes.medium
+                }
             )
         }
     }

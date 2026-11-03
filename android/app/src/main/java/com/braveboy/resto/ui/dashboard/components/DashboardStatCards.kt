@@ -21,15 +21,16 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
@@ -39,8 +40,7 @@ fun DashboardStatCard(
     trendText: String,
     isPositiveTrend: Boolean,
     icon: ImageVector,
-    modifier: Modifier = Modifier,
-    isPersian: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
@@ -112,7 +112,7 @@ fun DashboardStatCard(
                 )
 
                 Text(
-                    text = if (isPersian) "نسبت به ماه قبل" else "vs last month",
+                    text = stringResource(R.string.vs_last_month),
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -129,31 +129,28 @@ fun DashboardStatCardsRow(
     netProfitValue: String = "۰ تومان",
     netProfitTrend: String = "۰٪",
     totalOrdersValue: String = "۰",
-    totalOrdersTrend: String = "۰٪",
-    isPersian: Boolean = true
+    totalOrdersTrend: String = "۰٪"
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         DashboardStatCard(
-            title = if (isPersian) "سود خالص" else "Net Profit",
+            title = stringResource(R.string.net_profit_title),
             value = netProfitValue,
             trendText = netProfitTrend,
             isPositiveTrend = true,
             icon = Icons.Rounded.Payments,
-            modifier = Modifier.weight(1f),
-            isPersian = isPersian
+            modifier = Modifier.weight(1f)
         )
 
         DashboardStatCard(
-            title = if (isPersian) "کل سفارشات" else "Total Orders",
+            title = stringResource(R.string.total_orders_title),
             value = totalOrdersValue,
             trendText = totalOrdersTrend,
             isPositiveTrend = false,
             icon = Icons.AutoMirrored.Rounded.ReceiptLong,
-            modifier = Modifier.weight(1f),
-            isPersian = isPersian
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -166,8 +163,7 @@ fun DashboardStatCardsRowPreview() {
             Box(modifier = Modifier.padding(12.dp)) {
                 DashboardStatCardsRow(
                     netProfitValue = "۰ تومان",
-                    totalOrdersValue = "۰",
-                    isPersian = true
+                    totalOrdersValue = "۰"
                 )
             }
         }

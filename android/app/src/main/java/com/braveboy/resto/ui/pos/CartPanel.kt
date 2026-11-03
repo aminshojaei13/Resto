@@ -38,12 +38,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.CartItem
 import com.braveboy.resto.data.model.Customer
 import com.braveboy.resto.data.model.SalesChannel
+import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
 @Composable
@@ -59,8 +63,7 @@ fun CartPanel(
     onClearCart: () -> Unit,
     onSelectCustomerClick: () -> Unit,
     onCheckoutClick: () -> Unit,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     val subtotal = cartItems.sumOf { it.subtotal }
     val discountTotal = cartItems.sumOf { it.discountAmount }
@@ -92,7 +95,7 @@ fun CartPanel(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isPersian) "سبد خرید" else "Current Order",
+                        text = stringResource(R.string.cart_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
@@ -107,9 +110,7 @@ fun CartPanel(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (isPersian) toPersianDigits(
-                                totalItemCount
-                            ) else "$totalItemCount",
+                            text = toPersianDigits(totalItemCount),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -120,7 +121,7 @@ fun CartPanel(
                 if (cartItems.isNotEmpty()) {
                     TextButton(onClick = onClearCart) {
                         Text(
-                            text = if (isPersian) "پاک کردن همه" else "Clear All",
+                            text = stringResource(R.string.clear_all),
                             color = MaterialTheme.colorScheme.error,
                             maxLines = 1
                         )
@@ -154,7 +155,7 @@ fun CartPanel(
                     Column(modifier = Modifier.weight(1f)) {
                         val headerText = when {
                             selectedCustomer != null -> selectedCustomer.name
-                            customGuestName.isNotBlank() -> selectedChannel.titleFa
+                            customGuestName.isNotBlank() -> "$customGuestName (${selectedChannel.titleFa})"
                             else -> selectedChannel.titleFa
                         }
                         Text(
@@ -166,11 +167,11 @@ fun CartPanel(
                         )
                         if (selectedCustomer != null) {
                             Text(
-                                text = "${if (isPersian) "امتیاز:" else "Points:"} ${
-                                    if (isPersian) toPersianDigits(
-                                        selectedCustomer.loyaltyPoints
-                                    ) else selectedCustomer.loyaltyPoints
-                                } | ${selectedCustomer.phone.ifBlank { selectedCustomer.email }}",
+                                text = stringResource(
+                                    R.string.customer_points_label,
+                                    toPersianDigits(selectedCustomer.loyaltyPoints),
+                                    selectedCustomer.phone.ifBlank { selectedCustomer.email }
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -178,7 +179,7 @@ fun CartPanel(
                             )
                         } else {
                             Text(
-                                text = if (isPersian) "برای تغییر کانال سفارش (تلفنی، اینترنتی، حضوری) یا انتخاب مشتری کلیک کنید" else "Tap to change channel or attach customer",
+                                text = stringResource(R.string.select_channel_or_customer_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -210,12 +211,12 @@ fun CartPanel(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (isPersian) "سبد خرید خالی است" else "Cart is empty",
+                            text = stringResource(R.string.cart_empty),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (isPersian) "کالاها را از لیست انتخاب کرده یا بارکد اسکن کنید" else "Select products from catalog or scan barcode",
+                            text = stringResource(R.string.cart_empty_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -230,7 +231,6 @@ fun CartPanel(
                     items(cartItems, key = { it.id }) { item ->
                         CartItemRow(
                             item = item,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit,
                             onQuantityChange = { delta -> onUpdateQuantity(item, delta) },
                             onRemove = { onRemoveItem(item.id) },
@@ -260,15 +260,11 @@ fun CartPanel(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        if (isPersian) "جمع اقلام" else "Subtotal",
+                        text = stringResource(R.string.subtotal_items),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        if (isPersian) "${
-                            com.braveboy.resto.util.PersianFormatter.formatTomans(
-                                subtotal
-                            )
-                        } $currencyUnit" else "$${String.format("%.2f", subtotal)}",
+                        text = "${com.braveboy.resto.util.PersianFormatter.formatTomans(subtotal)} $currencyUnit",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -279,16 +275,12 @@ fun CartPanel(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            if (isPersian) "تخفیف" else "Discount",
+                            text = stringResource(R.string.discount),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
                         Text(
-                            if (isPersian) "-${
-                                com.braveboy.resto.util.PersianFormatter.formatTomans(
-                                    discountTotal
-                                )
-                            } $currencyUnit" else "-$${String.format("%.2f", discountTotal)}",
+                            text = "-${com.braveboy.resto.util.PersianFormatter.formatTomans(discountTotal)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -301,15 +293,11 @@ fun CartPanel(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            if (isPersian) "مالیات" else "Tax",
+                            text = stringResource(R.string.tax_plain),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            if (isPersian) "${
-                                com.braveboy.resto.util.PersianFormatter.formatTomans(
-                                    taxTotal
-                                )
-                            } $currencyUnit" else "$${String.format("%.2f", taxTotal)}",
+                            text = "${com.braveboy.resto.util.PersianFormatter.formatTomans(taxTotal)} $currencyUnit",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -325,16 +313,12 @@ fun CartPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isPersian) "مبلغ کل" else "Total",
+                        text = stringResource(R.string.grand_total),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "${
-                            com.braveboy.resto.util.PersianFormatter.formatTomans(
-                                grandTotal
-                            )
-                        } $currencyUnit" else "$${String.format("%.2f", grandTotal)}",
+                        text = "${com.braveboy.resto.util.PersianFormatter.formatTomans(grandTotal)} $currencyUnit",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
@@ -361,11 +345,11 @@ fun CartPanel(
                 Icon(imageVector = Icons.Rounded.ShoppingCartCheckout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isPersian) "تسویه و صدور فاکتور (${
-                        com.braveboy.resto.util.PersianFormatter.formatTomans(
-                            grandTotal
-                        )
-                    } $currencyUnit)" else "Checkout ($${String.format("%.2f", grandTotal)})",
+                    text = stringResource(
+                        R.string.checkout_and_invoice,
+                        com.braveboy.resto.util.PersianFormatter.formatTomans(grandTotal),
+                        currencyUnit
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -382,8 +366,7 @@ fun CartItemRow(
     onQuantityChange: (Int) -> Unit,
     onRemove: () -> Unit,
     onApplyDiscount: (Double) -> Unit,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     Card(
         border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.primary),
@@ -420,11 +403,7 @@ fun CartItemRow(
                         )
                     }
                     Text(
-                        text = if (isPersian) "${
-                            com.braveboy.resto.util.PersianFormatter.formatTomans(
-                                item.price
-                            )
-                        } $currencyUnit" else "$${String.format("%.2f", item.price)} ea",
+                        text = "${com.braveboy.resto.util.PersianFormatter.formatTomans(item.price)} $currencyUnit",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -437,7 +416,7 @@ fun CartItemRow(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.DeleteOutline,
-                        contentDescription = if (isPersian) "حذف کالا" else "Remove item",
+                        contentDescription = stringResource(R.string.remove_item),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -466,15 +445,13 @@ fun CartItemRow(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Remove,
-                            contentDescription = if (isPersian) "کاهش" else "Decrease",
+                            contentDescription = stringResource(R.string.decrease),
                             modifier = Modifier.size(16.dp)
                         )
                     }
 
                     Text(
-                        text = if (isPersian) toPersianDigits(
-                            item.quantity
-                        ) else "${item.quantity}",
+                        text = toPersianDigits(item.quantity),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 12.dp)
@@ -486,18 +463,14 @@ fun CartItemRow(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Add,
-                            contentDescription = if (isPersian) "افزایش" else "Increase",
+                            contentDescription = stringResource(R.string.increase),
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
 
                 Text(
-                    text = if (isPersian) "${
-                        com.braveboy.resto.util.PersianFormatter.formatTomans(
-                            item.total
-                        )
-                    } $currencyUnit" else "$${String.format("%.2f", item.total)}",
+                    text = "${com.braveboy.resto.util.PersianFormatter.formatTomans(item.total)} $currencyUnit",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -506,5 +479,82 @@ fun CartItemRow(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CartItemRowPreview() {
+    RestoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            CartItemRow(
+                item = CartItem(
+                    id = "cart-item-1",
+                    orgId = "org1",
+                    storeId = "store1",
+                    productId = "p1",
+                    productName = "قهوه اسپرسو دوبل",
+                    variantName = "۱۰۰٪ عربیکا",
+                    sku = "ESP-101",
+                    barcode = "123456789",
+                    price = 120000.0,
+                    quantity = 2
+                ),
+                onQuantityChange = {},
+                onRemove = {},
+                onApplyDiscount = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "Cart Panel Preview", showBackground = true, widthDp = 380, heightDp = 720)
+@Composable
+fun CartPanelPreview() {
+    RestoTheme {
+        CartPanel(
+            cartItems = listOf(
+                CartItem(
+                    id = "1",
+                    orgId = "org1",
+                    storeId = "store1",
+                    productId = "p1",
+                    productName = "پیتزا سیر و استیک",
+                    variantName = "دونفره",
+                    sku = "PIZ-001",
+                    barcode = "123456",
+                    price = 320000.0,
+                    quantity = 2,
+                    discountPercent = 10.0,
+                    taxRate = 0.09
+                ),
+                CartItem(
+                    id = "2",
+                    orgId = "org1",
+                    storeId = "store1",
+                    productId = "p2",
+                    productName = "نوشابه قوطی کوکاکولا",
+                    sku = "DRK-001",
+                    barcode = "654321",
+                    price = 25000.0,
+                    quantity = 3,
+                    taxRate = 0.09
+                )
+            ),
+            selectedCustomer = Customer(
+                id = "cust1",
+                orgId = "org1",
+                name = "علی محمدی",
+                phone = "09123456789",
+                loyaltyPoints = 150
+            ),
+            selectedChannel = SalesChannel.WALK_IN,
+            onUpdateQuantity = { _, _ -> },
+            onApplyDiscount = { _, _ -> },
+            onRemoveItem = {},
+            onClearCart = {},
+            onSelectCustomerClick = {},
+            onCheckoutClick = {}
+        )
     }
 }

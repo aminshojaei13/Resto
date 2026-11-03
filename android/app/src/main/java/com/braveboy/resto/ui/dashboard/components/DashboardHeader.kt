@@ -17,7 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,7 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,13 +38,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.braveboy.resto.R
 import com.braveboy.resto.ui.theme.RestoTheme
-import com.braveboy.resto.util.PersianFormatter
-
-import androidx.compose.material.icons.rounded.DarkMode
-import androidx.compose.material.icons.rounded.LightMode
-import androidx.compose.material3.IconButton
 
 @Composable
 fun DashboardHeader(
@@ -52,12 +49,12 @@ fun DashboardHeader(
     userAvatarUrl: String = "",
     notificationCount: Int = 0,
     isDarkMode: Boolean = true,
-    isPersian: Boolean = true,
     onToggleTheme: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
-    val displayName = userName.trim().ifBlank { if (isPersian) "کاربر گرامی" else "User" }
+    val defaultUser = stringResource(R.string.default_user_name)
+    val displayName = userName.trim().ifBlank { defaultUser }
 
     Column(
         modifier = modifier
@@ -100,7 +97,7 @@ fun DashboardHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     if (userAvatarUrl.isNotBlank()) {
-                        coil.compose.AsyncImage(
+                        AsyncImage(
                             model = userAvatarUrl,
                             contentDescription = "User Avatar",
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
@@ -126,7 +123,7 @@ fun DashboardHeader(
                 ) {
                     Icon(
                         imageVector = if (isDarkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-                        contentDescription = if (isDarkMode) "Light Mode" else "Dark Mode",
+                        contentDescription = null,
                         tint = if (isDarkMode) Color(0xFFFFB74D) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -137,7 +134,7 @@ fun DashboardHeader(
         Spacer(modifier = Modifier.height(14.dp))
 
         // Greeting Text
-        val greetingText = if (isPersian) "سلام، $displayName 👋" else "Hello, $displayName 👋"
+        val greetingText = stringResource(R.string.welcome_user, displayName)
         Text(
             text = greetingText,
             fontSize = 22.sp,
@@ -161,8 +158,7 @@ fun DashboardHeaderPreview() {
             ) {
                 DashboardHeader(
                     userName = "ایران علوی",
-                    notificationCount = 0,
-                    isPersian = true
+                    notificationCount = 0
                 )
             }
         }

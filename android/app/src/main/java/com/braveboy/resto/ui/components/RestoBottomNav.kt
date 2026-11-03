@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Inventory
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -28,17 +27,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.resto.R
 import com.braveboy.resto.ui.MainDestination
 import com.braveboy.resto.ui.theme.RestoTheme
-import com.braveboy.resto.util.PersianFormatter
+import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
 @Composable
 fun RestoBottomNav(
@@ -46,8 +46,7 @@ fun RestoBottomNav(
     onDestinationSelected: (MainDestination) -> Unit,
     onCenterFabClick: () -> Unit,
     onMoreClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isPersian: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
@@ -71,7 +70,7 @@ fun RestoBottomNav(
             ) {
                 // Tab 1: Dashboard / Home
                 RestoNavItem(
-                    title = if (isPersian) "داشبورد" else "Dashboard",
+                    title = stringResource(R.string.nav_dashboard),
                     icon = Icons.Rounded.Home,
                     isSelected = currentDestination == MainDestination.ACCOUNTING,
                     onClick = { onDestinationSelected(MainDestination.ACCOUNTING) }
@@ -79,32 +78,15 @@ fun RestoBottomNav(
 
                 // Tab 2: Orders
                 RestoNavItem(
-                    title = if (isPersian) "سفارش‌ها" else "Orders",
+                    title = stringResource(R.string.nav_orders),
                     icon = Icons.AutoMirrored.Rounded.ReceiptLong,
                     isSelected = currentDestination == MainDestination.ORDERS,
                     onClick = { onDestinationSelected(MainDestination.ORDERS) }
                 )
 
-                /*// Tab 3: Center FAB (+) Button
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable { onCenterFabClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = if (isPersian) "ثبت جدید" else "New Entry",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }*/
-
-                // Tab 4: Inventory / Messages
+                // Tab 4: Inventory
                 RestoNavItem(
-                    title = if (isPersian) "موجودی" else "Inventory",
+                    title = stringResource(R.string.nav_inventory),
                     icon = Icons.Rounded.Inventory,
                     isSelected = currentDestination == MainDestination.INVENTORY,
                     onClick = { onDestinationSelected(MainDestination.INVENTORY) }
@@ -118,7 +100,7 @@ fun RestoBottomNav(
                 ).contains(currentDestination)
 
                 RestoNavItem(
-                    title = if (isPersian) "بیشتر" else "More",
+                    title = stringResource(R.string.nav_more),
                     icon = Icons.Rounded.MoreHoriz,
                     isSelected = isMoreSelected,
                     onClick = onMoreClick
@@ -134,8 +116,7 @@ private fun RestoNavItem(
     icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit,
-    badgeCount: Int = 0,
-    isPersian: Boolean = true
+    badgeCount: Int = 0
 ) {
     val activeColor = MaterialTheme.colorScheme.primary
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -165,7 +146,7 @@ private fun RestoNavItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(badgeCount) else "$badgeCount",
+                        text = toPersianDigits(badgeCount),
                         color = MaterialTheme.colorScheme.onError,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold
@@ -193,8 +174,7 @@ fun RestoBottomNavPreview() {
                 currentDestination = MainDestination.ACCOUNTING,
                 onDestinationSelected = {},
                 onCenterFabClick = {},
-                onMoreClick = {},
-                isPersian = true
+                onMoreClick = {}
             )
         }
     }

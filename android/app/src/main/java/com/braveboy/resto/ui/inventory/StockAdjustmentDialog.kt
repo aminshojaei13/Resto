@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -22,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.Warehouse
@@ -44,7 +42,6 @@ fun StockAdjustmentDialog(
     activeWarehouseId: String,
     onSubmitAdjustment: (productId: String, warehouseId: String, delta: Int, reason: String) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
     confirmLoading: Boolean = false
 ) {
     // If only one warehouse exists or active warehouse matches, auto pre-select
@@ -59,23 +56,13 @@ fun StockAdjustmentDialog(
     var isAddingStock by remember { mutableStateOf(true) }
     var quantityText by remember { mutableStateOf("1") }
 
-    val reasons = if (isPersian) {
-        listOf(
-            "خرید و ورود کالا به انبار",
-            "اصلاح موجودی بر اساس انبارگردانی",
-            "ضایعات، شکستگی و آسیب‌دیدگی",
-            "مرجوعی از سمت مشتری",
-            "انتقال داخلی بین انبارها"
-        )
-    } else {
-        listOf(
-            "Restock / Purchase Order Receive",
-            "Audit / Cycle Count Correction",
-            "Damage / Breakage Loss",
-            "Customer Return",
-            "Store Transfer"
-        )
-    }
+    val reasons = listOf(
+        "خرید و ورود کالا به انبار",
+        "اصلاح موجودی بر اساس انبارگردانی",
+        "ضایعات، شکستگی و آسیب‌دیدگی",
+        "مرجوعی از سمت مشتری",
+        "انتقال داخلی بین انبارها"
+    )
 
     var selectedReason by remember { mutableStateOf(reasons.first()) }
     var reasonDropdownExpanded by remember { mutableStateOf(false) }
@@ -112,10 +99,7 @@ fun StockAdjustmentDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    val stockText = if (isPersian)
-                        "موجودی کل: ${PersianFormatter.toPersianDigits(product.getTotalStock())} ${product.unit}"
-                    else
-                        "Total Stock: ${product.getTotalStock()} ${product.unit}"
+                    val stockText = "موجودی کل: ${PersianFormatter.toPersianDigits(product.getTotalStock())} ${product.unit}"
 
                     Text(
                         text = stockText,
@@ -129,7 +113,7 @@ fun StockAdjustmentDialog(
             // Warehouse Selector
             if (warehouses.isEmpty()) {
                 RestoBadge(
-                    text = if (isPersian) "هنوز انباری برای این شعبه ثبت نشده است" else "No warehouses available",
+                    text = stringResource(R.string.no_warehouses_registered),
                     variant = RestoBadgeVariant.Warning
                 )
             } else {
@@ -139,11 +123,8 @@ fun StockAdjustmentDialog(
                 ) {
                     val warehouseLabel = selectedWarehouse?.let {
                         val whStock = product.getStockForWarehouse(it.id)
-                        if (isPersian)
-                            "${it.name} (موجودی فعلی: ${PersianFormatter.toPersianDigits(whStock)} ${product.unit})"
-                        else
-                            "${it.name} (Stock: $whStock ${product.unit})"
-                    } ?: if (isPersian) "انتخاب انبار..." else "Select Warehouse..."
+                        "${it.name} (موجودی فعلی: ${PersianFormatter.toPersianDigits(whStock)} ${product.unit})"
+                    } ?: stringResource(R.string.select_warehouse_prompt)
 
                     OutlinedTextField(
                         value = warehouseLabel,
@@ -163,10 +144,7 @@ fun StockAdjustmentDialog(
                     ) {
                         warehouses.forEach { wh ->
                             val currentStock = product.getStockForWarehouse(wh.id)
-                            val itemLabel = if (isPersian)
-                                "${wh.name} (موجودی فعلی: ${PersianFormatter.toPersianDigits(currentStock)} ${product.unit})"
-                            else
-                                "${wh.name} (Current: $currentStock ${product.unit})"
+                            val itemLabel = "${wh.name} (موجودی فعلی: ${PersianFormatter.toPersianDigits(currentStock)} ${product.unit})"
 
                             DropdownMenuItem(
                                 text = { Text(itemLabel) },
@@ -180,7 +158,7 @@ fun StockAdjustmentDialog(
                 }
             }
 
-            // Inflow vs Outflow Selector
+            // Delta Direction Toggle (+ Add / - Reduce)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(RestoSpacing.sm)
@@ -200,13 +178,12 @@ fun StockAdjustmentDialog(
                 )
             }
 
-            // Quantity Input with Unit
+            // Quantity Input
             RestoTextField(
                 value = quantityText,
-                onValueChange = { quantityText = it.filter { ch -> ch.isDigit() } },
-                label = "${stringResource(R.string.quantity_delta)} (${product.unit})",
-                placeholder = "1",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                onValueChange = { input -> quantityText = input.filter { it.isDigit() } },
+                label = stringResource(R.string.quantity_delta),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
             )
 
             // Reason Selector
@@ -230,11 +207,11 @@ fun StockAdjustmentDialog(
                     expanded = reasonDropdownExpanded,
                     onDismissRequest = { reasonDropdownExpanded = false }
                 ) {
-                    reasons.forEach { r ->
+                    reasons.forEach { reason ->
                         DropdownMenuItem(
-                            text = { Text(r) },
+                            text = { Text(reason) },
                             onClick = {
-                                selectedReason = r
+                                selectedReason = reason
                                 reasonDropdownExpanded = false
                             }
                         )

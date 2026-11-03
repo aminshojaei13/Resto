@@ -1,7 +1,6 @@
 package com.braveboy.resto.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,19 +21,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
-import com.braveboy.resto.util.PersianFormatter
+import com.braveboy.resto.util.PersianFormatter.formatTomans
+import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
 @Composable
 fun RestoProductCard(
     product: Product,
     modifier: Modifier = Modifier,
-    isPersian: Boolean = true,
-    currencySymbol: String = "تومان",
+    currencySymbol: String = stringResource(R.string.currency_unit),
     warehouseId: String = "",
     onAddToCart: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
@@ -50,16 +51,12 @@ fun RestoProductCard(
     }
 
     val stockBadgeText = when {
-        isOutOfStock -> if (isPersian) "ناموجود" else "Out of stock"
-        isLowStock -> if (isPersian) "کمبود (${if (isPersian) PersianFormatter.toPersianDigits(stock) else stock})" else "Low ($stock)"
-        else -> if (isPersian) "${PersianFormatter.toPersianDigits(stock)} ${product.unit}" else "$stock ${product.unit}"
+        isOutOfStock -> stringResource(R.string.stock_out_of_stock)
+        isLowStock -> stringResource(R.string.stock_low_label, toPersianDigits(stock))
+        else -> "${toPersianDigits(stock)} ${product.unit}"
     }
 
-    val formattedPrice = if (isPersian) {
-        "${PersianFormatter.formatTomans(product.price)} $currencySymbol"
-    } else {
-        "$${String.format("%.2f", product.price)}"
-    }
+    val formattedPrice = "${formatTomans(product.price)} $currencySymbol"
 
     RestoCard(
         modifier = modifier,
@@ -124,7 +121,7 @@ fun RestoProductCard(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.AddShoppingCart,
-                            contentDescription = "Add to cart",
+                            contentDescription = stringResource(R.string.add_to_cart),
                             tint = if (!isOutOfStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         )
                     }

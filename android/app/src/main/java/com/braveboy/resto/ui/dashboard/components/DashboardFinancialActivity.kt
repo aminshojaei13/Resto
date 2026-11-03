@@ -51,7 +51,6 @@ import java.util.Locale
 @Composable
 fun DashboardFinancialActivity(
     ledgerEntries: List<LedgerEntry>,
-    isPersian: Boolean,
     currencyUnit: String,
     onNewEntryClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -181,7 +180,6 @@ fun DashboardFinancialActivity(
                 ledgerEntries.take(5).forEach { entry ->
                     ModernLedgerCardItem(
                         entry = entry,
-                        isPersian = isPersian,
                         currencyUnit = currencyUnit,
                         onClick = { onEntryClick(entry) }
                     )
@@ -194,24 +192,15 @@ fun DashboardFinancialActivity(
 @Composable
 fun ModernLedgerCardItem(
     entry: LedgerEntry,
-    isPersian: Boolean,
     currencyUnit: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isCredit = entry.type == LedgerType.CREDIT
     val dateFormat = SimpleDateFormat("yyyy/MM/dd • HH:mm", Locale.getDefault())
-    val dateStr = if (isPersian) {
-        PersianFormatter.toPersianDigits(dateFormat.format(Date(entry.createdAt)))
-    } else {
-        dateFormat.format(Date(entry.createdAt))
-    }
+    val dateStr = PersianFormatter.toPersianDigits(dateFormat.format(Date(entry.createdAt)))
 
-    val formattedAmount = if (isPersian) {
-        "${if (isCredit) "+" else "-"}${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
-    } else {
-        "${if (isCredit) "+" else "-"}$${String.format(Locale.getDefault(), "%.2f", entry.amount)}"
-    }
+    val formattedAmount = "${if (isCredit) "+" else "-"}${PersianFormatter.formatTomans(entry.amount)} $currencyUnit"
 
     val categoryTitle = when {
         entry.category == LedgerCategory.INITIAL_STOCK || entry.entryNumber.startsWith("INIT-") || entry.description.contains("موجودی اولیه") ->
@@ -225,8 +214,8 @@ fun ModernLedgerCardItem(
         else -> entry.category.displayName
     }
 
-    val badgeBg = if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer
-    val badgeTextClr = if (isCredit) RestoTheme.colors.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer
+    val icon = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
+    val iconColor = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error
 
     Box(
         modifier = modifier
@@ -237,91 +226,72 @@ fun ModernLedgerCardItem(
             .clickable { onClick() }
             .padding(14.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Row: Icon + Category Pill + Entry Number <---> Amount
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(if (isCredit) RestoTheme.colors.successContainer else MaterialTheme.colorScheme.errorContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isCredit) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                            contentDescription = null,
-                            tint = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
-                    // Category Pill
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(badgeBg)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = categoryTitle,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = badgeTextClr,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(entry.entryNumber) else entry.entryNumber,
-                        fontSize = 13.sp,
-                        fontFamily = FontFamily.Monospace,
+                        text = categoryTitle,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = if (entry.description.isNotBlank()) entry.description else PersianFormatter.toPersianDigits(entry.entryNumber),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = formattedAmount,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (isCredit) RestoTheme.colors.success else MaterialTheme.colorScheme.error,
+                    color = iconColor,
+                    maxLines = 1,
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = dateStr,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
             }
-
-            // Description & Date
-            if (entry.description.isNotBlank()) {
-                Text(
-                    text = entry.description,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Text(
-                text = dateStr,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -329,43 +299,11 @@ fun ModernLedgerCardItem(
 @Preview(showBackground = true)
 @Composable
 fun DashboardFinancialActivityPreview() {
-    val sampleEntries = listOf(
-        LedgerEntry(
-            id = "1",
-            orgId = "org_1",
-            storeId = "store_1",
-            entryNumber = "LEDG-ORD-3206-1001",
-            type = LedgerType.CREDIT,
-            category = LedgerCategory.SALES,
-            amount = 22400000.0,
-            description = "Sales Order #ORD-3206-1001 via Cash",
-            referenceId = "ord_1",
-            createdAt = System.currentTimeMillis()
-        ),
-        LedgerEntry(
-            id = "2",
-            orgId = "org_1",
-            storeId = "store_1",
-            entryNumber = "INIT-833544",
-            type = LedgerType.CREDIT,
-            category = LedgerCategory.INITIAL_STOCK,
-            amount = 85000000.0,
-            description = "موجودی اولیه برای کابل vga (100 عدد)",
-            referenceId = "prod_2",
-            createdAt = System.currentTimeMillis()
-        )
-    )
-
     RestoTheme {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            Box(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(16.dp)
-            ) {
+            Box(modifier = Modifier.padding(16.dp)) {
                 DashboardFinancialActivity(
-                    ledgerEntries = sampleEntries,
-                    isPersian = true,
+                    ledgerEntries = emptyList(),
                     currencyUnit = "تومان",
                     onNewEntryClick = {}
                 )

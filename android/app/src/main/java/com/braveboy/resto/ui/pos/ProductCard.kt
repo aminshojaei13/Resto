@@ -39,19 +39,12 @@ import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
-/**
- * Shopify POS Style Product Card (Proposal 2).
- * Optimized for narrow 2-column mobile grids. Features clean vertical
- * typography stack and a full-width tactile bottom action bar (+ افزودن به سبد)
- * that eliminates line-wrapping issues.
- */
 @Composable
 fun ProductCard(
     product: Product,
     activeWarehouseId: String,
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier,
-    isPersian: Boolean = true,
     currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     val stockInWarehouse = product.getStockForWarehouse(activeWarehouseId)
@@ -78,9 +71,9 @@ fun ProductCard(
     }
 
     val statusText = when {
-        isOutOfStock -> if (isPersian) "ناموجود" else "Out of Stock"
-        isLowStock -> if (isPersian) "کمبود (${PersianFormatter.toPersianDigits(totalStock)})" else "Low ($totalStock)"
-        else -> if (isPersian) "موجود (${PersianFormatter.toPersianDigits(totalStock)})" else "In Stock ($totalStock)"
+        isOutOfStock -> stringResource(R.string.stock_out_of_stock)
+        isLowStock -> stringResource(R.string.stock_low_label, PersianFormatter.toPersianDigits(totalStock))
+        else -> stringResource(R.string.stock_available_label, PersianFormatter.toPersianDigits(totalStock))
     }
 
     Card(
@@ -164,7 +157,7 @@ fun ProductCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isPersian) "موجودی: ${PersianFormatter.toPersianDigits(stockInWarehouse)}" else "WH: $stockInWarehouse",
+                        text = "موجودی: ${PersianFormatter.toPersianDigits(stockInWarehouse)}",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -181,7 +174,7 @@ fun ProductCard(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = if (isPersian) "${PersianFormatter.formatTomans(product.price)} $currencyUnit" else "$${String.format("%.2f", product.price)}",
+                    text = "${PersianFormatter.formatTomans(product.price)} $currencyUnit",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -209,7 +202,7 @@ fun ProductCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = if (isOutOfStock) (if (isPersian) "اتمام موجودی" else "Out of Stock") else (if (isPersian) "افزودن به سبد" else "Add to Cart"),
+                        text = if (isOutOfStock) stringResource(R.string.out_of_stock) else stringResource(R.string.add_to_cart),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isOutOfStock) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer

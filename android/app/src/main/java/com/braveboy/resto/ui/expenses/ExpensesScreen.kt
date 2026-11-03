@@ -1,6 +1,5 @@
 package com.braveboy.resto.ui.expenses
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,24 +63,21 @@ import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun ExpensesScreen(
     viewModel: ExpensesViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
-    val tenantState by viewModel.tenantState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val isCreateExpenseDialogOpen by viewModel.isCreateExpenseDialogOpen.collectAsState()
-    val selectedExpenseDetail by viewModel.selectedExpenseDetail.collectAsState()
     val selectedExpenseForEdit by viewModel.selectedExpenseForEdit.collectAsState()
+    val selectedExpenseDetail by viewModel.selectedExpenseDetail.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -123,7 +119,7 @@ fun ExpensesScreen(
         ) {
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
-            // Explanation Banner: clarifies difference between Purchase and Expense
+            // Explanation Banner
             RestoCard(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
@@ -159,7 +155,7 @@ fun ExpensesScreen(
             RestoSearchField(
                 query = searchQuery,
                 onQueryChange = { viewModel.setSearchQuery(it) },
-                placeholder = if (isPersian) "جستجو در شرح یا دسته‌بندی هزینه‌ها..." else "Search expenses..."
+                placeholder = stringResource(R.string.search_expenses_placeholder)
             )
 
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
@@ -186,7 +182,6 @@ fun ExpensesScreen(
                     items(expenses, key = { it.id }) { expense ->
                         ExpenseItemCard(
                             expense = expense,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit,
                             onClick = { viewModel.selectExpenseDetail(expense) },
                             onEditClick = { viewModel.openEditExpense(expense) }
@@ -202,7 +197,6 @@ fun ExpensesScreen(
         ExpenseFormDialog(
             title = stringResource(R.string.record_new_expense),
             initialExpense = null,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             confirmLoading = isSaving,
             onSubmit = { category, amount, method, date, notes ->
@@ -216,7 +210,6 @@ fun ExpensesScreen(
         ExpenseFormDialog(
             title = stringResource(R.string.edit_expense_title),
             initialExpense = expense,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             confirmLoading = isSaving,
             onSubmit = { category, amount, method, date, notes ->
@@ -232,7 +225,6 @@ fun ExpensesScreen(
     selectedExpenseDetail?.let { expense ->
         ExpenseDetailSheet(
             expense = expense,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             onEditClick = {
                 viewModel.selectExpenseDetail(null)
@@ -246,16 +238,11 @@ fun ExpensesScreen(
 @Composable
 fun ExpenseItemCard(
     expense: Expense,
-    isPersian: Boolean,
     currencyUnit: String,
     onClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
-    val formattedAmount = if (isPersian) {
-        "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", expense.amount)}"
-    }
+    val formattedAmount = "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
 
     RestoCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -322,35 +309,21 @@ fun ExpenseItemCard(
 fun ExpenseFormDialog(
     title: String,
     initialExpense: Expense?,
-    isPersian: Boolean,
     currencyUnit: String,
     onSubmit: (category: String, amount: Double, method: String, date: String, notes: String) -> Unit,
     onDismiss: () -> Unit,
     confirmLoading: Boolean = false
 ) {
-    val defaultCategories = if (isPersian) {
-        listOf(
-            "اجاره دفتر و انبار",
-            "تبلیغات و بازاریابی",
-            "هزینه بسته‌بندی و پاکت",
-            "هزینه پست و حمل‌ونقل",
-            "اینترنت، هاست و نرم‌افزار",
-            "حقوق و دستمزد پرسنل",
-            "تعمیرات و نگهداری",
-            "سایر مخارج اداری"
-        )
-    } else {
-        listOf(
-            "Rent & Facility",
-            "Marketing & Ads",
-            "Packaging Materials",
-            "Shipping & Courier",
-            "Internet & SaaS",
-            "Payroll & Wages",
-            "Repairs & Maintenance",
-            "General Office Expenses"
-        )
-    }
+    val defaultCategories = listOf(
+        "اجاره دفتر و انبار",
+        "تبلیغات و بازاریابی",
+        "هزینه بسته‌بندی و پاکت",
+        "هزینه پست و حمل‌ونقل",
+        "اینترنت، هاست و نرم‌افزار",
+        "حقوق و دستمزد پرسنل",
+        "تعمیرات و نگهداری",
+        "سایر مخارج اداری"
+    )
 
     var category by remember { mutableStateOf(initialExpense?.category ?: defaultCategories.first()) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -410,7 +383,7 @@ fun ExpenseFormDialog(
             RestoTextField(
                 value = amountText,
                 onValueChange = { amountText = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
-                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(isPersian),
+                visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                 label = "${stringResource(R.string.expense_amount_label)} ($currencyUnit)",
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 placeholder = "0"
@@ -439,16 +412,11 @@ fun ExpenseFormDialog(
 @Composable
 fun ExpenseDetailSheet(
     expense: Expense,
-    isPersian: Boolean,
     currencyUnit: String,
     onEditClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val formattedAmount = if (isPersian) {
-        "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", expense.amount)}"
-    }
+    val formattedAmount = "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
 
     RestoBottomSheet(
         onDismissRequest = onDismiss,

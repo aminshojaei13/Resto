@@ -1,6 +1,5 @@
 package com.braveboy.resto.ui.customer
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,24 +62,21 @@ import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun CustomerScreen(
     viewModel: CustomerViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
-    val tenantState by viewModel.tenantState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
     val customers by viewModel.customers.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val isAddCustomerDialogOpen by viewModel.isAddCustomerDialogOpen.collectAsState()
-    val selectedCustomerForDetail by viewModel.selectedCustomerForDetail.collectAsState()
     val selectedCustomerForEdit by viewModel.selectedCustomerForEdit.collectAsState()
+    val selectedCustomerForDetail by viewModel.selectedCustomerForDetail.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -153,7 +148,6 @@ fun CustomerScreen(
                     items(customers, key = { it.id }) { customer ->
                         CustomerItemCard(
                             customer = customer,
-                            isPersian = isPersian,
                             currencyUnit = currencyUnit,
                             onClick = { viewModel.selectCustomerForDetail(customer) }
                         )
@@ -168,7 +162,6 @@ fun CustomerScreen(
         CustomerFormDialog(
             title = stringResource(R.string.add_new_customer),
             initialCustomer = null,
-            isPersian = isPersian,
             confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.addCustomer(name, email, phone, address)
@@ -181,7 +174,6 @@ fun CustomerScreen(
         CustomerFormDialog(
             title = stringResource(R.string.edit_customer_title),
             initialCustomer = customer,
-            isPersian = isPersian,
             confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.updateCustomer(
@@ -196,7 +188,6 @@ fun CustomerScreen(
     selectedCustomerForDetail?.let { customer ->
         CustomerDetailSheet(
             customer = customer,
-            isPersian = isPersian,
             currencyUnit = currencyUnit,
             onEditClick = {
                 viewModel.selectCustomerForDetail(null)
@@ -210,15 +201,10 @@ fun CustomerScreen(
 @Composable
 fun CustomerItemCard(
     customer: Customer,
-    isPersian: Boolean,
     currencyUnit: String,
     onClick: () -> Unit
 ) {
-    val formattedSpent = if (isPersian) {
-        "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", customer.totalPurchases)}"
-    }
+    val formattedSpent = "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
 
     Box(
         modifier = Modifier
@@ -263,7 +249,7 @@ fun CustomerItemCard(
                 if (customer.phone.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(customer.phone) else customer.phone,
+                        text = PersianFormatter.toPersianDigits(customer.phone),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -295,7 +281,6 @@ fun CustomerItemCard(
 fun CustomerFormDialog(
     title: String,
     initialCustomer: Customer?,
-    isPersian: Boolean,
     onSubmit: (name: String, email: String, phone: String, address: String) -> Unit,
     onDismiss: () -> Unit,
     confirmLoading: Boolean = false
@@ -351,16 +336,11 @@ fun CustomerFormDialog(
 @Composable
 fun CustomerDetailSheet(
     customer: Customer,
-    isPersian: Boolean,
     currencyUnit: String,
     onEditClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val formattedSpent = if (isPersian) {
-        "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
-    } else {
-        "$${String.format("%.2f", customer.totalPurchases)}"
-    }
+    val formattedSpent = "${PersianFormatter.formatTomans(customer.totalPurchases)} $currencyUnit"
 
     RestoBottomSheet(
         onDismissRequest = onDismiss,
@@ -402,7 +382,7 @@ fun CustomerDetailSheet(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = if (isPersian) "${PersianFormatter.toPersianDigits(customer.loyaltyPoints)} امتیاز" else "${customer.loyaltyPoints} pts",
+                            text = stringResource(R.string.points_suffix, PersianFormatter.toPersianDigits(customer.loyaltyPoints)),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -416,7 +396,7 @@ fun CustomerDetailSheet(
                     Icon(imageVector = Icons.Rounded.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(customer.phone) else customer.phone,
+                        text = PersianFormatter.toPersianDigits(customer.phone),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

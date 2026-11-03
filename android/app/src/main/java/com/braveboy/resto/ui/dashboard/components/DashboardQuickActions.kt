@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.NorthEast
@@ -45,8 +44,7 @@ fun DashboardQuickActionRow(
     title: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isPersian: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
@@ -84,7 +82,7 @@ fun DashboardQuickActionRow(
         }
 
         Icon(
-            imageVector = if (isPersian) Icons.AutoMirrored.Rounded.KeyboardArrowLeft else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
@@ -95,7 +93,6 @@ fun DashboardQuickActionRow(
 @Composable
 fun DashboardQuickActions(
     modifier: Modifier = Modifier,
-    isPersian: Boolean = false,
     onNewManualOrderClick: () -> Unit = {},
     onAddProductClick: () -> Unit = {},
     onImportDropshippingClick: () -> Unit = {},
@@ -113,8 +110,7 @@ fun DashboardQuickActions(
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_add_product),
                 icon = Icons.Rounded.Add,
-                onClick = onAddProductClick,
-                isPersian = isPersian
+                onClick = onAddProductClick
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -122,8 +118,7 @@ fun DashboardQuickActions(
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_new_manual_order),
                 icon = Icons.Rounded.PointOfSale,
-                onClick = onNewManualOrderClick,
-                isPersian = isPersian
+                onClick = onNewManualOrderClick
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -131,8 +126,7 @@ fun DashboardQuickActions(
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_import_dropshipping),
                 icon = Icons.Rounded.Upload,
-                onClick = onImportDropshippingClick,
-                isPersian = isPersian
+                onClick = onImportDropshippingClick
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -140,8 +134,7 @@ fun DashboardQuickActions(
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_view_orders),
                 icon = Icons.AutoMirrored.Rounded.ReceiptLong,
-                onClick = onViewOrdersClick,
-                isPersian = isPersian
+                onClick = onViewOrdersClick
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -149,8 +142,7 @@ fun DashboardQuickActions(
             DashboardQuickActionRow(
                 title = stringResource(R.string.quick_record_financial_doc),
                 icon = Icons.Rounded.NorthEast,
-                onClick = onWithdrawMoneyClick,
-                isPersian = isPersian
+                onClick = onWithdrawMoneyClick
             )
         }
     }
@@ -166,7 +158,7 @@ fun DashboardQuickActionsPreview() {
                     .background(MaterialTheme.colorScheme.background)
                     .padding(16.dp)
             ) {
-                DashboardQuickActions(isPersian = true)
+                DashboardQuickActions()
             }
         }
     }

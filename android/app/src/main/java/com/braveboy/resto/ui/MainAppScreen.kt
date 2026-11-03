@@ -42,13 +42,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
+import com.braveboy.resto.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.di.AppContainer
@@ -137,10 +141,14 @@ fun MainAppScreen(
         navigateBack()
     }
 
+    val coroutineScope = rememberCoroutineScope()
     val tenantState by appContainer.tenantRepository.getTenantState()
         .collectAsState(initial = TenantState())
-    val isPersian = tenantState.language == "fa"
-    val layoutDirection = if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
+    val syncStatus by appContainer.syncManager.syncState
+        .collectAsState()
+    val unsyncedCount by appContainer.syncManager.unsyncedCount
+        .collectAsState(initial = 0)
+    val layoutDirection = LayoutDirection.Rtl
 
     LaunchedEffect(initialSharedText) {
         if (!initialSharedText.isNullOrBlank()) {
@@ -242,8 +250,7 @@ fun MainAppScreen(
                     currentDestination = currentDestination,
                     onDestinationSelected = { navigateTo(it) },
                     onCenterFabClick = { dashboardViewModel.openRecordEntryDialog() },
-                    onMoreClick = { isMoreMenuOpen = true },
-                    isPersian = isPersian
+                    onMoreClick = { isMoreMenuOpen = true }
                 )
             }
         ) { innerPadding ->
@@ -333,13 +340,21 @@ fun MainAppScreen(
 
                     MainDestination.SETTINGS -> {
                         SettingsScreen(
-                            tenantRepository = appContainer.tenantRepository,
-                            authRepository = appContainer.authRepository,
-                            tenantPreferences = appContainer.tenantPreferences,
-                            syncManager = appContainer.syncManager,
-                            database = appContainer.database,
+                            tenantState = tenantState,
+                            syncStatus = syncStatus,
+                            unsyncedCount = unsyncedCount,
                             onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
-                            onBackClick = { navigateBack() }
+                            onBackClick = { navigateBack() },
+                            onLogout = {
+                                coroutineScope.launch {
+                                    appContainer.authRepository.logout()
+                                }
+                            },
+                            onTriggerSync = {
+                                coroutineScope.launch {
+                                    appContainer.syncManager.triggerSync(tenantState.activeOrgId)
+                                }
+                            }
                         )
                     }
                 }
@@ -362,12 +377,12 @@ fun MainAppScreen(
                         .fillMaxWidth()
                 ) {
                     Text(
-                        text = if (isPersian) "سایر بخش‌های کسب‌وکار" else "Resto Business Operations",
+                        text = stringResource(R.string.business_operations_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isPersian) "جهت دسترسی سریع به ابزارهای جانبی، بخش مورد نظر را انتخاب کنید" else "Select a module to navigate",
+                        text = stringResource(R.string.business_operations_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -413,7 +428,7 @@ fun MainAppScreen(
                                     )
                                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                                     Text(
-                                        text = if (isPersian) dest.titleFa else dest.title,
+                                        text = dest.titleFa,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
@@ -446,7 +461,7 @@ fun MainAppScreen(
                                     )
                                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                                     Text(
-                                        text = if (isPersian) "تغییر شعبه / سازمان" else "Switch Tenant",
+                                        text = stringResource(R.string.switch_tenant),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,

@@ -1,6 +1,5 @@
 package com.braveboy.resto.ui.supplier
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,17 +62,14 @@ import com.braveboy.resto.ui.components.RestoTopBar
 import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupplierScreen(
     viewModel: SupplierViewModel,
-    modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
-    val tenantState by viewModel.tenantState.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
     val suppliers by viewModel.suppliers.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val isAddSupplierDialogOpen by viewModel.isAddSupplierDialogOpen.collectAsState()
     val selectedSupplierForDetail by viewModel.selectedSupplierForDetail.collectAsState()
     val selectedSupplierForEdit by viewModel.selectedSupplierForEdit.collectAsState()
@@ -82,7 +77,6 @@ fun SupplierScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isPersian = tenantState.language == "fa"
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -126,7 +120,7 @@ fun SupplierScreen(
             RestoSearchField(
                 query = searchQuery,
                 onQueryChange = { viewModel.setSearchQuery(it) },
-                placeholder = if (isPersian) "جستجوی تأمین‌کننده با نام، تلفن یا نشانی..." else "Search suppliers..."
+                placeholder = "جستجوی تأمین‌کننده با نام، تلفن یا نشانی..."
             )
 
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
@@ -153,7 +147,6 @@ fun SupplierScreen(
                     items(suppliers, key = { it.id }) { supplier ->
                         SupplierItemCard(
                             supplier = supplier,
-                            isPersian = isPersian,
                             onClick = { viewModel.selectSupplierForDetail(supplier) }
                         )
                     }
@@ -167,7 +160,6 @@ fun SupplierScreen(
         SupplierFormDialog(
             title = stringResource(R.string.add_supplier_title),
             initialSupplier = null,
-            isPersian = isPersian,
             confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.addSupplier(name, email, phone, address)
@@ -181,7 +173,6 @@ fun SupplierScreen(
         SupplierFormDialog(
             title = stringResource(R.string.edit_supplier_title),
             initialSupplier = supplier,
-            isPersian = isPersian,
             confirmLoading = isSaving,
             onSubmit = { name, email, phone, address ->
                 viewModel.updateSupplier(
@@ -196,7 +187,6 @@ fun SupplierScreen(
     selectedSupplierForDetail?.let { supplier ->
         SupplierDetailSheet(
             supplier = supplier,
-            isPersian = isPersian,
             onEditClick = {
                 viewModel.selectSupplierForDetail(null)
                 viewModel.openEditSupplier(supplier)
@@ -209,7 +199,6 @@ fun SupplierScreen(
 @Composable
 fun SupplierItemCard(
     supplier: Supplier,
-    isPersian: Boolean,
     onClick: () -> Unit
 ) {
     Box(
@@ -255,7 +244,7 @@ fun SupplierItemCard(
                 if (supplier.phone.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(supplier.phone) else supplier.phone,
+                        text = PersianFormatter.toPersianDigits(supplier.phone),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -271,7 +260,7 @@ fun SupplierItemCard(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = if (isPersian) "جزئیات" else "View",
+                    text = "جزئیات",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -285,7 +274,6 @@ fun SupplierItemCard(
 fun SupplierFormDialog(
     title: String,
     initialSupplier: Supplier?,
-    isPersian: Boolean,
     onSubmit: (name: String, email: String, phone: String, address: String) -> Unit,
     onDismiss: () -> Unit,
     confirmLoading: Boolean = false
@@ -341,7 +329,6 @@ fun SupplierFormDialog(
 @Composable
 fun SupplierDetailSheet(
     supplier: Supplier,
-    isPersian: Boolean,
     onEditClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -361,7 +348,7 @@ fun SupplierDetailSheet(
                     Icon(imageVector = Icons.Rounded.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(RestoSpacing.sm))
                     Text(
-                        text = if (isPersian) PersianFormatter.toPersianDigits(supplier.phone) else supplier.phone,
+                        text = PersianFormatter.toPersianDigits(supplier.phone),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

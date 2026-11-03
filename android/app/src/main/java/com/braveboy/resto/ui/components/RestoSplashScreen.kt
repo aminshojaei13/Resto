@@ -52,7 +52,7 @@ fun RestoSplashScreen(
                 Image(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_resto),
                     contentDescription = null,
-                    modifier = Modifier.size(84.dp)
+                    modifier = Modifier.size(64.dp)
                 )
             }
 

@@ -24,19 +24,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.Product
 import com.braveboy.resto.data.model.ProductVariant
+import com.braveboy.resto.util.PersianFormatter.formatTomans
 
 @Composable
 fun VariantSelectionDialog(
     product: Product,
     onVariantSelected: (ProductVariant) -> Unit,
     onDismiss: () -> Unit,
-    isPersian: Boolean = true,
-    currencyUnit: String = "تومان"
+    currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -68,7 +70,7 @@ fun VariantSelectionDialog(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         Text(
-                            text = if (isPersian) "انتخاب تنوع یا ویژگی کالا" else "Select Option / Variant",
+                            text = stringResource(R.string.select_variant_title),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -76,7 +78,7 @@ fun VariantSelectionDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = if (isPersian) "بستن" else "Close"
+                            contentDescription = stringResource(R.string.close)
                         )
                     }
                 }
@@ -109,13 +111,13 @@ fun VariantSelectionDialog(
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = if (isPersian) "کد: ${variant.sku}" else "SKU: ${variant.sku}",
+                                        text = "کد: ${variant.sku}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
-                                    text = if (isPersian) "${com.braveboy.resto.util.PersianFormatter.formatTomans(variant.price)} $currencyUnit" else "$${String.format("%.2f", variant.price)}",
+                                    text = "${formatTomans(variant.price)} $currencyUnit",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,

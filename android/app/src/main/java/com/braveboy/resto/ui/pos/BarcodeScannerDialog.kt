@@ -44,12 +44,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.braveboy.resto.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -61,8 +63,7 @@ import com.google.mlkit.vision.common.InputImage
 @Composable
 fun BarcodeScannerDialog(
     onBarcodeScanned: (String) -> Unit,
-    onDismiss: () -> Unit,
-    isPersian: Boolean = true
+    onDismiss: () -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
@@ -105,7 +106,7 @@ fun BarcodeScannerDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isPersian) "اسکنر بارکد کالا" else "Barcode Scanner",
+                            text = stringResource(R.string.barcode_scanner_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -113,7 +114,7 @@ fun BarcodeScannerDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = if (isPersian) "بستن" else "Close"
+                            contentDescription = stringResource(R.string.close)
                         )
                     }
                 }
@@ -122,7 +123,7 @@ fun BarcodeScannerDialog(
 
                 // Subtitle
                 Text(
-                    text = if (isPersian) "بارکد محصول را در کادر نشان دهید تا به‌طور خودکار اسکن شود:" else "Align product barcode within frame to scan:",
+                    text = stringResource(R.string.barcode_scanner_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth()
@@ -223,13 +224,13 @@ fun BarcodeScannerDialog(
                             Icon(imageVector = Icons.Rounded.CameraAlt, contentDescription = null)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (isPersian) "برای اسکن تصویری به دسترسی دوربین نیاز است." else "Camera permission needed for live scanning.",
+                                text = stringResource(R.string.camera_permission_needed),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                                Text(if (isPersian) "اعطای دسترسی دوربین" else "Grant Camera Permission")
+                                Text(stringResource(R.string.grant_camera_permission))
                             }
                         }
                     }
@@ -245,8 +246,8 @@ fun BarcodeScannerDialog(
                     OutlinedTextField(
                         value = manualBarcodeText,
                         onValueChange = { manualBarcodeText = it },
-                        label = { Text(if (isPersian) "ورود دستی کد یا بارکد کالا" else "Manual Barcode Entry") },
-                        placeholder = { Text(if (isPersian) "مثلاً: 6260000000000" else "e.g. 6260000000000") },
+                        label = { Text(stringResource(R.string.manual_barcode_entry)) },
+                        placeholder = { Text(stringResource(R.string.barcode_placeholder)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -262,7 +263,7 @@ fun BarcodeScannerDialog(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Search,
-                            contentDescription = if (isPersian) "جستجو" else "Scan"
+                            contentDescription = stringResource(R.string.search_product_hint)
                         )
                     }
                 }
