@@ -65,9 +65,9 @@ import com.braveboy.resto.util.PersianFormatter
 
 @Composable
 fun ExpensesScreen(
+    modifier: Modifier = Modifier,
     viewModel: ExpensesViewModel,
-    onBackClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onBackClick: () -> Unit = {}
 ) {
     val expenses by viewModel.expenses.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -184,7 +184,6 @@ fun ExpensesScreen(
                             expense = expense,
                             currencyUnit = currencyUnit,
                             onClick = { viewModel.selectExpenseDetail(expense) },
-                            onEditClick = { viewModel.openEditExpense(expense) }
                         )
                     }
                 }
@@ -240,7 +239,6 @@ fun ExpenseItemCard(
     expense: Expense,
     currencyUnit: String,
     onClick: () -> Unit,
-    onEditClick: () -> Unit
 ) {
     val formattedAmount = "${PersianFormatter.formatTomans(expense.amount)} $currencyUnit"
 
@@ -328,7 +326,7 @@ fun ExpenseFormDialog(
     var category by remember { mutableStateOf(initialExpense?.category ?: defaultCategories.first()) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    var amountText by remember { mutableStateOf(initialExpense?.amount?.let { it.toLong().toString() } ?: "") }
+    var amountText by remember { mutableStateOf(initialExpense?.amount?.toLong()?.toString() ?: "") }
     var paymentMethod by remember { mutableStateOf(initialExpense?.paymentMethod ?: "نقد / کارت") }
     var notes by remember { mutableStateOf(initialExpense?.notes ?: "") }
 

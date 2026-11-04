@@ -64,9 +64,9 @@ import com.braveboy.resto.util.PersianFormatter
 
 @Composable
 fun CustomerScreen(
+    modifier: Modifier = Modifier,
     viewModel: CustomerViewModel,
-    onBackClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onBackClick: () -> Unit = {}
 ) {
     val customers by viewModel.customers.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()

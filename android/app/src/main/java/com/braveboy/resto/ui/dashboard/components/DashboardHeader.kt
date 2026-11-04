@@ -47,10 +47,8 @@ fun DashboardHeader(
     modifier: Modifier = Modifier,
     userName: String = "",
     userAvatarUrl: String = "",
-    notificationCount: Int = 0,
     isDarkMode: Boolean = true,
     onToggleTheme: () -> Unit = {},
-    onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
     val defaultUser = stringResource(R.string.default_user_name)
@@ -158,7 +156,6 @@ fun DashboardHeaderPreview() {
             ) {
                 DashboardHeader(
                     userName = "ایران علوی",
-                    notificationCount = 0
                 )
             }
         }

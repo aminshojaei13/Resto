@@ -54,8 +54,7 @@ class LoginViewModel(
 
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
-            val result = authRepository.login(email = email, password = password)
-            when (result) {
+            when (val result = authRepository.login(email = email, password = password)) {
                 is AuthResult.Success -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -76,8 +75,7 @@ class LoginViewModel(
     fun continueOffline() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val result = authRepository.startOfflineMode()
-            when (result) {
+            when (val result = authRepository.startOfflineMode()) {
                 is AuthResult.Success -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

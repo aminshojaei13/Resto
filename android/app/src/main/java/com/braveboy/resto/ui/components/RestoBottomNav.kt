@@ -44,7 +44,6 @@ import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 fun RestoBottomNav(
     currentDestination: MainDestination,
     onDestinationSelected: (MainDestination) -> Unit,
-    onCenterFabClick: () -> Unit,
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -173,7 +172,6 @@ fun RestoBottomNavPreview() {
             RestoBottomNav(
                 currentDestination = MainDestination.ACCOUNTING,
                 onDestinationSelected = {},
-                onCenterFabClick = {},
                 onMoreClick = {}
             )
         }

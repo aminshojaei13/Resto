@@ -253,9 +253,7 @@ object DeterministicMessageParser {
 
         // Friendly closings e.g. "ممنون", "تشکر", "با تشکر", "خیلی ممنون"
         val closingRegex = Regex("^(?:خیلی\\s+)?(?:ممنون|تشکر|سپاس|مرسی)(?:\\s+از\\s+شما)?\\s*[.!؟]?\\s*$", RegexOption.IGNORE_CASE)
-        if (closingRegex.matches(trimmed)) return true
-
-        return false
+        return closingRegex.matches(trimmed)
     }
 
     private fun extractItems(lines: List<String>, catalog: List<Product>): List<ParsedItem> {
@@ -265,7 +263,7 @@ object DeterministicMessageParser {
         val countXRegex = Regex("(?:^|\\s)(\\d+)\\s*[x×*]\\s*(.+)$", RegexOption.IGNORE_CASE)
         val nameDashCountRegex = Regex("^(.+?)\\s*[-–—]\\s*(\\d+)(?:\\s*($unitPattern))?$", RegexOption.IGNORE_CASE)
         val nameCountUnitRegex = Regex("^(.+?)\\s+(\\d+)\\s*($unitPattern)$", RegexOption.IGNORE_CASE)
-        val countNameRegex = Regex("(?:^|\\s)(\\d+)\\s+([\\p{L}].+)$", RegexOption.IGNORE_CASE)
+        val countNameRegex = Regex("(?:^|\\s)(\\d+)\\s+(\\p{L}.+)$", RegexOption.IGNORE_CASE)
 
         for (raw in lines) {
             if (isMetadataOrNoise(raw)) continue

@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -117,12 +116,12 @@ class MainActivity : ComponentActivity() {
         val action = intent.action
         val type = intent.type
 
-        val sharedText: String? = when {
-            action == Intent.ACTION_SEND && type?.startsWith("text/") == true -> {
+        val sharedText: String? = when (action) {
+            Intent.ACTION_SEND if type?.startsWith("text/") == true -> {
                 intent.getStringExtra(Intent.EXTRA_TEXT)
             }
 
-            action == Intent.ACTION_PROCESS_TEXT && type?.startsWith("text/") == true -> {
+            Intent.ACTION_PROCESS_TEXT if type?.startsWith("text/") == true -> {
                 intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             }
 

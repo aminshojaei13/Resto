@@ -264,7 +264,7 @@ fun ModernLedgerCardItem(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = if (entry.description.isNotBlank()) entry.description else PersianFormatter.toPersianDigits(entry.entryNumber),
+                        text = entry.description.ifBlank { PersianFormatter.toPersianDigits(entry.entryNumber) },
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

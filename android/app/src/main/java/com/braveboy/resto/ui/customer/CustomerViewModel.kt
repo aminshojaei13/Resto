@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CustomerViewModel(
-    private val tenantRepository: TenantRepository,
+    tenantRepository: TenantRepository,
     private val customerRepository: CustomerRepository
 ) : ViewModel() {
 

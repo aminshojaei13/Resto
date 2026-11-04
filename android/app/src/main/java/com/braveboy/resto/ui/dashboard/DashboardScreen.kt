@@ -157,7 +157,6 @@ fun DashboardScreenContent(
                 DashboardHeader(
                     userName = tenantState.userName,
                     userAvatarUrl = tenantState.userAvatarUrl,
-                    notificationCount = metrics.lowStockCount,
                     isDarkMode = isDarkMode,
                     onToggleTheme = onToggleTheme,
                     onProfileClick = {

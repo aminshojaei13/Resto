@@ -23,8 +23,8 @@ import com.braveboy.resto.ui.theme.RestoTheme
 
 @Composable
 fun DashboardRedesignView(
+    modifier: Modifier = Modifier,
     userName: String = "ایران علوی",
-    notificationCount: Int = 1,
     netProfitValue: String = "۰ تومان",
     netProfitTrend: String = "+12%",
     totalOrdersValue: String = "۱,۵۰۰",
@@ -66,9 +66,7 @@ fun DashboardRedesignView(
     onSeeAllOrdersClick: () -> Unit = {},
     onOrderClick: (SalesOrder) -> Unit = {},
     onNewEntryClick: () -> Unit = {},
-    onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -84,8 +82,6 @@ fun DashboardRedesignView(
             // Header
             DashboardHeader(
                 userName = userName,
-                notificationCount = notificationCount,
-                onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
 
