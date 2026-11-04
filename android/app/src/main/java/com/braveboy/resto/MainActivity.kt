@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -24,6 +26,7 @@ import com.braveboy.resto.ui.auth.BusinessSetupViewModel
 import com.braveboy.resto.ui.auth.LoginScreen
 import com.braveboy.resto.ui.auth.LoginViewModel
 import com.braveboy.resto.ui.components.RestoSplashScreen
+import com.braveboy.resto.ui.theme.CircularReveal
 import com.braveboy.resto.ui.theme.RestoTheme
 
 class MainActivity : ComponentActivity() {
@@ -37,66 +40,81 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
 
         setContent {
-            val isDarkMode by appContainer.tenantPreferences.isDarkMode.collectAsState(initial = true)
+            val isSignedInState =
+                appContainer.sessionStore.isSignedIn.collectAsState(initial = null)
+            val tenantStateNullable =
+                appContainer.tenantPreferences.tenantState.collectAsState(initial = null)
+            val isDarkModeState =
+                appContainer.tenantPreferences.isDarkMode.collectAsState(initial = null)
+            val pendingImport by PendingImportManager.pendingImportFlow.collectAsState()
 
-            RestoTheme(darkTheme = isDarkMode) {
-                val isSignedInState =
-                    appContainer.sessionStore.isSignedIn.collectAsState(initial = null)
-                val tenantStateNullable =
-                    appContainer.tenantPreferences.tenantState.collectAsState(initial = null)
-                val pendingImport by PendingImportManager.pendingImportFlow.collectAsState()
+            var isOnlineLoginRequested by remember { mutableStateOf(false) }
 
-                var isOnlineLoginRequested by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                appContainer.authRepository.restoreSession()
+            }
 
-                LaunchedEffect(Unit) {
-                    appContainer.authRepository.restoreSession()
-                }
+            val isSignedIn = isSignedInState.value
+            val tenantState = tenantStateNullable.value
+            val isDarkModeNullable = isDarkModeState.value
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .navigationBarsPadding()
-                        .statusBarsPadding()
-                ) {
-                    val isSignedIn = isSignedInState.value
-                    val tenantState = tenantStateNullable.value
-
-                    if (isSignedIn == null || tenantState == null) {
+            if (isSignedIn == null || tenantState == null || isDarkModeNullable == null) {
+                RestoTheme(darkTheme = isDarkModeNullable ?: isSystemInDarkTheme()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .navigationBarsPadding()
+                            .statusBarsPadding()
+                    ) {
                         RestoSplashScreen()
-                    } else {
-                        val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
+                    }
+                }
+            } else {
+                CircularReveal(
+                    expanded = isDarkModeNullable,
+                    animationSpec = tween(durationMillis = 650)
+                ) { darkTheme ->
+                    RestoTheme(darkTheme = darkTheme) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .navigationBarsPadding()
+                                .statusBarsPadding()
+                        ) {
+                            val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
 
-                        if (hasActiveWorkspace && !isOnlineLoginRequested) {
-                            MainAppScreen(
-                                appContainer = appContainer,
-                                initialSharedText = pendingImport?.rawText
-                            )
-                        } else if (isOnlineLoginRequested) {
-                            val loginViewModel: LoginViewModel = viewModel(
-                                factory = LoginViewModel.Factory(appContainer.authRepository)
-                            )
-                            LoginScreen(
-                                viewModel = loginViewModel,
-                                onLoginSuccess = {
-                                    isOnlineLoginRequested = false
-                                },
-                                onNavigateToBusinessSetup = {
-                                    isOnlineLoginRequested = false
-                                }
-                            )
-                        } else {
-                            val setupViewModel: BusinessSetupViewModel = viewModel(
-                                factory = BusinessSetupViewModel.Factory(appContainer.authRepository)
-                            )
-                            BusinessSetupScreen(
-                                viewModel = setupViewModel,
-                                onSetupSuccess = {
-                                    // Workspace created; reacts automatically
-                                },
-                                onOpenOnlineLogin = {
-                                    isOnlineLoginRequested = true
-                                }
-                            )
+                            if (hasActiveWorkspace && !isOnlineLoginRequested) {
+                                MainAppScreen(
+                                    appContainer = appContainer,
+                                    initialSharedText = pendingImport?.rawText
+                                )
+                            } else if (isOnlineLoginRequested) {
+                                val loginViewModel: LoginViewModel = viewModel(
+                                    factory = LoginViewModel.Factory(appContainer.authRepository)
+                                )
+                                LoginScreen(
+                                    viewModel = loginViewModel,
+                                    onLoginSuccess = {
+                                        isOnlineLoginRequested = false
+                                    },
+                                    onNavigateToBusinessSetup = {
+                                        isOnlineLoginRequested = false
+                                    }
+                                )
+                            } else {
+                                val setupViewModel: BusinessSetupViewModel = viewModel(
+                                    factory = BusinessSetupViewModel.Factory(appContainer.authRepository)
+                                )
+                                BusinessSetupScreen(
+                                    viewModel = setupViewModel,
+                                    onSetupSuccess = {
+                                        // Workspace created; reacts automatically
+                                    },
+                                    onOpenOnlineLogin = {
+                                        isOnlineLoginRequested = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }

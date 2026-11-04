@@ -64,6 +64,7 @@ import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter
 
 import com.braveboy.resto.data.local.datastore.TenantPreferences
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 
@@ -82,8 +83,8 @@ fun DashboardScreen(
     val snackBarMessage by viewModel.snackbarMessage.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
-    val isDarkModeState = tenantPreferences?.isDarkMode?.collectAsState(initial = true)
-    val isDarkMode = isDarkModeState?.value ?: true
+    val isDarkModeState = tenantPreferences?.isDarkMode?.collectAsState(initial = null)
+    val isDarkMode = isDarkModeState?.value ?: isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
 
     DashboardScreenContent(
