@@ -80,6 +80,7 @@ class PurchaseRepositoryImpl(
     ) {
         val totalAmount = items.sumOf { it.totalCost }
         val purchaseNumber = "PO-${System.currentTimeMillis().toString().takeLast(6)}"
+        val finalSupplierName = supplierName.ifBlank { "فروشنده بی‌نام" }
         val purchase = Purchase(
             id = UUID.randomUUID().toString(),
             purchaseNumber = purchaseNumber,
@@ -87,7 +88,7 @@ class PurchaseRepositoryImpl(
             storeId = storeId,
             warehouseId = warehouseId,
             supplierId = supplierId,
-            supplierName = supplierName,
+            supplierName = finalSupplierName,
             items = items,
             totalAmount = totalAmount,
             status = "ORDERED",
@@ -98,21 +99,22 @@ class PurchaseRepositoryImpl(
         purchaseDao.insertPurchase(purchase.toEntity(isSynced = false))
 
         try {
-            val response = withTimeoutOrNull(2000L) {
-                apiService.createPurchase(
-                    payload = mapOf(
-                        "store_id" to storeId,
-                        "warehouse_id" to warehouseId,
-                        "supplier_id" to supplierId,
-                        "items" to items.map {
-                            mapOf(
-                                "product_id" to it.productId,
-                                "quantity" to it.quantity,
-                                "unit_cost" to it.unitCost
-                            )
-                        }
+            val payload = mutableMapOf<String, Any>(
+                "store_id" to storeId,
+                "warehouse_id" to warehouseId,
+                "items" to items.map {
+                    mapOf(
+                        "product_id" to it.productId,
+                        "quantity" to it.quantity,
+                        "unit_cost" to it.unitCost
                     )
-                )
+                }
+            )
+            if (supplierId.isNotBlank()) {
+                payload["supplier_id"] = supplierId
+            }
+            val response = withTimeoutOrNull(2000L) {
+                apiService.createPurchase(payload = payload)
             }
             if (response != null && response.isSuccessful) {
                 purchaseDao.markPurchaseSynced(purchase.id)

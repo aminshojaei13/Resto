@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class SupplierViewModel(
     private val tenantRepository: TenantRepository,
     private val supplierRepository: SupplierRepository
@@ -38,11 +40,15 @@ class SupplierViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        supplierRepository.refreshSuppliers(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localSuppliers = supplierRepository.getSuppliers(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localSuppliers.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            supplierRepository.refreshSuppliers(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
                     }
                 } else {
                     _isLoading.value = false

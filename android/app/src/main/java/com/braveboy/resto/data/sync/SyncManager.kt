@@ -218,10 +218,9 @@ class SyncManager(
             val unsyncedPurchases = database.purchaseDao().getUnsyncedPurchases()
             for (purchase in unsyncedPurchases) {
                 try {
-                    val payload = mapOf<String, Any>(
+                    val payload = mutableMapOf<String, Any>(
                         "store_id" to purchase.storeId,
                         "warehouse_id" to purchase.warehouseId,
-                        "supplier_id" to purchase.supplierId,
                         "items" to purchase.items.map { item ->
                             mapOf(
                                 "product_id" to item.productId,
@@ -230,6 +229,9 @@ class SyncManager(
                             )
                         }
                     )
+                    if (purchase.supplierId.isNotBlank()) {
+                        payload["supplier_id"] = purchase.supplierId
+                    }
                     val response = apiService.createPurchase(payload)
                     if (response.isSuccessful) {
                         database.purchaseDao().markPurchaseSynced(purchase.id)

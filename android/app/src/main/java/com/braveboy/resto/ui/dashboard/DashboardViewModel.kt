@@ -43,6 +43,25 @@ class DashboardViewModel(
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            tenantState.collect { state ->
+                if (state.activeOrgId.isNotBlank()) {
+                    viewModelScope.launch {
+                        try {
+                            salesOrderRepository.refreshOrders(state.activeOrgId)
+                        } catch (_: Exception) {}
+                    }
+                    viewModelScope.launch {
+                        try {
+                            productRepository.refreshProducts(state.activeOrgId)
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val metricsSummary: StateFlow<MetricsSummary> = tenantState.flatMapLatest { state ->
         ledgerRepository.getMetricsSummary(state.activeOrgId, state.activeStoreId)

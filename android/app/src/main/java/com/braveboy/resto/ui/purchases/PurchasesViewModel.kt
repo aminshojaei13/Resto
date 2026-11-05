@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class PurchasesViewModel(
     private val tenantRepository: TenantRepository,
     private val purchaseRepository: PurchaseRepository,
@@ -44,13 +46,27 @@ class PurchasesViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        purchaseRepository.refreshPurchases(state.activeOrgId)
-                        supplierRepository.refreshSuppliers(state.activeOrgId)
-                        productRepository.refreshProducts(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localPurchases = purchaseRepository.getPurchases(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localPurchases.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            purchaseRepository.refreshPurchases(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
+                    }
+
+                    viewModelScope.launch {
+                        try {
+                            supplierRepository.refreshSuppliers(state.activeOrgId)
+                        } catch (_: Exception) {}
+                    }
+
+                    viewModelScope.launch {
+                        try {
+                            productRepository.refreshProducts(state.activeOrgId)
+                        } catch (_: Exception) {}
                     }
                 } else {
                     _isLoading.value = false
@@ -117,12 +133,13 @@ class PurchasesViewModel(
             _isSaving.value = true
             try {
                 val state = tenantState.value
+                val finalSupplierName = supplierName.ifBlank { "فروشنده بی‌نام" }
                 purchaseRepository.createPurchase(
                     orgId = state.activeOrgId,
                     storeId = state.activeStoreId,
                     warehouseId = warehouseId,
                     supplierId = supplierId,
-                    supplierName = supplierName,
+                    supplierName = finalSupplierName,
                     items = items
                 )
                 _snackbarMessage.value = "فاکتور خرید با موفقیت ثبت شد"

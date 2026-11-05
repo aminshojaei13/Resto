@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class InventoryViewModel(
     private val tenantRepository: TenantRepository,
     private val productRepository: ProductRepository
@@ -41,11 +43,15 @@ class InventoryViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        productRepository.refreshProducts(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localProducts = productRepository.getProducts(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localProducts.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            productRepository.refreshProducts(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
                     }
                 } else {
                     _isLoading.value = false

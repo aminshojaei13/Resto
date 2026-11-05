@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class ExpensesViewModel(
     tenantRepository: TenantRepository,
     private val expenseRepository: ExpenseRepository
@@ -39,11 +41,15 @@ class ExpensesViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        expenseRepository.refreshExpenses(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localExpenses = expenseRepository.getExpenses(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localExpenses.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            expenseRepository.refreshExpenses(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
                     }
                 } else {
                     _isLoading.value = false

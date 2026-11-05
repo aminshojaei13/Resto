@@ -290,13 +290,19 @@ fun PurchaseItemCard(
                 )
             }
 
+            val supplierDisplayName = if (purchase.supplierName.isNotBlank() && purchase.supplierName != "Supplier") {
+                purchase.supplierName
+            } else {
+                stringResource(R.string.unnamed_supplier)
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "تأمین‌کننده: ${purchase.supplierName}",
+                    text = "تأمین‌کننده: $supplierDisplayName",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -351,7 +357,8 @@ fun CreatePurchaseDialog(
     onDismiss: () -> Unit,
     confirmLoading: Boolean = false
 ) {
-    var selectedSupplier by remember { mutableStateOf(suppliers.firstOrNull()) }
+    val unnamedSupplierText = stringResource(R.string.unnamed_supplier)
+    var selectedSupplier by remember { mutableStateOf<Supplier?>(null) }
     var supplierDropdownExpanded by remember { mutableStateOf(false) }
 
     var selectedProduct by remember { mutableStateOf(products.firstOrNull()) }
@@ -368,7 +375,6 @@ fun CreatePurchaseDialog(
         confirmText = stringResource(R.string.submit_purchase_order),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val sup = selectedSupplier ?: return@RestoDialog
             val prod = selectedProduct ?: return@RestoDialog
             if (qty > 0 && cost > 0) {
                 val item = PurchaseItem(
@@ -378,10 +384,12 @@ fun CreatePurchaseDialog(
                     unitCost = cost,
                     totalCost = qty * cost
                 )
-                onSubmit(sup.id, sup.name, listOf(item))
+                val supId = selectedSupplier?.id ?: ""
+                val supName = selectedSupplier?.name ?: unnamedSupplierText
+                onSubmit(supId, supName, listOf(item))
             }
         },
-        confirmEnabled = selectedSupplier != null && selectedProduct != null && qty > 0 && cost > 0,
+        confirmEnabled = selectedProduct != null && qty > 0 && cost > 0,
         onDismissRequest = onDismiss
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
@@ -391,10 +399,10 @@ fun CreatePurchaseDialog(
                 onExpandedChange = { supplierDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedSupplier?.name ?: "انتخاب تأمین‌کننده...",
+                    value = selectedSupplier?.name ?: unnamedSupplierText,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(stringResource(R.string.company_supplier_label)) },
+                    label = { Text(stringResource(R.string.company_supplier_optional_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierDropdownExpanded) },
                     shape = RestoShapes.medium,
                     modifier = Modifier
@@ -405,6 +413,13 @@ fun CreatePurchaseDialog(
                     expanded = supplierDropdownExpanded,
                     onDismissRequest = { supplierDropdownExpanded = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(unnamedSupplierText) },
+                        onClick = {
+                            selectedSupplier = null
+                            supplierDropdownExpanded = false
+                        }
+                    )
                     suppliers.forEach { sup ->
                         DropdownMenuItem(
                             text = { Text(sup.name) },
@@ -482,11 +497,16 @@ fun PurchaseDetailSheet(
 ) {
     val isReceived = purchase.status == "RECEIVED"
     val formattedAmount = "${PersianFormatter.formatTomans(purchase.totalAmount)} $currencyUnit"
+    val supplierDisplayName = if (purchase.supplierName.isNotBlank() && purchase.supplierName != "Supplier") {
+        purchase.supplierName
+    } else {
+        stringResource(R.string.unnamed_supplier)
+    }
 
     RestoBottomSheet(
         onDismissRequest = onDismiss,
         title = purchase.purchaseNumber,
-        subtitle = "فاکتور خرید از ${purchase.supplierName}"
+        subtitle = "فاکتور خرید از $supplierDisplayName"
     ) {
         Column(
             modifier = Modifier

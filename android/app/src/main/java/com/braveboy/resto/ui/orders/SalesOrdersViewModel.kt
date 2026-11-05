@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class SalesOrdersViewModel(
     private val tenantRepository: TenantRepository,
     private val salesOrderRepository: SalesOrderRepository
@@ -41,11 +43,15 @@ class SalesOrdersViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        salesOrderRepository.refreshOrders(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localOrders = salesOrderRepository.getAllOrdersByOrg(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localOrders.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            salesOrderRepository.refreshOrders(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
                     }
                 } else {
                     _isLoading.value = false

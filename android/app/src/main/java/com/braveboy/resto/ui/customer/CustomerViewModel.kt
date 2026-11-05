@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import kotlinx.coroutines.flow.firstOrNull
+
 class CustomerViewModel(
     tenantRepository: TenantRepository,
     private val customerRepository: CustomerRepository
@@ -38,11 +40,15 @@ class CustomerViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        customerRepository.refreshCustomers(state.activeOrgId)
-                    } finally {
-                        _isLoading.value = false
+                    val localCustomers = customerRepository.getCustomers(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localCustomers.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            customerRepository.refreshCustomers(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
                     }
                 } else {
                     _isLoading.value = false

@@ -159,6 +159,8 @@
     <string name="edit_supplier_title">ویرایش اطلاعات تأمین‌کننده</string>
     <string name="save_supplier">ذخیره تأمین‌کننده</string>
     <string name="company_supplier_label">نام شرکت یا فروشنده *</string>
+    <string name="company_supplier_optional_label">نام شرکت یا فروشنده (اختیاری)</string>
+    <string name="unnamed_supplier">فروشنده بی‌نام</string>
     <string name="no_suppliers_title">هیچ تأمین‌کننده‌ای ثبت نشده است</string>
     <string name="no_suppliers_desc">تأمین‌کنندگان را برای ثبت خریدهای انبار و ردیابی فاکتورها اضافه کنید.</string>
     <string name="supplier_profile">مشخصات و نشانی تأمین‌کننده</string>

@@ -55,10 +55,24 @@ class PosViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    _isLoading.value = true
-                    try {
-                        productRepository.refreshProducts(state.activeOrgId)
-                        customerRepository.refreshCustomers(state.activeOrgId)
+                    val localProducts = productRepository.getProducts(state.activeOrgId).firstOrNull() ?: emptyList()
+                    _isLoading.value = localProducts.isEmpty()
+
+                    viewModelScope.launch {
+                        try {
+                            productRepository.refreshProducts(state.activeOrgId)
+                        } finally {
+                            _isLoading.value = false
+                        }
+                    }
+
+                    viewModelScope.launch {
+                        try {
+                            customerRepository.refreshCustomers(state.activeOrgId)
+                        } catch (_: Exception) {}
+                    }
+
+                    viewModelScope.launch {
                         try {
                             val response = com.braveboy.resto.data.remote.NetworkModule.apiService.getBusinessSettings()
                             if (response.isSuccessful && response.body() != null) {
@@ -67,8 +81,6 @@ class PosViewModel(
                                 _defaultTaxRate.value = rateNum / 100.0
                             }
                         } catch (_: Exception) {}
-                    } finally {
-                        _isLoading.value = false
                     }
                 } else {
                     _isLoading.value = false
