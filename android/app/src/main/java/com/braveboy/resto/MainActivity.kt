@@ -3,6 +3,7 @@ package com.braveboy.resto
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.tween
@@ -58,13 +59,25 @@ class MainActivity : ComponentActivity() {
             val tenantState = tenantStateNullable.value
             val isDarkModeNullable = isDarkModeState.value
 
+            val activeDarkTheme = isDarkModeNullable ?: isSystemInDarkTheme()
+
+            androidx.compose.runtime.SideEffect {
+                val style = if (activeDarkTheme) {
+                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(
+                    statusBarStyle = style,
+                    navigationBarStyle = style
+                )
+            }
+
             if (isSignedIn == null || tenantState == null || isDarkModeNullable == null) {
-                RestoTheme(darkTheme = isDarkModeNullable ?: isSystemInDarkTheme()) {
+                RestoTheme(darkTheme = activeDarkTheme) {
                     Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .navigationBarsPadding()
-                            .statusBarsPadding()
+                        modifier = Modifier.fillMaxSize(),
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.background
                     ) {
                         RestoSplashScreen()
                     }
@@ -76,10 +89,8 @@ class MainActivity : ComponentActivity() {
                 ) { darkTheme ->
                     RestoTheme(darkTheme = darkTheme) {
                         Surface(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .navigationBarsPadding()
-                                .statusBarsPadding()
+                            modifier = Modifier.fillMaxSize(),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.background
                         ) {
                             val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
 

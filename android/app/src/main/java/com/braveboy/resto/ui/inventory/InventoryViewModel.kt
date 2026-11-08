@@ -27,6 +27,12 @@ class InventoryViewModel(
     private val productRepository: ProductRepository
 ) : ViewModel() {
 
+    val defaultUnits = listOf("عدد", "کیلوگرم", "گرم", "لیتر", "میلی‌لیتر", "بسته", "کارتُن", "متر", "جفت", "سرویس")
+    val defaultCategories = listOf("عمومی", "نوشیدنی", "غذای اصلی", "پیش‌غذا", "دسر")
+
+    private val _customUnits = MutableStateFlow<List<String>>(emptyList())
+    private val _customCategories = MutableStateFlow<List<String>>(emptyList())
+
     val tenantState: StateFlow<TenantState> = tenantRepository.getTenantState().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -100,6 +106,64 @@ class InventoryViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val availableUnits: StateFlow<List<String>> = combine(products, _customUnits) { productList, custom ->
+        (defaultUnits + custom + productList.map { it.unit }.filter { it.isNotBlank() })
+            .distinct()
+            .sorted()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = defaultUnits
+    )
+
+    val availableCategories: StateFlow<List<String>> = combine(products, _customCategories) { productList, custom ->
+        (defaultCategories + custom + productList.map { it.category }.filter { it.isNotBlank() })
+            .distinct()
+            .sorted()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = defaultCategories
+    )
+
+    fun addCustomUnit(unit: String) {
+        val clean = unit.trim()
+        if (clean.isNotBlank() && !_customUnits.value.contains(clean)) {
+            _customUnits.value = _customUnits.value + clean
+            _snackbarMessage.value = "واحد سنجش '$clean' به لیست گزینه‌ها اضافه شد"
+        }
+    }
+
+    fun deleteUnit(unit: String) {
+        val clean = unit.trim()
+        val count = products.value.count { it.unit.equals(clean, ignoreCase = true) }
+        if (count > 0) {
+            _snackbarMessage.value = "امکان حذف واحد '$clean' وجود ندارد زیرا $count کالا تحت این واحد تعریف شده‌اند"
+        } else {
+            _customUnits.value = _customUnits.value.filter { !it.equals(clean, ignoreCase = true) }
+            _snackbarMessage.value = "واحد سنجش '$clean' با موفقیت حذف شد"
+        }
+    }
+
+    fun addCustomCategory(category: String) {
+        val clean = category.trim()
+        if (clean.isNotBlank() && !_customCategories.value.contains(clean)) {
+            _customCategories.value = _customCategories.value + clean
+            _snackbarMessage.value = "دسته‌بندی '$clean' به لیست گزینه‌ها اضافه شد"
+        }
+    }
+
+    fun deleteCategory(category: String) {
+        val clean = category.trim()
+        val count = products.value.count { it.category.equals(clean, ignoreCase = true) }
+        if (count > 0) {
+            _snackbarMessage.value = "امکان حذف دسته‌بندی '$clean' وجود ندارد زیرا $count کالا تحت این دسته‌بندی تعریف شده‌اند"
+        } else {
+            _customCategories.value = _customCategories.value.filter { !it.equals(clean, ignoreCase = true) }
+            _snackbarMessage.value = "دسته‌بندی '$clean' با موفقیت حذف شد"
+        }
+    }
 
     private val _isAddProductDialogOpen = MutableStateFlow(false)
     val isAddProductDialogOpen: StateFlow<Boolean> = _isAddProductDialogOpen.asStateFlow()

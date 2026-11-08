@@ -24,7 +24,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 100010
-        versionName = "1.0.1"
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -90,7 +90,7 @@ android {
 
 androidComponents {
     onVariants { variant ->
-        val versionName = android.defaultConfig.versionName ?: "1.0"
+        val versionName = android.defaultConfig.versionName
         variant.outputs.forEach { output ->
             output.outputFileName.set("Resto-v${versionName}-${variant.name}.apk")
         }

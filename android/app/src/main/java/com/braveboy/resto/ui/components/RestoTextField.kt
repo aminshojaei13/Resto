@@ -1,9 +1,15 @@
 package com.braveboy.resto.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 
@@ -39,13 +47,37 @@ fun RestoTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
+    val messageText = errorText ?: helperText
+    val isErrorMessage = errorText != null
+
     Column(modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = label?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
-            placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp),
+            label = label?.let {
+                {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            placeholder = placeholder?.let {
+                {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
             leadingIcon = leadingIcon?.let {
                 { Icon(imageVector = it, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             },
@@ -69,22 +101,20 @@ fun RestoTextField(
             )
         )
 
-        if (errorText != null) {
-            Spacer(modifier = Modifier.height(RestoSpacing.xxs))
-            Text(
-                text = errorText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = RestoSpacing.xs)
-            )
-        } else if (helperText != null) {
-            Spacer(modifier = Modifier.height(RestoSpacing.xxs))
-            Text(
-                text = helperText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = RestoSpacing.xs)
-            )
+        AnimatedVisibility(
+            visible = messageText != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(RestoSpacing.xxs))
+                Text(
+                    text = messageText.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isErrorMessage) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = RestoSpacing.xs)
+                )
+            }
         }
     }
 }

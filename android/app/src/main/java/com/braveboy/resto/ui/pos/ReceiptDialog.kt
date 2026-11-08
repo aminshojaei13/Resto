@@ -1,5 +1,7 @@
 package com.braveboy.resto.ui.pos
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Print
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,8 +32,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -47,9 +53,55 @@ import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 fun ReceiptDialog(
     order: SalesOrder,
     onDismiss: () -> Unit,
+    customerPhone: String = "",
     currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     val dateStr = formatShamsiDate(order.createdAt, isPersian = true)
+    val context = LocalContext.current
+
+    val shareText = remember(order, currencyUnit) {
+        val sb = StringBuilder()
+        sb.appendLine("🧾 فاکتور رسمی Resto")
+        sb.appendLine("شماره فاکتور: ${order.orderNumber}")
+        sb.appendLine("تاریخ: $dateStr")
+        sb.appendLine("مشتری: ${order.customerName}")
+        sb.appendLine("-------------------------")
+        order.items.forEach { item ->
+            sb.appendLine("• ${item.productName} (${toPersianDigits(item.quantity)} عدد): ${formatTomans(item.totalPrice)} $currencyUnit")
+        }
+        sb.appendLine("-------------------------")
+        if (order.discountAmount > 0) {
+            sb.appendLine("تخفیف: -${formatTomans(order.discountAmount)} $currencyUnit")
+        }
+        if (order.taxAmount > 0) {
+            sb.appendLine("مالیات: ${formatTomans(order.taxAmount)} $currencyUnit")
+        }
+        sb.appendLine("مبلغ پرداخت شده: ${formatTomans(order.totalAmount)} $currencyUnit")
+        sb.appendLine("\nبا تشکر از خرید و همراهی شما!")
+        sb.toString()
+    }
+
+    fun shareReceipt() {
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            type = "text/plain"
+        }
+        val chooser = Intent.createChooser(sendIntent, "اشتراک‌گذاری فاکتور سفارش")
+        context.startActivity(chooser)
+    }
+
+    fun sendSmsToCustomer() {
+        val targetPhone = customerPhone.ifBlank { "" }
+        val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("smsto:$targetPhone")
+            putExtra("sms_body", shareText)
+        }
+        try {
+            context.startActivity(smsIntent)
+        } catch (_: Exception) {
+            shareReceipt()
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -150,6 +202,13 @@ fun ReceiptDialog(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
+                        if (customerPhone.isNotBlank()) {
+                            Text(
+                                text = "تلفن: ${toPersianDigits(customerPhone)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                         Text(
                             text = "روش پرداخت: $paymentMethodTitle",
                             style = MaterialTheme.typography.bodySmall,
@@ -257,18 +316,45 @@ fun ReceiptDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
+                // Action Row 1: Share & Send SMS
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { sendSmsToCustomer() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ارسال پیامک", maxLines = 1)
+                    }
+
+                    OutlinedButton(
+                        onClick = { shareReceipt() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("اشتراک فاکتور", maxLines = 1)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Action Row 2: Print & New Sale
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Rounded.Print, contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(imageVector = Icons.Rounded.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(stringResource(R.string.print), maxLines = 1)
                     }
 

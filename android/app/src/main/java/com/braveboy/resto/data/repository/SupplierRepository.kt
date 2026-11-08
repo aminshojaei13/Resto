@@ -14,6 +14,7 @@ interface SupplierRepository {
     fun getSuppliers(orgId: String): Flow<List<Supplier>>
     fun searchSuppliers(orgId: String, query: String): Flow<List<Supplier>>
     fun getSupplierById(id: String): Flow<Supplier?>
+    suspend fun getSupplierByPhone(orgId: String, phone: String): Supplier?
     suspend fun addSupplier(supplier: Supplier)
     suspend fun updateSupplier(supplier: Supplier)
     suspend fun deleteSupplier(id: String)
@@ -63,6 +64,10 @@ class SupplierRepositoryImpl(
 
     override fun getSupplierById(id: String): Flow<Supplier?> {
         return supplierDao.getSupplierById(id).map { it?.toDomain() }
+    }
+
+    override suspend fun getSupplierByPhone(orgId: String, phone: String): Supplier? {
+        return supplierDao.getSupplierByPhone(orgId, phone)?.toDomain()
     }
 
     override suspend fun addSupplier(supplier: Supplier) {

@@ -386,6 +386,7 @@ fun PosScreen(
         lastCompletedOrder?.let { order ->
             ReceiptDialog(
                 order = order,
+                customerPhone = selectedCustomer?.phone ?: "",
                 onDismiss = { viewModel.dismissReceipt() },
                 currencyUnit = currencyUnit
             )

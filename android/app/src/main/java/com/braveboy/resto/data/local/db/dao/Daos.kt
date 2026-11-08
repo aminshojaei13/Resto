@@ -97,6 +97,9 @@ interface CustomerDao {
     @Query("SELECT * FROM customers WHERE id = :id")
     fun getCustomerById(id: String): Flow<CustomerEntity?>
 
+    @Query("SELECT * FROM customers WHERE orgId = :orgId AND phone = :phone LIMIT 1")
+    suspend fun getCustomerByPhone(orgId: String, phone: String): CustomerEntity?
+
     @Query("SELECT * FROM customers WHERE isSynced = 0")
     suspend fun getUnsyncedCustomers(): List<CustomerEntity>
 
@@ -123,6 +126,9 @@ interface SupplierDao {
 
     @Query("SELECT * FROM suppliers WHERE id = :id")
     fun getSupplierById(id: String): Flow<SupplierEntity?>
+
+    @Query("SELECT * FROM suppliers WHERE orgId = :orgId AND phone = :phone LIMIT 1")
+    suspend fun getSupplierByPhone(orgId: String, phone: String): SupplierEntity?
 
     @Query("DELETE FROM suppliers WHERE id = :id")
     suspend fun deleteSupplier(id: String)

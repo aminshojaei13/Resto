@@ -115,15 +115,25 @@ class SupplierViewModel(
             _isSaving.value = true
             try {
                 val state = tenantState.value
+                val cleanPhone = phone.trim()
+                if (cleanPhone.isBlank()) {
+                    _snackbarMessage.value = "شماره موبایل تأمین‌کننده الزامی است"
+                    return@launch
+                }
+                val existing = supplierRepository.getSupplierByPhone(state.activeOrgId, cleanPhone)
+                if (existing != null) {
+                    _snackbarMessage.value = "تأمین‌کننده دیگری با شماره '$cleanPhone' قبلاً ثبت شده است"
+                    return@launch
+                }
                 val supplier = Supplier(
                     orgId = state.activeOrgId,
-                    name = name,
-                    email = email,
-                    phone = phone,
-                    address = address
+                    name = name.trim(),
+                    email = email.trim(),
+                    phone = cleanPhone,
+                    address = address.trim()
                 )
                 supplierRepository.addSupplier(supplier)
-                _snackbarMessage.value = "تأمین‌کننده '$name' با موفقیت ثبت شد"
+                _snackbarMessage.value = "تأمین‌کننده '${supplier.name}' با موفقیت ثبت شد"
                 _isAddSupplierDialogOpen.value = false
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در ثبت تأمین‌کننده: ${e.localizedMessage}"
@@ -137,7 +147,18 @@ class SupplierViewModel(
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                supplierRepository.updateSupplier(supplier)
+                val state = tenantState.value
+                val cleanPhone = supplier.phone.trim()
+                if (cleanPhone.isBlank()) {
+                    _snackbarMessage.value = "شماره موبایل تأمین‌کننده الزامی است"
+                    return@launch
+                }
+                val existing = supplierRepository.getSupplierByPhone(state.activeOrgId, cleanPhone)
+                if (existing != null && existing.id != supplier.id) {
+                    _snackbarMessage.value = "شماره موبایل '$cleanPhone' متعلق به تأمین‌کننده دیگری است"
+                    return@launch
+                }
+                supplierRepository.updateSupplier(supplier.copy(phone = cleanPhone, name = supplier.name.trim()))
                 _snackbarMessage.value = "تأمین‌کننده '${supplier.name}' به روز شد"
                 _selectedSupplierForEdit.value = null
                 _selectedSupplierForDetail.value = null

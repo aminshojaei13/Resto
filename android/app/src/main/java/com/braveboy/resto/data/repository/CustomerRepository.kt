@@ -14,6 +14,7 @@ interface CustomerRepository {
     fun getCustomers(orgId: String): Flow<List<Customer>>
     fun searchCustomers(orgId: String, query: String): Flow<List<Customer>>
     fun getCustomerById(id: String): Flow<Customer?>
+    suspend fun getCustomerByPhone(orgId: String, phone: String): Customer?
     suspend fun addCustomer(customer: Customer)
     suspend fun updateCustomer(customer: Customer)
     suspend fun refreshCustomers(orgId: String)
@@ -64,6 +65,10 @@ class CustomerRepositoryImpl(
 
     override fun getCustomerById(id: String): Flow<Customer?> {
         return customerDao.getCustomerById(id).map { it?.toDomain() }
+    }
+
+    override suspend fun getCustomerByPhone(orgId: String, phone: String): Customer? {
+        return customerDao.getCustomerByPhone(orgId, phone)?.toDomain()
     }
 
     override suspend fun addCustomer(customer: Customer) {

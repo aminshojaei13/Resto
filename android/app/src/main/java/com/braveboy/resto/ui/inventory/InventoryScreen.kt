@@ -62,6 +62,7 @@ import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.data.model.Warehouse
 import com.braveboy.resto.ui.components.RestoChip
 import com.braveboy.resto.ui.components.RestoDialog
+import com.braveboy.resto.ui.components.RestoDropdownField
 import com.braveboy.resto.ui.components.RestoEmptyState
 import com.braveboy.resto.ui.components.RestoLoadingState
 import com.braveboy.resto.ui.components.RestoSearchField
@@ -72,6 +73,7 @@ import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.ImageStorageManager
 import com.braveboy.resto.util.PersianFormatter
+import com.braveboy.resto.util.ProductErrorMapper
 
 @Composable
 fun InventoryScreen(
@@ -92,6 +94,9 @@ fun InventoryScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
 
+    val availableUnits by viewModel.availableUnits.collectAsState()
+    val availableCategories by viewModel.availableCategories.collectAsState()
+
     InventoryScreenContent(
         tenantState = tenantState,
         searchQuery = searchQuery,
@@ -105,6 +110,14 @@ fun InventoryScreen(
         snackbarMessage = snackbarMessage,
         isLoading = isLoading,
         isSaving = isSaving,
+        availableUnits = availableUnits,
+        availableCategories = availableCategories,
+        defaultUnits = viewModel.defaultUnits,
+        defaultCategories = viewModel.defaultCategories,
+        onAddCustomUnit = { viewModel.addCustomUnit(it) },
+        onDeleteUnit = { viewModel.deleteUnit(it) },
+        onAddCustomCategory = { viewModel.addCustomCategory(it) },
+        onDeleteCategory = { viewModel.deleteCategory(it) },
         onBackClick = onBackClick,
         onClearSnackbarMessage = { viewModel.clearSnackbarMessage() },
         onOpenAddProductDialog = { viewModel.openAddProductDialog() },
@@ -155,6 +168,14 @@ fun InventoryScreenContent(
     snackbarMessage: String?,
     isLoading: Boolean,
     isSaving: Boolean,
+    availableUnits: List<String> = emptyList(),
+    availableCategories: List<String> = emptyList(),
+    defaultUnits: List<String> = emptyList(),
+    defaultCategories: List<String> = emptyList(),
+    onAddCustomUnit: (String) -> Unit = {},
+    onDeleteUnit: (String) -> Unit = {},
+    onAddCustomCategory: (String) -> Unit = {},
+    onDeleteCategory: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
     onClearSnackbarMessage: () -> Unit = {},
     onOpenAddProductDialog: () -> Unit = {},
@@ -355,7 +376,15 @@ fun InventoryScreenContent(
             confirmLoading = isSaving,
             onSubmit = onAddProduct,
             onDismiss = onCloseAddProductDialog,
-            currencyUnit = currencyUnit
+            currencyUnit = currencyUnit,
+            availableUnits = availableUnits,
+            availableCategories = availableCategories,
+            defaultUnits = defaultUnits,
+            defaultCategories = defaultCategories,
+            onAddCustomUnit = onAddCustomUnit,
+            onDeleteUnit = onDeleteUnit,
+            onAddCustomCategory = onAddCustomCategory,
+            onDeleteCategory = onDeleteCategory
         )
     }
 
@@ -378,7 +407,15 @@ fun InventoryScreenContent(
             confirmLoading = isSaving,
             onSubmit = onUpdateProduct,
             onDismiss = onCloseEditProduct,
-            currencyUnit = currencyUnit
+            currencyUnit = currencyUnit,
+            availableUnits = availableUnits,
+            availableCategories = availableCategories,
+            defaultUnits = defaultUnits,
+            defaultCategories = defaultCategories,
+            onAddCustomUnit = onAddCustomUnit,
+            onDeleteUnit = onDeleteUnit,
+            onAddCustomCategory = onAddCustomCategory,
+            onDeleteCategory = onDeleteCategory
         )
     }
 
@@ -571,7 +608,15 @@ fun EditProductDialog(
     onSubmit: (updatedProduct: Product) -> Unit,
     onDismiss: () -> Unit,
     currencyUnit: String = stringResource(R.string.currency_unit),
-    confirmLoading: Boolean = false
+    confirmLoading: Boolean = false,
+    availableUnits: List<String> = emptyList(),
+    availableCategories: List<String> = emptyList(),
+    defaultUnits: List<String> = emptyList(),
+    defaultCategories: List<String> = emptyList(),
+    onAddCustomUnit: (String) -> Unit = {},
+    onDeleteUnit: (String) -> Unit = {},
+    onAddCustomCategory: (String) -> Unit = {},
+    onDeleteCategory: (String) -> Unit = {}
 ) {
     var name by remember { mutableStateOf(product.name) }
     var sku by remember { mutableStateOf(product.sku) }
@@ -582,6 +627,22 @@ fun EditProductDialog(
     var category by remember { mutableStateOf(product.category) }
     var unit by remember { mutableStateOf(product.unit) }
     var imageUrl by remember { mutableStateOf(product.imageUrl) }
+    var showErrors by remember { mutableStateOf(false) }
+
+    var isAddNewUnitPromptOpen by remember { mutableStateOf(false) }
+    var newUnitInput by remember { mutableStateOf("") }
+
+    var isAddNewCategoryPromptOpen by remember { mutableStateOf(false) }
+    var newCategoryInput by remember { mutableStateOf("") }
+
+    val errors = ProductErrorMapper.validate(
+        name = name,
+        sku = sku,
+        priceStr = priceStr,
+        costPriceStr = costPriceStr,
+        category = category,
+        unit = unit
+    )
 
     val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -605,9 +666,9 @@ fun EditProductDialog(
         confirmText = stringResource(R.string.save_changes),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val priceVal = PersianFormatter.parsePrice(priceStr)
-            val costVal = PersianFormatter.parsePrice(costPriceStr)
-            if (name.isNotBlank() && sku.isNotBlank()) {
+            if (!errors.hasError) {
+                val priceVal = PersianFormatter.parsePrice(priceStr)
+                val costVal = PersianFormatter.parsePrice(costPriceStr)
                 onSubmit(
                     product.copy(
                         name = name.trim(),
@@ -621,9 +682,11 @@ fun EditProductDialog(
                         imageUrl = imageUrl.trim()
                     )
                 )
+            } else {
+                showErrors = true
             }
         },
-        confirmEnabled = name.isNotBlank() && sku.isNotBlank(),
+        confirmEnabled = true,
         onDismissRequest = onDismiss
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
@@ -681,7 +744,8 @@ fun EditProductDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = stringResource(R.string.product_name_label)
+                label = stringResource(R.string.product_name_label),
+                errorText = if (showErrors) errors.nameError else null
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
@@ -689,6 +753,7 @@ fun EditProductDialog(
                     value = sku,
                     onValueChange = { sku = it },
                     label = stringResource(R.string.sku_label),
+                    errorText = if (showErrors) errors.skuError else null,
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
@@ -705,6 +770,7 @@ fun EditProductDialog(
                     onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
                     visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
+                    errorText = if (showErrors) errors.priceError else null,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
@@ -713,22 +779,35 @@ fun EditProductDialog(
                     onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
                     visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
+                    errorText = if (showErrors) errors.costPriceError else null,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
-                RestoTextField(
-                    value = category,
-                    onValueChange = { category = it },
+                RestoDropdownField(
+                    selectedOption = category,
+                    onOptionSelected = { category = it },
+                    options = availableCategories,
                     label = stringResource(R.string.category_label),
+                    errorText = if (showErrors) errors.categoryError else null,
+                    addNewLabel = "+ افزودن دسته‌بندی جدید",
+                    onAddNewOption = { isAddNewCategoryPromptOpen = true },
+                    onDeleteOption = onDeleteCategory,
+                    protectedOptions = defaultCategories,
                     modifier = Modifier.weight(1f)
                 )
-                RestoTextField(
-                    value = unit,
-                    onValueChange = { unit = it },
+                RestoDropdownField(
+                    selectedOption = unit,
+                    onOptionSelected = { unit = it },
+                    options = availableUnits,
                     label = stringResource(R.string.unit_label),
+                    errorText = if (showErrors) errors.unitError else null,
+                    addNewLabel = "+ افزودن واحد جدید",
+                    onAddNewOption = { isAddNewUnitPromptOpen = true },
+                    onDeleteOption = onDeleteUnit,
+                    protectedOptions = defaultUnits,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -739,6 +818,52 @@ fun EditProductDialog(
                 label = stringResource(R.string.description_optional_label),
                 singleLine = false,
                 maxLines = 2
+            )
+        }
+    }
+
+    if (isAddNewCategoryPromptOpen) {
+        RestoDialog(
+            title = "افزودن دسته‌بندی جدید",
+            confirmText = "افزودن",
+            onConfirm = {
+                if (newCategoryInput.isNotBlank()) {
+                    onAddCustomCategory(newCategoryInput)
+                    category = newCategoryInput.trim()
+                    isAddNewCategoryPromptOpen = false
+                    newCategoryInput = ""
+                }
+            },
+            confirmEnabled = newCategoryInput.isNotBlank(),
+            onDismissRequest = { isAddNewCategoryPromptOpen = false }
+        ) {
+            RestoTextField(
+                value = newCategoryInput,
+                onValueChange = { newCategoryInput = it },
+                label = "نام دسته‌بندی جدید"
+            )
+        }
+    }
+
+    if (isAddNewUnitPromptOpen) {
+        RestoDialog(
+            title = "افزودن واحد سنجش جدید",
+            confirmText = "افزودن",
+            onConfirm = {
+                if (newUnitInput.isNotBlank()) {
+                    onAddCustomUnit(newUnitInput)
+                    unit = newUnitInput.trim()
+                    isAddNewUnitPromptOpen = false
+                    newUnitInput = ""
+                }
+            },
+            confirmEnabled = newUnitInput.isNotBlank(),
+            onDismissRequest = { isAddNewUnitPromptOpen = false }
+        ) {
+            RestoTextField(
+                value = newUnitInput,
+                onValueChange = { newUnitInput = it },
+                label = "نام واحد سنجش جدید"
             )
         }
     }
@@ -763,7 +888,15 @@ fun AddProductDialog(
     ) -> Unit,
     onDismiss: () -> Unit,
     currencyUnit: String = stringResource(R.string.currency_unit),
-    confirmLoading: Boolean = false
+    confirmLoading: Boolean = false,
+    availableUnits: List<String> = emptyList(),
+    availableCategories: List<String> = emptyList(),
+    defaultUnits: List<String> = emptyList(),
+    defaultCategories: List<String> = emptyList(),
+    onAddCustomUnit: (String) -> Unit = {},
+    onDeleteUnit: (String) -> Unit = {},
+    onAddCustomCategory: (String) -> Unit = {},
+    onDeleteCategory: (String) -> Unit = {}
 ) {
     var name by remember { mutableStateOf("") }
     var sku by remember { mutableStateOf("PRD-${System.currentTimeMillis().toString().takeLast(5)}") }
@@ -775,6 +908,23 @@ fun AddProductDialog(
     var description by remember { mutableStateOf("") }
     var initialStockStr by remember { mutableStateOf("10") }
     var imageUrl by remember { mutableStateOf("") }
+    var showErrors by remember { mutableStateOf(false) }
+
+    var isAddNewUnitPromptOpen by remember { mutableStateOf(false) }
+    var newUnitInput by remember { mutableStateOf("") }
+
+    var isAddNewCategoryPromptOpen by remember { mutableStateOf(false) }
+    var newCategoryInput by remember { mutableStateOf("") }
+
+    val errors = ProductErrorMapper.validate(
+        name = name,
+        sku = sku,
+        priceStr = priceStr,
+        costPriceStr = costPriceStr,
+        category = category,
+        unit = unit,
+        stockStr = initialStockStr
+    )
 
     val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -805,10 +955,10 @@ fun AddProductDialog(
         confirmText = stringResource(R.string.add_product_to_warehouse),
         confirmLoading = confirmLoading,
         onConfirm = {
-            val priceVal = PersianFormatter.parsePrice(priceStr)
-            val costVal = PersianFormatter.parsePrice(costPriceStr)
-            val stockVal = initialStockStr.toIntOrNull() ?: 0
-            if (name.isNotBlank() && sku.isNotBlank()) {
+            if (!errors.hasError) {
+                val priceVal = PersianFormatter.parsePrice(priceStr)
+                val costVal = PersianFormatter.parsePrice(costPriceStr)
+                val stockVal = initialStockStr.trim().toIntOrNull() ?: 0
                 onSubmit(
                     name.trim(),
                     sku.trim(),
@@ -822,9 +972,11 @@ fun AddProductDialog(
                     selectedWarehouseId.value,
                     imageUrl.trim()
                 )
+            } else {
+                showErrors = true
             }
         },
-        confirmEnabled = name.isNotBlank() && sku.isNotBlank(),
+        confirmEnabled = true,
         onDismissRequest = onDismiss
     ) {
         Column(
@@ -884,7 +1036,8 @@ fun AddProductDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = stringResource(R.string.product_name_label)
+                label = stringResource(R.string.product_name_label),
+                errorText = if (showErrors) errors.nameError else null
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
@@ -892,6 +1045,7 @@ fun AddProductDialog(
                     value = sku,
                     onValueChange = { sku = it },
                     label = stringResource(R.string.sku_label),
+                    errorText = if (showErrors) errors.skuError else null,
                     modifier = Modifier.weight(1f)
                 )
                 RestoTextField(
@@ -908,6 +1062,7 @@ fun AddProductDialog(
                     onValueChange = { priceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
                     visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.selling_price_label)} ($currencyUnit)",
+                    errorText = if (showErrors) errors.priceError else null,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
@@ -916,6 +1071,7 @@ fun AddProductDialog(
                     onValueChange = { costPriceStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
                     visualTransformation = com.braveboy.resto.util.ThousandsSeparatorVisualTransformation(true),
                     label = "${stringResource(R.string.cost_price_label)} ($currencyUnit)",
+                    errorText = if (showErrors) errors.costPriceError else null,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
@@ -924,22 +1080,36 @@ fun AddProductDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
                 RestoTextField(
                     value = initialStockStr,
-                    onValueChange = { initialStockStr = it },
+                    onValueChange = { initialStockStr = it.filter { ch -> ch.isDigit() || ch in '۰'..'۹' } },
                     label = stringResource(R.string.initial_stock_label),
+                    errorText = if (showErrors) errors.stockError else null,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                     modifier = Modifier.weight(1f)
                 )
-                RestoTextField(
-                    value = unit,
-                    onValueChange = { unit = it },
+                RestoDropdownField(
+                    selectedOption = unit,
+                    onOptionSelected = { unit = it },
+                    options = availableUnits,
                     label = stringResource(R.string.unit_label),
+                    errorText = if (showErrors) errors.unitError else null,
+                    addNewLabel = "+ افزودن واحد جدید",
+                    onAddNewOption = { isAddNewUnitPromptOpen = true },
+                    onDeleteOption = onDeleteUnit,
+                    protectedOptions = defaultUnits,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            RestoTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = stringResource(R.string.category_label)
+            RestoDropdownField(
+                selectedOption = category,
+                onOptionSelected = { category = it },
+                options = availableCategories,
+                label = stringResource(R.string.category_label),
+                errorText = if (showErrors) errors.categoryError else null,
+                addNewLabel = "+ افزودن دسته‌بندی جدید",
+                onAddNewOption = { isAddNewCategoryPromptOpen = true },
+                onDeleteOption = onDeleteCategory,
+                protectedOptions = defaultCategories
             )
 
             RestoTextField(
@@ -948,6 +1118,52 @@ fun AddProductDialog(
                 label = stringResource(R.string.description_optional_label),
                 singleLine = false,
                 maxLines = 2
+            )
+        }
+    }
+
+    if (isAddNewCategoryPromptOpen) {
+        RestoDialog(
+            title = "افزودن دسته‌بندی جدید",
+            confirmText = "افزودن",
+            onConfirm = {
+                if (newCategoryInput.isNotBlank()) {
+                    onAddCustomCategory(newCategoryInput)
+                    category = newCategoryInput.trim()
+                    isAddNewCategoryPromptOpen = false
+                    newCategoryInput = ""
+                }
+            },
+            confirmEnabled = newCategoryInput.isNotBlank(),
+            onDismissRequest = { isAddNewCategoryPromptOpen = false }
+        ) {
+            RestoTextField(
+                value = newCategoryInput,
+                onValueChange = { newCategoryInput = it },
+                label = "نام دسته‌بندی جدید"
+            )
+        }
+    }
+
+    if (isAddNewUnitPromptOpen) {
+        RestoDialog(
+            title = "افزودن واحد سنجش جدید",
+            confirmText = "افزودن",
+            onConfirm = {
+                if (newUnitInput.isNotBlank()) {
+                    onAddCustomUnit(newUnitInput)
+                    unit = newUnitInput.trim()
+                    isAddNewUnitPromptOpen = false
+                    newUnitInput = ""
+                }
+            },
+            confirmEnabled = newUnitInput.isNotBlank(),
+            onDismissRequest = { isAddNewUnitPromptOpen = false }
+        ) {
+            RestoTextField(
+                value = newUnitInput,
+                onValueChange = { newUnitInput = it },
+                label = "نام واحد سنجش جدید"
             )
         }
     }

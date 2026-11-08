@@ -111,15 +111,25 @@ class CustomerViewModel(
             _isSaving.value = true
             try {
                 val state = tenantState.value
+                val cleanPhone = phone.trim()
+                if (cleanPhone.isBlank()) {
+                    _snackbarMessage.value = "شماره موبایل مشتری الزامی است"
+                    return@launch
+                }
+                val existing = customerRepository.getCustomerByPhone(state.activeOrgId, cleanPhone)
+                if (existing != null) {
+                    _snackbarMessage.value = "مشتری دیگری با شماره '$cleanPhone' قبلاً ثبت شده است"
+                    return@launch
+                }
                 val customer = Customer(
                     orgId = state.activeOrgId,
-                    name = name,
-                    email = email,
-                    phone = phone,
-                    address = address
+                    name = name.trim(),
+                    email = email.trim(),
+                    phone = cleanPhone,
+                    address = address.trim()
                 )
                 customerRepository.addCustomer(customer)
-                _snackbarMessage.value = "مشتری '$name' با موفقیت ثبت شد"
+                _snackbarMessage.value = "مشتری '${customer.name}' با موفقیت ثبت شد"
                 _isAddCustomerDialogOpen.value = false
             } catch (e: Exception) {
                 _snackbarMessage.value = "خطا در افزودن مشتری: ${e.localizedMessage}"
@@ -133,7 +143,18 @@ class CustomerViewModel(
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                customerRepository.updateCustomer(customer)
+                val state = tenantState.value
+                val cleanPhone = customer.phone.trim()
+                if (cleanPhone.isBlank()) {
+                    _snackbarMessage.value = "شماره موبایل مشتری الزامی است"
+                    return@launch
+                }
+                val existing = customerRepository.getCustomerByPhone(state.activeOrgId, cleanPhone)
+                if (existing != null && existing.id != customer.id) {
+                    _snackbarMessage.value = "شماره موبایل '$cleanPhone' متعلق به مشتری دیگری است"
+                    return@launch
+                }
+                customerRepository.updateCustomer(customer.copy(phone = cleanPhone, name = customer.name.trim()))
                 _snackbarMessage.value = "اطلاعات '${customer.name}' به روز شد"
                 _selectedCustomerForEdit.value = null
                 _selectedCustomerForDetail.value = null

@@ -1,6 +1,13 @@
 package com.braveboy.resto.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -148,6 +155,8 @@ fun MainAppScreen(
         .collectAsState()
     val unsyncedCount by appContainer.syncManager.unsyncedCount
         .collectAsState(initial = 0)
+    val isDarkMode by appContainer.tenantPreferences.isDarkMode
+        .collectAsState(initial = true)
     val layoutDirection = LayoutDirection.Rtl
 
     LaunchedEffect(initialSharedText) {
@@ -258,103 +267,119 @@ fun MainAppScreen(
                     .padding(innerPadding)
                     .fillMaxSize()
             ) {
-                when (currentDestination) {
-                    MainDestination.ACCOUNTING -> {
-                        DashboardScreen(
-                            viewModel = dashboardViewModel,
-                            tenantPreferences = appContainer.tenantPreferences,
-                            onNavigateToDestination = { destination, openAddProduct ->
-                                if (openAddProduct) {
-                                    inventoryViewModel.openAddProductDialog()
+                AnimatedContent(
+                    targetState = currentDestination,
+                    transitionSpec = {
+                        val isForward = targetState.ordinal >= initialState.ordinal
+                        (fadeIn(tween(300)) + slideInHorizontally(tween(300)) { width -> if (isForward) width / 4 else -width / 4 })
+                            .togetherWith(fadeOut(tween(300)) + slideOutHorizontally(tween(300)) { width -> if (isForward) -width / 4 else width / 4 })
+                    },
+                    label = "ScreenTransition"
+                ) { destination ->
+                    when (destination) {
+                        MainDestination.ACCOUNTING -> {
+                            DashboardScreen(
+                                viewModel = dashboardViewModel,
+                                tenantPreferences = appContainer.tenantPreferences,
+                                onNavigateToDestination = { dest, openAddProduct ->
+                                    if (openAddProduct) {
+                                        inventoryViewModel.openAddProductDialog()
+                                    }
+                                    navigateTo(dest)
                                 }
-                                navigateTo(destination)
-                            }
-                        )
-                    }
+                            )
+                        }
 
-                    MainDestination.REPORTS -> {
-                        ReportsScreen(
-                            viewModel = reportsViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.REPORTS -> {
+                            ReportsScreen(
+                                viewModel = reportsViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.ORDERS -> {
-                        SalesOrdersScreen(
-                            viewModel = salesOrdersViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.ORDERS -> {
+                            SalesOrdersScreen(
+                                viewModel = salesOrdersViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.INVENTORY -> {
-                        InventoryScreen(
-                            viewModel = inventoryViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.INVENTORY -> {
+                            InventoryScreen(
+                                viewModel = inventoryViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.POS -> {
-                        PosScreen(
-                            viewModel = posViewModel,
-                            onNavigateToTenantSwitch = { isTenantSwitcherOpen = true },
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.POS -> {
+                            PosScreen(
+                                viewModel = posViewModel,
+                                onNavigateToTenantSwitch = { isTenantSwitcherOpen = true },
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.MESSAGES -> {
-                        MessagesScreen(
-                            viewModel = messagesViewModel,
-                            initialSharedText = initialSharedText,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.MESSAGES -> {
+                            MessagesScreen(
+                                viewModel = messagesViewModel,
+                                initialSharedText = initialSharedText,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.PURCHASES -> {
-                        PurchasesScreen(
-                            viewModel = purchasesViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.PURCHASES -> {
+                            PurchasesScreen(
+                                viewModel = purchasesViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.CUSTOMERS -> {
-                        CustomerScreen(
-                            viewModel = customerViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.CUSTOMERS -> {
+                            CustomerScreen(
+                                viewModel = customerViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.SUPPLIERS -> {
-                        SupplierScreen(
-                            viewModel = supplierViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.SUPPLIERS -> {
+                            SupplierScreen(
+                                viewModel = supplierViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.EXPENSES -> {
-                        ExpensesScreen(
-                            viewModel = expensesViewModel,
-                            onBackClick = { navigateBack() }
-                        )
-                    }
+                        MainDestination.EXPENSES -> {
+                            ExpensesScreen(
+                                viewModel = expensesViewModel,
+                                onBackClick = { navigateBack() }
+                            )
+                        }
 
-                    MainDestination.SETTINGS -> {
-                        SettingsScreen(
-                            tenantState = tenantState,
-                            syncStatus = syncStatus,
-                            unsyncedCount = unsyncedCount,
-                            onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
-                            onBackClick = { navigateBack() },
-                            onLogout = {
-                                coroutineScope.launch {
-                                    appContainer.authRepository.logout()
+                        MainDestination.SETTINGS -> {
+                            SettingsScreen(
+                                tenantState = tenantState,
+                                syncStatus = syncStatus,
+                                unsyncedCount = unsyncedCount,
+                                isDarkMode = isDarkMode,
+                                onToggleTheme = {
+                                    coroutineScope.launch {
+                                        appContainer.tenantPreferences.setDarkMode(!isDarkMode)
+                                    }
+                                },
+                                onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
+                                onBackClick = { navigateBack() },
+                                onLogout = {
+                                    coroutineScope.launch {
+                                        appContainer.authRepository.logout()
+                                    }
+                                },
+                                onTriggerSync = {
+                                    coroutineScope.launch {
+                                        appContainer.syncManager.triggerSync(tenantState.activeOrgId)
+                                    }
                                 }
-                            },
-                            onTriggerSync = {
-                                coroutineScope.launch {
-                                    appContainer.syncManager.triggerSync(tenantState.activeOrgId)
-                                }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

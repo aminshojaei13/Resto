@@ -6,9 +6,12 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.core.view.WindowCompat
 
 // ============================================================================
 // Resto Compose Theme — Warm Dark design language (P8.3)
@@ -153,6 +156,18 @@ fun RestoTheme(
                 textMuted = WarmLightTextMuted,
                 borderSubtle = WarmLightBorder,
             )
+        }
+
+        val view = LocalView.current
+        if (!view.isInEditMode) {
+            SideEffect {
+                val window = (view.context as? android.app.Activity)?.window
+                if (window != null) {
+                    val insetsController = WindowCompat.getInsetsController(window, view)
+                    insetsController.isAppearanceLightStatusBars = !darkTheme
+                    insetsController.isAppearanceLightNavigationBars = !darkTheme
+                }
+            }
         }
 
         CompositionLocalProvider(

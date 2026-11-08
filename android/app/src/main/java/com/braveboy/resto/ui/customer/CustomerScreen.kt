@@ -1,5 +1,9 @@
 package com.braveboy.resto.ui.customer
 
+import android.net.Uri
+import android.provider.ContactsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.PersonAdd
@@ -289,36 +294,132 @@ fun CustomerFormDialog(
     var phone by remember { mutableStateOf(initialCustomer?.phone ?: "") }
     var email by remember { mutableStateOf(initialCustomer?.email ?: "") }
     var address by remember { mutableStateOf(initialCustomer?.address ?: "") }
+    var showErrors by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val contentResolver = context.contentResolver
+                val cursor = contentResolver.query(uri, null, null, null, null)
+                cursor?.use { c ->
+                    if (c.moveToFirst()) {
+                        val idIdx = c.getColumnIndex(ContactsContract.Contacts._ID)
+                        val nameIdx = c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
+                        val hasPhoneIdx = c.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)
+
+                        if (nameIdx >= 0) {
+                            val pickedName = c.getString(nameIdx)
+                            if (!pickedName.isNullOrBlank()) {
+                                name = pickedName
+                            }
+                        }
+
+                        val contactId = if (idIdx >= 0) c.getString(idIdx) else ""
+                        val hasPhone = if (hasPhoneIdx >= 0) c.getString(hasPhoneIdx) else "0"
+
+                        if (hasPhone == "1" && contactId.isNotBlank()) {
+                            val phoneCursor = contentResolver.query(
+                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                null,
+                                "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                                arrayOf(contactId),
+                                null
+                            )
+                            phoneCursor?.use { pc ->
+                                if (pc.moveToFirst()) {
+                                    val phoneIdx = pc.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                                    if (phoneIdx >= 0) {
+                                        val rawPhone = pc.getString(phoneIdx) ?: ""
+                                        val clean = rawPhone.replace(Regex("[^0-9+]"), "")
+                                        if (clean.isNotBlank()) {
+                                            phone = clean
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // Fallback if query fails
+            }
+        }
+    }
+
+    val isNameValid = name.trim().isNotBlank()
+    val isPhoneValid = phone.trim().isNotBlank()
 
     RestoDialog(
         title = title,
         confirmText = stringResource(R.string.save_info),
         confirmLoading = confirmLoading,
         onConfirm = {
-            if (name.isNotBlank()) {
+            if (isNameValid && isPhoneValid) {
                 onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
+            } else {
+                showErrors = true
             }
         },
-        confirmEnabled = name.isNotBlank(),
+        confirmEnabled = true,
         onDismissRequest = onDismiss
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.sm)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable { contactPickerLauncher.launch(null) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Contacts,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "انتخاب از مخاطبین دستگاه",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = "جستجو",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = stringResource(R.string.full_name_label)
+                label = stringResource(R.string.full_name_label),
+                errorText = if (showErrors && !isNameValid) "نام مشتری نمی‌تواند خالی باشد" else null
             )
 
             RestoTextField(
                 value = phone,
                 onValueChange = { phone = it },
-                label = stringResource(R.string.phone_number_label)
+                label = stringResource(R.string.phone_number_label) + " (اجباری - یونیک)",
+                errorText = if (showErrors && !isPhoneValid) "شماره موبایل برای تشخیص مشتری الزامی است" else null,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
             )
 
             RestoTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = stringResource(R.string.email_address_label)
+                label = stringResource(R.string.email_address_label),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Email)
             )
 
             RestoTextField(
