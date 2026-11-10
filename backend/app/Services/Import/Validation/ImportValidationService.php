@@ -1477,7 +1477,7 @@ class ImportValidationService
                             'quantity' => $qty,
                             'unit_price' => $priceNorm,
                             'date' => $rowDateParsed ?? $rowItem['date_raw'],
-                            'customer' => $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: 'مشتری حضوری'),
+                            'customer' => $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: '(بی نام)'),
                             'store' => $resolvedStore ? $resolvedStore->name : ($storeRaw ?: 'پیش‌فرض'),
                             'payment_method' => $paymentMethod,
                             'status' => $status,

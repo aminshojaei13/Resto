@@ -1,11 +1,18 @@
 package com.braveboy.resto.ui.pos
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.print.PrintAttributes
+import android.print.PrintManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,12 +22,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Print
+import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,19 +42,24 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.braveboy.resto.R
-import com.braveboy.resto.data.model.PaymentMethod
 import com.braveboy.resto.data.model.SalesOrder
+import com.braveboy.resto.ui.theme.RestoTheme
 import com.braveboy.resto.util.PersianFormatter.formatShamsiDate
 import com.braveboy.resto.util.PersianFormatter.formatTomans
 import com.braveboy.resto.util.PersianFormatter.toPersianDigits
@@ -54,6 +69,8 @@ fun ReceiptDialog(
     order: SalesOrder,
     onDismiss: () -> Unit,
     customerPhone: String = "",
+    storeName: String = "فروشگاه",
+    storePhone: String = "۰۲۱-۸۸۸۸۹۹۹۹",
     currencyUnit: String = stringResource(R.string.currency_unit)
 ) {
     val dateStr = formatShamsiDate(order.createdAt, isPersian = true)
@@ -103,9 +120,122 @@ fun ReceiptDialog(
         }
     }
 
+    fun printReceiptHtml() {
+        val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager ?: return
+        val jobName = "Resto_Receipt_${order.orderNumber}"
+
+        val itemsHtml = StringBuilder()
+        order.items.forEach { item ->
+            itemsHtml.append("""
+                <tr>
+                    <td style="text-align: right; padding: 4px 0;">${item.productName}</td>
+                    <td style="text-align: center; padding: 4px 0;">${toPersianDigits(item.quantity)}</td>
+                    <td style="text-align: left; padding: 4px 0;">${formatTomans(item.totalPrice)} $currencyUnit</td>
+                </tr>
+            """.trimIndent())
+        }
+
+        val htmlContent = """
+            <!DOCTYPE html>
+            <html dir="rtl">
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {
+                        font-family: sans-serif;
+                        margin: 0;
+                        padding: 12px;
+                        color: #000;
+                    }
+                    .title {
+                        font-size: 18px;
+                        font-weight: bold;
+                        text-align: center;
+                        margin-bottom: 4px;
+                    }
+                    .subtitle {
+                        font-size: 12px;
+                        text-align: center;
+                        color: #555;
+                        margin-bottom: 12px;
+                    }
+                    .divider {
+                        border-bottom: 1px dashed #000;
+                        margin: 8px 0;
+                    }
+                    .info-row {
+                        font-size: 12px;
+                        margin-bottom: 4px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 12px;
+                        margin: 8px 0;
+                    }
+                    th {
+                        border-bottom: 1px solid #000;
+                        padding: 4px 0;
+                    }
+                    .total-row {
+                        font-size: 14px;
+                        font-weight: bold;
+                        margin-top: 8px;
+                    }
+                    .footer {
+                        text-align: center;
+                        font-size: 11px;
+                        margin-top: 16px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="title">فاکتور رسمی فروشگاه</div>
+                <div class="subtitle">شماره فاکتور: ${order.orderNumber}</div>
+                <div class="info-row">تاریخ: $dateStr</div>
+                <div class="info-row">مشتری: ${order.customerName}</div>
+                ${if (customerPhone.isNotBlank()) "<div class=\"info-row\">تلفن: ${toPersianDigits(customerPhone)}</div>" else ""}
+                <div class="divider"></div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: right;">کالا</th>
+                            <th style="text-align: center;">تعداد</th>
+                            <th style="text-align: left;">مبلغ کل</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        $itemsHtml
+                    </tbody>
+                </table>
+                <div class="divider"></div>
+                <div class="info-row" style="display: flex; justify-content: space-between;">
+                    <span>جمع کل: ${formatTomans(order.subtotal)} $currencyUnit</span>
+                </div>
+                ${if (order.discountAmount > 0) "<div class=\"info-row\">تخفیف: -${formatTomans(order.discountAmount)} $currencyUnit</div>" else ""}
+                ${if (order.taxAmount > 0) "<div class=\"info-row\">مالیات: ${formatTomans(order.taxAmount)} $currencyUnit</div>" else ""}
+                <div class="total-row" style="display: flex; justify-content: space-between;">
+                    <span>مبلغ پرداختی: ${formatTomans(order.totalAmount)} $currencyUnit</span>
+                </div>
+                <div class="divider"></div>
+                <div class="footer">با تشکر از خرید و همراهی شما!</div>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val webView = WebView(context)
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                val printAdapter = webView.createPrintDocumentAdapter(jobName)
+                printManager.print(jobName, printAdapter, PrintAttributes.Builder().build())
+            }
+        }
+        webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = RoundedCornerShape(28.dp),
             color = AlertDialogDefaults.containerColor,
             tonalElevation = AlertDialogDefaults.TonalElevation,
             modifier = Modifier
@@ -114,203 +244,325 @@ fun ReceiptDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(16.dp)
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Success Badge
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                // Header Success Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Check,
+                        imageVector = Icons.Rounded.CheckCircle,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(32.dp)
+                        tint = RestoTheme.colors.success,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.payment_successful),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = RestoTheme.colors.success,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                Text(
-                    text = stringResource(R.string.payment_successful),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Text(
-                    text = "شماره فاکتور: ${order.orderNumber}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Thermal receipt style card
+                // Thermal Receipt Paper View
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(18.dp)
+                        )
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = stringResource(R.string.official_store_receipt),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-
-                        Text(
-                            text = dateStr,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val paymentMethodTitle = when (order.paymentMethod) {
-                            PaymentMethod.CASH -> stringResource(R.string.cash)
-                            PaymentMethod.CARD -> stringResource(R.string.card)
-                            PaymentMethod.MOBILE_PAYMENT -> stringResource(R.string.mobile_pay)
-                            PaymentMethod.STORE_CREDIT -> stringResource(R.string.store_credit)
-                        }
-
-                        Text(
-                            text = "مشتری: ${order.customerName}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (customerPhone.isNotBlank()) {
-                            Text(
-                                text = "تلفن: ${toPersianDigits(customerPhone)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                        Text(
-                            text = "روش پرداخت: $paymentMethodTitle",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Item list
-                        order.items.forEach { item ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.productName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = "${toPersianDigits(item.quantity)} × ${formatTomans(item.unitPrice)} $currencyUnit",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Text(
-                                    text = "${formatTomans(item.totalPrice)} $currencyUnit",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                        }
-
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(stringResource(R.string.subtotal_items), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                            Text(
-                                "${formatTomans(order.subtotal)} $currencyUnit",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        if (order.discountAmount > 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(stringResource(R.string.discount), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                                Text(
-                                    "-${formatTomans(order.discountAmount)} $currencyUnit",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-
-                        if (order.taxAmount > 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(stringResource(R.string.tax_plain), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                                Text(
-                                    "${formatTomans(order.taxAmount)} $currencyUnit",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
+                        // Store Info Header
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = storeName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                    Text(
+                                        text = "پشتیبانی: $storePhone",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Storefront,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Invoice Metadata Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "فاکتور: ${order.orderNumber}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Text(
+                                    text = "تاریخ: $dateStr",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "مشتری: ${order.customerName}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = false
+                                )
+                                if (customerPhone.isNotBlank()) {
+                                    Text(
+                                        text = "تلفن: ${toPersianDigits(customerPhone)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Order Items Table Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Text(
-                                text = stringResource(R.string.total_paid),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
+                                text = "شرح کالا",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.weight(2f)
                             )
                             Text(
-                                text = "${formatTomans(order.totalAmount)} $currencyUnit",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
+                                text = "تعداد",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "قیمت کل",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.weight(1.8f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Order Items List
+                        order.items.forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(2f)) {
+                                    Text(
+                                        text = item.productName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        softWrap = false
+                                    )
+                                    Text(
+                                        text = "فی: ${formatTomans(item.unitPrice)} $currencyUnit",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                                Text(
+                                    text = "${toPersianDigits(item.quantity)} عدد",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${formatTomans(item.totalPrice)} $currencyUnit",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1.8f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Financial Summary Breakdown
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("جمع کل فاکتور:", style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
+                            Text("${formatTomans(order.subtotal)} $currencyUnit", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        }
+
+                        if (order.discountAmount > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("تخفیف:", style = MaterialTheme.typography.bodyMedium, color = RestoTheme.colors.success, maxLines = 1, softWrap = false)
+                                Text("-${formatTomans(order.discountAmount)} $currencyUnit", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = RestoTheme.colors.success, maxLines = 1, softWrap = false)
+                            }
+                        }
+
+                        if (order.taxAmount > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("مالیات بر ارزش افزوده:", style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
+                                Text("${formatTomans(order.taxAmount)} $currencyUnit", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Final Total Card
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "مبلغ کل پرداختی:",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${formatTomans(order.totalAmount)} $currencyUnit",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // QR Code & Thank You Footer
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.QrCode2,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "با تشکر از خرید و همراهی شما\nResto OS • سیستم هوشمند فروش",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Start
                             )
                         }
                     }
@@ -318,52 +570,68 @@ fun ReceiptDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Row 1: Share & Send SMS
+                // Action Buttons (SMS, Share, Print, New Sale)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
                         onClick = { sendSmsToCustomer() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(imageVector = Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("ارسال پیامک", maxLines = 1)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(imageVector = Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("پیامک", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                        }
                     }
 
                     OutlinedButton(
                         onClick = { shareReceipt() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(imageVector = Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("اشتراک فاکتور", maxLines = 1)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(imageVector = Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("اشتراک", fontSize = 13.sp, maxLines = 1, softWrap = false)
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { printReceiptHtml() },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(imageVector = Icons.Rounded.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(R.string.print), fontSize = 13.sp, maxLines = 1, softWrap = false)
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Action Row 2: Print & New Sale
-                Row(
+                Button(
+                    onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Rounded.Print, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.print), maxLines = 1)
-                    }
-
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.new_sale), maxLines = 1)
-                    }
+                    Text(stringResource(R.string.new_sale), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
             }
         }

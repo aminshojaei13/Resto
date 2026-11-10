@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -92,8 +94,11 @@ fun SupplierScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -102,15 +107,17 @@ fun SupplierScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.openAddSupplierDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.AddBusiness,
-                    contentDescription = stringResource(R.string.add_supplier_title)
-                )
+            if (suppliers.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = { viewModel.openAddSupplierDialog() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AddBusiness,
+                        contentDescription = stringResource(R.string.add_supplier_title)
+                    )
+                }
             }
         }
     ) { innerPadding ->

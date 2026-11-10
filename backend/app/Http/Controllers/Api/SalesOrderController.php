@@ -311,7 +311,7 @@ class SalesOrderController extends Controller
                 'store_id' => $storeId,
                 'warehouse_id' => $warehouse->id,
                 'customer_id' => $validated['customer_id'] ?? null,
-                'customer_name' => $validated['customer_name'] ?? 'مشتری حضوری',
+                'customer_name' => $validated['customer_name'] ?? 'بدون نام',
                 'subtotal' => 0,
                 'discount_amount' => 0,
                 'tax_amount' => 0,

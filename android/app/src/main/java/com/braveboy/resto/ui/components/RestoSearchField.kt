@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import com.braveboy.resto.ui.theme.RestoShapes
 
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun RestoSearchField(
     query: String,
@@ -28,7 +30,7 @@ fun RestoSearchField(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
+        placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Rounded.Search,

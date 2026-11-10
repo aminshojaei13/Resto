@@ -29,7 +29,8 @@ import com.braveboy.resto.ui.theme.RestoTheme
 fun DashboardRevenueCard(
     modifier: Modifier = Modifier,
     revenueValue: String = "۰ تومان",
-    trendText: String = "۰٪"
+    trendText: String = "۰٪",
+    isPositiveTrend: Boolean = true
 ) {
     Box(
         modifier = modifier
@@ -62,11 +63,13 @@ fun DashboardRevenueCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
+                val arrow = if (isPositiveTrend) "↑" else "↓"
+
                 Text(
-                    text = "↑ $trendText ${stringResource(R.string.vs_last_month)}",
+                    text = "$arrow $trendText ${stringResource(R.string.vs_last_month)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = RestoTheme.colors.success,
+                    color = if (isPositiveTrend) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }

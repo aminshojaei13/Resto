@@ -63,7 +63,11 @@ fun DashboardStatCard(
                         .size(28.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                        .border(
+                            0.5.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(8.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -97,19 +101,31 @@ fun DashboardStatCard(
             // Trend Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val trendColor = if (isPositiveTrend) RestoTheme.colors.success else MaterialTheme.colorScheme.error
                 val arrow = if (isPositiveTrend) "↑" else "↓"
 
-                Text(
-                    text = "$arrow $trendText",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = trendColor,
-                    maxLines = 1
-                )
+                Row(
+                    modifier = Modifier.weight(1F),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = arrow,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = trendColor
+                    )
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = trendText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = trendColor
+                    )
+                }
 
                 Text(
                     text = stringResource(R.string.vs_last_month),
@@ -128,8 +144,10 @@ fun DashboardStatCardsRow(
     modifier: Modifier = Modifier,
     netProfitValue: String = "۰ تومان",
     netProfitTrend: String = "۰٪",
+    isNetProfitPositive: Boolean = true,
     totalOrdersValue: String = "۰",
-    totalOrdersTrend: String = "۰٪"
+    totalOrdersTrend: String = "۰٪",
+    isTotalOrdersPositive: Boolean = true
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -139,7 +157,7 @@ fun DashboardStatCardsRow(
             title = stringResource(R.string.net_profit_title),
             value = netProfitValue,
             trendText = netProfitTrend,
-            isPositiveTrend = true,
+            isPositiveTrend = isNetProfitPositive,
             icon = Icons.Rounded.Payments,
             modifier = Modifier.weight(1f)
         )
@@ -148,7 +166,7 @@ fun DashboardStatCardsRow(
             title = stringResource(R.string.total_orders_title),
             value = totalOrdersValue,
             trendText = totalOrdersTrend,
-            isPositiveTrend = false,
+            isPositiveTrend = isTotalOrdersPositive,
             icon = Icons.AutoMirrored.Rounded.ReceiptLong,
             modifier = Modifier.weight(1f)
         )

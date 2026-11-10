@@ -1,6 +1,7 @@
 package com.braveboy.resto
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -9,10 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,11 +62,14 @@ class MainActivity : ComponentActivity() {
 
             val activeDarkTheme = isDarkModeNullable ?: isSystemInDarkTheme()
 
-            androidx.compose.runtime.SideEffect {
+            SideEffect {
                 val style = if (activeDarkTheme) {
-                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    SystemBarStyle.dark(Color.TRANSPARENT)
                 } else {
-                    SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    SystemBarStyle.light(
+                        Color.WHITE,
+                        Color.WHITE
+                    )
                 }
                 enableEdgeToEdge(
                     statusBarStyle = style,
@@ -73,29 +77,25 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            if (isSignedIn == null || tenantState == null || isDarkModeNullable == null) {
-                RestoTheme(darkTheme = activeDarkTheme) {
-                    Surface(
+            CircularReveal(
+                expanded = isDarkModeNullable == true,
+                animationSpec = tween(durationMillis = 650)
+            ) { darkTheme ->
+                RestoTheme(darkTheme = darkTheme) {
+                    Scaffold(
                         modifier = Modifier.fillMaxSize(),
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.background
-                    ) {
-                        RestoSplashScreen()
-                    }
-                }
-            } else {
-                CircularReveal(
-                    expanded = isDarkModeNullable,
-                    animationSpec = tween(durationMillis = 650)
-                ) { darkTheme ->
-                    RestoTheme(darkTheme = darkTheme) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.background
-                        ) {
-                            val hasActiveWorkspace = isSignedIn || tenantState.activeOrgId.isNotBlank()
+                    ) { paddingValues ->
+                        if (isSignedIn == null || tenantState == null || isDarkModeNullable == null) {
+                            RestoSplashScreen(
+                                modifier = Modifier.padding(paddingValues)
+                            )
+                        } else {
+                            val hasActiveWorkspace =
+                                isSignedIn || tenantState.activeOrgId.isNotBlank()
 
                             if (hasActiveWorkspace && !isOnlineLoginRequested) {
                                 MainAppScreen(
+                                    modifier = Modifier.padding(paddingValues),
                                     appContainer = appContainer,
                                     initialSharedText = pendingImport?.rawText
                                 )
@@ -104,6 +104,7 @@ class MainActivity : ComponentActivity() {
                                     factory = LoginViewModel.Factory(appContainer.authRepository)
                                 )
                                 LoginScreen(
+                                    modifier = Modifier.padding(paddingValues),
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
                                         isOnlineLoginRequested = false
@@ -117,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                     factory = BusinessSetupViewModel.Factory(appContainer.authRepository)
                                 )
                                 BusinessSetupScreen(
+                                    modifier = Modifier.padding(paddingValues),
                                     viewModel = setupViewModel,
                                     onSetupSuccess = {
                                         // Workspace created; reacts automatically

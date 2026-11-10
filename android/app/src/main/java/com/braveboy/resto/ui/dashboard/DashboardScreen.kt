@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -143,7 +144,9 @@ fun DashboardScreenContent(
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackBarHostState) },
     ) { _ ->
@@ -202,23 +205,35 @@ fun DashboardScreenContent(
 
             item {
                 val formattedNetProfit = "${PersianFormatter.formatTomans(metrics.netProfit)} $currencyUnit"
-                val formattedOrdersCount = PersianFormatter.toPersianDigits(metrics.todaySalesCount)
+                val displayOrdersCount = if (metrics.todaySalesCount > 0) metrics.todaySalesCount else metrics.totalSalesCount
+                val formattedOrdersCount = PersianFormatter.toPersianDigits(displayOrdersCount)
+
+                val isNetProfitPositive = metrics.netProfitTrendPercent >= 0
+                val isTotalOrdersPositive = metrics.ordersTrendPercent >= 0
+
+                val ordersTrendStr = formatTrendPercentage(metrics.ordersTrendPercent)
+                val netProfitTrendStr = formatTrendPercentage(metrics.netProfitTrendPercent)
 
                 DashboardStatCardsRow(
                     netProfitValue = formattedNetProfit,
-                    netProfitTrend = if (metrics.netProfit > 0) "+12%" else "۰٪",
+                    netProfitTrend = netProfitTrendStr,
+                    isNetProfitPositive = isNetProfitPositive,
                     totalOrdersValue = formattedOrdersCount,
-                    totalOrdersTrend = if (metrics.todaySalesCount > 0) "+5%" else "۰٪"
+                    totalOrdersTrend = ordersTrendStr,
+                    isTotalOrdersPositive = isTotalOrdersPositive
                 )
             }
 
             // 3. Total Revenue Card (Dark Forest Green)
             item {
-                val formattedTodayRevenue = "${PersianFormatter.formatTomans(metrics.todayRevenue)} $currencyUnit"
+                val displayRevenue = if (metrics.totalRevenue > 0) metrics.totalRevenue else metrics.todayRevenue
+                val formattedRevenue = "${PersianFormatter.formatTomans(displayRevenue)} $currencyUnit"
+                val revenueTrendStr = formatTrendPercentage(metrics.revenueTrendPercent)
 
                 DashboardRevenueCard(
-                    revenueValue = formattedTodayRevenue,
-                    trendText = if (metrics.todayRevenue > 0) "+8%" else "۰٪"
+                    revenueValue = formattedRevenue,
+                    trendText = revenueTrendStr,
+                    isPositiveTrend = metrics.revenueTrendPercent >= 0
                 )
             }
 
@@ -407,6 +422,12 @@ private fun ModernRecordEntryDialog(
             )
         }
     }
+}
+
+private fun formatTrendPercentage(percent: Double): String {
+    val rounded = Math.round(percent)
+    val absVal = PersianFormatter.toPersianDigits(Math.abs(rounded).toInt())
+    return if (rounded > 0) "$absVal٪" else if (rounded < 0) "$absVal٪" else "۰٪"
 }
 
 @Preview(showBackground = true)

@@ -1,5 +1,8 @@
 package com.braveboy.resto.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,6 +81,8 @@ fun SettingsScreen(
     isBackupInProgress: Boolean = false,
     onToggleTheme: () -> Unit = {},
     onCreateBackup: () -> Unit = {},
+    onExportBackupToUri: (Uri) -> Unit = {},
+    onRestoreBackupFromUri: (Uri) -> Unit = {},
     onUpdateTaxRate: (Double) -> Unit = {},
     onTriggerSync: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -94,6 +100,8 @@ fun SettingsScreen(
         isBackupInProgress = isBackupInProgress,
         onToggleTheme = onToggleTheme,
         onCreateBackup = onCreateBackup,
+        onExportBackupToUri = onExportBackupToUri,
+        onRestoreBackupFromUri = onRestoreBackupFromUri,
         onUpdateTaxRate = onUpdateTaxRate,
         onTriggerSync = onTriggerSync,
         onLogout = onLogout,
@@ -114,6 +122,8 @@ fun SettingsScreenContent(
     isBackupInProgress: Boolean = false,
     onToggleTheme: () -> Unit = {},
     onCreateBackup: () -> Unit = {},
+    onExportBackupToUri: (Uri) -> Unit = {},
+    onRestoreBackupFromUri: (Uri) -> Unit = {},
     onUpdateTaxRate: (Double) -> Unit = {},
     onTriggerSync: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -126,14 +136,16 @@ fun SettingsScreenContent(
     var taxRateInputText by remember { mutableStateOf(if (currentTaxRate % 1.0 == 0.0) currentTaxRate.toInt().toString() else currentTaxRate.toString()) }
 
     Scaffold(
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
         topBar = {
             RestoTopBar(
                 title = "تنظیمات",
                 onNavigationClick = onBackClick,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize()
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -297,9 +309,42 @@ fun SettingsScreenContent(
 
                         Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
+                        val backupPickerLauncher = rememberLauncherForActivityResult(
+                            contract = ActivityResultContracts.CreateDocument("*/*")
+                        ) { uri: Uri? ->
+                            if (uri != null) {
+                                onExportBackupToUri(uri)
+                            }
+                        }
+
+                        val restorePickerLauncher = rememberLauncherForActivityResult(
+                            contract = ActivityResultContracts.OpenDocument()
+                        ) { uri: Uri? ->
+                            if (uri != null) {
+                                onRestoreBackupFromUri(uri)
+                            }
+                        }
+
                         com.braveboy.resto.ui.components.RestoButton(
-                            text = "پشتیبان‌گیری محلی و استخراج فایل (JSON)",
-                            onClick = onCreateBackup,
+                            text = "پشتیبان‌گیری و ذخیره فایل (.resto)",
+                            onClick = {
+                                val dateStr = java.text.SimpleDateFormat("yyyy_MM_dd", java.util.Locale.US).format(java.util.Date())
+                                val defaultFileName = "Resto_Backup_$dateStr.resto"
+                                backupPickerLauncher.launch(defaultFileName)
+                            },
+                            isLoading = isBackupInProgress,
+                            enabled = !isBackupInProgress,
+                            variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,
+                            fullWidth = true
+                        )
+
+                        Spacer(modifier = Modifier.height(RestoSpacing.xs))
+
+                        com.braveboy.resto.ui.components.RestoButton(
+                            text = "بازگردانی اطلاعات از فایل Backup",
+                            onClick = {
+                                restorePickerLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                            },
                             isLoading = isBackupInProgress,
                             enabled = !isBackupInProgress,
                             variant = com.braveboy.resto.ui.components.RestoButtonVariant.Outlined,

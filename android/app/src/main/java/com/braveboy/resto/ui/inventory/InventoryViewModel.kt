@@ -28,10 +28,12 @@ class InventoryViewModel(
 ) : ViewModel() {
 
     val defaultUnits = listOf("عدد", "کیلوگرم", "گرم", "لیتر", "میلی‌لیتر", "بسته", "کارتُن", "متر", "جفت", "سرویس")
-    val defaultCategories = listOf("عمومی", "نوشیدنی", "غذای اصلی", "پیش‌غذا", "دسر")
+    val defaultCategories = listOf("عمومی")
 
     private val _customUnits = MutableStateFlow<List<String>>(emptyList())
     private val _customCategories = MutableStateFlow<List<String>>(emptyList())
+    private val _deletedUnits = MutableStateFlow<Set<String>>(emptySet())
+    private val _deletedCategories = MutableStateFlow<Set<String>>(emptySet())
 
     val tenantState: StateFlow<TenantState> = tenantRepository.getTenantState().stateIn(
         scope = viewModelScope,
@@ -107,8 +109,9 @@ class InventoryViewModel(
         initialValue = emptyList()
     )
 
-    val availableUnits: StateFlow<List<String>> = combine(products, _customUnits) { productList, custom ->
-        (defaultUnits + custom + productList.map { it.unit }.filter { it.isNotBlank() })
+    val availableUnits: StateFlow<List<String>> = combine(products, _customUnits, _deletedUnits) { productList, custom, deleted ->
+        ((defaultUnits + custom + productList.map { it.unit }.filter { it.isNotBlank() })
+            .filter { !deleted.contains(it) })
             .distinct()
             .sorted()
     }.stateIn(
@@ -117,8 +120,9 @@ class InventoryViewModel(
         initialValue = defaultUnits
     )
 
-    val availableCategories: StateFlow<List<String>> = combine(products, _customCategories) { productList, custom ->
-        (defaultCategories + custom + productList.map { it.category }.filter { it.isNotBlank() })
+    val availableCategories: StateFlow<List<String>> = combine(products, _customCategories, _deletedCategories) { productList, custom, deleted ->
+        ((defaultCategories + custom + productList.map { it.category }.filter { it.isNotBlank() })
+            .filter { !deleted.contains(it) })
             .distinct()
             .sorted()
     }.stateIn(
@@ -131,6 +135,7 @@ class InventoryViewModel(
         val clean = unit.trim()
         if (clean.isNotBlank() && !_customUnits.value.contains(clean)) {
             _customUnits.value = _customUnits.value + clean
+            _deletedUnits.value = _deletedUnits.value - clean
             _snackbarMessage.value = "واحد سنجش '$clean' به لیست گزینه‌ها اضافه شد"
         }
     }
@@ -142,6 +147,7 @@ class InventoryViewModel(
             _snackbarMessage.value = "امکان حذف واحد '$clean' وجود ندارد زیرا $count کالا تحت این واحد تعریف شده‌اند"
         } else {
             _customUnits.value = _customUnits.value.filter { !it.equals(clean, ignoreCase = true) }
+            _deletedUnits.value = _deletedUnits.value + clean
             _snackbarMessage.value = "واحد سنجش '$clean' با موفقیت حذف شد"
         }
     }
@@ -150,6 +156,7 @@ class InventoryViewModel(
         val clean = category.trim()
         if (clean.isNotBlank() && !_customCategories.value.contains(clean)) {
             _customCategories.value = _customCategories.value + clean
+            _deletedCategories.value = _deletedCategories.value - clean
             _snackbarMessage.value = "دسته‌بندی '$clean' به لیست گزینه‌ها اضافه شد"
         }
     }
@@ -161,6 +168,7 @@ class InventoryViewModel(
             _snackbarMessage.value = "امکان حذف دسته‌بندی '$clean' وجود ندارد زیرا $count کالا تحت این دسته‌بندی تعریف شده‌اند"
         } else {
             _customCategories.value = _customCategories.value.filter { !it.equals(clean, ignoreCase = true) }
+            _deletedCategories.value = _deletedCategories.value + clean
             _snackbarMessage.value = "دسته‌بندی '$clean' با موفقیت حذف شد"
         }
     }

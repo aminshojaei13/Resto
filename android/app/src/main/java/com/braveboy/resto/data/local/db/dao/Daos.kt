@@ -39,6 +39,15 @@ interface TenantDao {
 
     @Query("SELECT COUNT(*) FROM organizations")
     suspend fun getOrganizationCount(): Int
+
+    @Query("SELECT * FROM organizations")
+    suspend fun getAllOrganizationsDirect(): List<OrganizationEntity>
+
+    @Query("SELECT * FROM stores")
+    suspend fun getAllStoresDirect(): List<StoreEntity>
+
+    @Query("SELECT * FROM warehouses")
+    suspend fun getAllWarehousesDirect(): List<WarehouseEntity>
 }
 
 @Dao
@@ -256,7 +265,7 @@ interface CartDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateCartItem(cartItem: CartItemEntity)
 
-    @Query("SELECT * FROM cart_items WHERE orgId = :orgId AND storeId = :storeId")
+    @Query("SELECT * FROM cart_items WHERE orgId = :orgId AND storeId = :storeId ORDER BY createdAt ASC")
     fun getCartItems(orgId: String, storeId: String): Flow<List<CartItemEntity>>
 
     @Query("SELECT * FROM cart_items WHERE id = :id")

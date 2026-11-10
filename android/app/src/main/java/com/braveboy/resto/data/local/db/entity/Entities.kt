@@ -442,7 +442,8 @@ data class CartItemEntity(
     val quantity: Int,
     val discountPercent: Double,
     val taxRate: Double,
-    val imageUrl: String
+    val imageUrl: String,
+    val createdAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain() = CartItem(
         id = id,
@@ -458,7 +459,8 @@ data class CartItemEntity(
         quantity = quantity,
         discountPercent = discountPercent,
         taxRate = taxRate,
-        imageUrl = imageUrl
+        imageUrl = imageUrl,
+        createdAt = createdAt
     )
 }
 
@@ -476,5 +478,6 @@ fun CartItem.toEntity() = CartItemEntity(
     quantity = quantity,
     discountPercent = discountPercent,
     taxRate = taxRate,
-    imageUrl = imageUrl
+    imageUrl = imageUrl,
+    createdAt = createdAt
 )

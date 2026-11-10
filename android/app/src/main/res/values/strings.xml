@@ -44,7 +44,7 @@
     <string name="payment_successful">پرداخت با موفقیت انجام شد!</string>
     <string name="official_receipt">رسید رسمی فروش</string>
     <string name="total_paid">مجموع پرداختی</string>
-    <string name="print">چاپ فاکتور</string>
+    <string name="print">چاپ</string>
     <string name="new_sale">فروش جدید</string>
 
     <!-- Inventory -->

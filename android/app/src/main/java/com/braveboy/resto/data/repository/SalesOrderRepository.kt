@@ -1,5 +1,6 @@
 package com.braveboy.resto.data.repository
 
+import android.util.Log
 import com.braveboy.resto.data.local.db.dao.CartDao
 import com.braveboy.resto.data.local.db.dao.CustomerDao
 import com.braveboy.resto.data.local.db.dao.LedgerDao
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 interface SalesOrderRepository {
     fun getOrdersByStore(orgId: String, storeId: String): Flow<List<SalesOrder>>
@@ -64,7 +66,7 @@ class SalesOrderRepositoryImpl(
     override suspend fun refreshOrders(orgId: String) {
         if (orgId.isBlank()) return
         try {
-            val response = withTimeoutOrNull(2500L) { apiService.getOrders(orgId = orgId) }
+            val response = withTimeoutOrNull(2500L.milliseconds) { apiService.getOrders(orgId = orgId) }
             if (response != null && response.isSuccessful && response.body() != null) {
                 val dtos = response.body()!!
                 val orders = dtos.map { dto ->
@@ -130,14 +132,14 @@ class SalesOrderRepositoryImpl(
         // Sync with remote API with Idempotency protection; fallback gracefully if offline
         var isSynced = true
         val remoteOrder: OrderDto? = try {
-            val response = withTimeoutOrNull(2500L) {
+            val response = withTimeoutOrNull(2500L.milliseconds) {
                 apiService.checkout(
                     request = CheckoutRequestDto(
                         orgId = orgId,
                         storeId = storeId,
                         warehouseId = warehouseId,
                         customerId = customer?.id,
-                        customerName = customer?.name ?: "مشتری حضوری",
+                        customerName = customer?.name ?: "بدون نام",
                         paymentMethod = paymentMethod.name,
                         notes = notes,
                         source = source,
@@ -167,6 +169,7 @@ class SalesOrderRepositoryImpl(
             }
         } catch (e: Exception) {
             // Offline fallback: complete checkout locally and mark unsynced for SyncManager
+            Log.e("error", "processCheckout: $e")
             isSynced = false
             null
         }
@@ -200,7 +203,7 @@ class SalesOrderRepositoryImpl(
             storeId = storeId,
             warehouseId = warehouseId,
             customerId = customer?.id,
-            customerName = customer?.name ?: (remoteOrder?.customerName ?: "مشتری حضوری"),
+            customerName = customer?.name ?: (remoteOrder?.customerName ?: "بدون نام"),
             source = source,
             items = orderItems,
             subtotal = subtotal,
@@ -218,12 +221,12 @@ class SalesOrderRepositoryImpl(
         salesOrderDao.insertSalesOrder(order.toEntity(isSynced = isSynced))
 
         // Decrement product stock in warehouse
-        for (item in cartItems) {
-            val productEntity = productDao.getProductByIdDirect(item.productId) ?: continue
+        for ((_, _, _, productId, _, _, _, _, _, _, quantity) in cartItems) {
+            val productEntity = productDao.getProductByIdDirect(productId) ?: continue
             val product = productEntity.toDomain()
             val currentStockMap = product.stockQuantityByWarehouse.toMutableMap()
             val currentQty = currentStockMap[warehouseId] ?: 0
-            val newQty = (currentQty - item.quantity).coerceAtLeast(0)
+            val newQty = (currentQty - quantity).coerceAtLeast(0)
             currentStockMap[warehouseId] = newQty
 
             val updatedProduct = product.copy(stockQuantityByWarehouse = currentStockMap)

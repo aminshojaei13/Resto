@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,9 +66,9 @@ fun RestoDropdownField(
                 onValueChange = {},
                 readOnly = true,
                 label = if (label.isNotBlank()) {
-                    { Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    { Text(label, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 } else null,
-                placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
+                placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
@@ -98,14 +96,13 @@ fun RestoDropdownField(
                         text = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = option,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (option == selectedOption) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
+                                    fontWeight = if (option == selectedOption) FontWeight.Bold else FontWeight.Normal
                                 )
+                                Spacer(Modifier.weight(1F))
                                 if (onDeleteOption != null && !isProtected) {
                                     IconButton(
                                         onClick = {
@@ -133,13 +130,6 @@ fun RestoDropdownField(
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = addNewLabel,
                                 style = MaterialTheme.typography.bodyMedium,

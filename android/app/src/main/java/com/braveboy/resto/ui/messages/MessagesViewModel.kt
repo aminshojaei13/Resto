@@ -83,26 +83,29 @@ class MessagesViewModel(
         viewModelScope.launch {
             tenantState.collect { state ->
                 if (state.activeOrgId.isNotBlank()) {
-                    launch {
+                    this@launch.launch {
                         productRepository.getProducts(state.activeOrgId).collect {
                             _catalogProducts.value = it
                         }
                     }
-                    launch {
+                    this@launch.launch {
                         customerRepository.getCustomers(state.activeOrgId).collect {
                             _customers.value = it
                         }
                     }
                 }
                 if (state.activeStoreId.isNotBlank()) {
-                    launch {
-                        tenantRepository.getWarehousesForStore(state.activeStoreId).collect { whList ->
-                            _warehouses.value = whList
-                            if (_uiState.value.selectedWarehouseId.isBlank() && whList.isNotEmpty()) {
-                                val defWh = whList.find { it.id == state.activeWarehouseId } ?: whList.first()
-                                _uiState.value = _uiState.value.copy(selectedWarehouseId = defWh.id)
+                    this@launch.launch {
+                        tenantRepository.getWarehousesForStore(state.activeStoreId)
+                            .collect { whList ->
+                                _warehouses.value = whList
+                                if (_uiState.value.selectedWarehouseId.isBlank() && whList.isNotEmpty()) {
+                                    val defWh = whList.find { it.id == state.activeWarehouseId }
+                                        ?: whList.first()
+                                    _uiState.value =
+                                        _uiState.value.copy(selectedWarehouseId = defWh.id)
+                                }
                             }
-                        }
                     }
                 }
             }
@@ -154,16 +157,16 @@ class MessagesViewModel(
             try {
                 // Try remote parsing first
                 val remoteResponse = messageRepository.parseMessage(raw, src, "fa")
-                val draft = if (remoteResponse != null && remoteResponse.customer != null) {
+                val draft = if (remoteResponse?.customer != null) {
                     val remoteCustomer = remoteResponse.customer
                     // Match customer against local store customers if phone matches
                     val existingCust = _customers.value.find { c ->
-                        !c.phone.isNullOrBlank() && !remoteCustomer.phone.isNullOrBlank() &&
+                        c.phone.isNotBlank() && !remoteCustomer.phone.isNullOrBlank() &&
                                 (c.phone == remoteCustomer.phone || c.phone.endsWith(remoteCustomer.phone.takeLast(7)))
                     }
 
                     val items = remoteResponse.items.map { itemDto ->
-                        val matchedProd = if (!itemDto.productId.isNullOrBlank()) {
+                        val matchedProd = if (itemDto.productId.isNotBlank()) {
                             catalog.find { it.id == itemDto.productId }
                         } else {
                             catalog.find { it.sku.equals(itemDto.sku, ignoreCase = true) || it.name.equals(itemDto.name, ignoreCase = true) }
@@ -179,7 +182,7 @@ class MessagesViewModel(
                             unitLabel = matchedProd?.unit ?: itemDto.unitLabel ?: "عدد",
                             catalogPrice = matchedProd?.price ?: itemDto.price,
                             statedPrice = itemDto.price,
-                            isMatched = matchedProd != null || !itemDto.productId.isNullOrBlank(),
+                            isMatched = matchedProd != null || itemDto.productId.isNotBlank(),
                             confidence = 0.85f
                         )
                     }
@@ -204,7 +207,7 @@ class MessagesViewModel(
                         rawText = raw,
                         customer = ParsedCustomer(
                             id = existingCust?.id ?: remoteCustomer.id,
-                            name = remoteCustomer.name ?: "مشتری",
+                            name = remoteCustomer.name?.trim()?.ifBlank { "(بی نام)" } ?: "(بی نام)",
                             phone = remoteCustomer.phone,
                             address = remoteCustomer.address,
                             isNew = existingCust == null
@@ -229,7 +232,7 @@ class MessagesViewModel(
                     parsedDraft = draft,
                     notes = draft.notes
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // If anything fails, use deterministic local parser
                 val localDraft = messageRepository.parseMessageLocally(
                     rawText = raw,
@@ -419,7 +422,7 @@ class MessagesViewModel(
             return
         }
 
-        val custName = draft.customer.name?.trim().takeIf { !it.isNullOrBlank() } ?: "مشتری متفرقه"
+        val custName = draft.customer.name?.trim()?.ifBlank { "(بی نام)" } ?: "(بی نام)"
         val custPhone = draft.customer.phone?.trim() ?: ""
         val custAddress = draft.customer.address?.trim() ?: ""
 

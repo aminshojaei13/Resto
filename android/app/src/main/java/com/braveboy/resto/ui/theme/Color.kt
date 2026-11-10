@@ -111,8 +111,8 @@ val OnSurfaceVariantLight = Color(0xFF64748B)
 // ---- Dark Theme (Luxe Amber & Obsidian Gold) ------------------------------------
 val PrimaryDark = Color(0xFFF59E0B)           // Amber Champagne Gold
 val OnPrimaryDark = Color(0xFF451A03)         // Deep Amber Brown
-val PrimaryContainerDark = Color(0xFF78350F)  // Warm Gold Container
-val OnPrimaryContainerDark = Color(0xFFFEF3C7)
+val PrimaryContainerDark = Color(0xFFEA970F)  // Warm Gold Container
+val OnPrimaryContainerDark = Color(0xFF504D42)
 
 val SecondaryDark = Color(0xFFFBBF24)
 val OnSecondaryDark = Color(0xFF451A03)

@@ -82,14 +82,17 @@ fun RestoOrderCard(
     val formattedTotal = "${PersianFormatter.formatTomans(order.totalAmount)} $currencySymbol"
 
     val itemsSummaryStr = if (order.items.isNotEmpty()) {
-        val names = order.items.take(2).joinToString("، ") { "${it.productName} (${PersianFormatter.toPersianDigits(it.quantity)} عدد)" }
+        val names = order.items.take(2)
+            .joinToString("، ") { "${it.productName} (${PersianFormatter.toPersianDigits(it.quantity)} عدد)" }
         val count = order.items.sumOf { it.quantity }
-        if (order.items.size > 2) "$names (+${PersianFormatter.toPersianDigits(order.items.size - 2)} کالا) • مجموع ${PersianFormatter.toPersianDigits(count)} عدد" else names
+        if (order.items.size > 2) "$names (+${PersianFormatter.toPersianDigits(order.items.size - 2)} کالا) • مجموع ${
+            PersianFormatter.toPersianDigits(
+                count
+            )
+        } عدد" else names
     } else {
         stringResource(R.string.no_items_listed)
     }
-
-    val channel = SalesChannel.fromCode(order.source)
 
     Box(
         modifier = modifier
@@ -107,17 +110,14 @@ fun RestoOrderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = order.orderNumber,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    RestoBadge(text = channel.titleFa, variant = RestoBadgeVariant.Neutral)
-                }
+                Text(
+                    text = order.orderNumber,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
                     text = formattedTotal,
@@ -186,7 +186,8 @@ fun RestoOrderCard(
             ) {
                 RestoBadge(text = paymentBadgeText, variant = paymentBadgeVariant)
                 RestoBadge(text = fulfillmentBadgeText, variant = fulfillmentBadgeVariant)
-            }
+                Spacer(modifier = Modifier.weight(1F))
+                RestoBadge(text = SalesChannel.fromCode(order.source).titleFa, variant = RestoBadgeVariant.Neutral)            }
         }
     }
 }

@@ -29,6 +29,8 @@ import com.braveboy.resto.ui.theme.RestoDimensions
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 
+import androidx.compose.foundation.basicMarquee
+
 enum class RestoButtonVariant {
     Primary,
     Secondary,
@@ -50,17 +52,18 @@ fun RestoButton(
     fullWidth: Boolean = false,
     compact: Boolean = false,
     singleLine: Boolean = true,
+    useMarquee: Boolean = false,
     contentPadding: PaddingValues? = null
 ) {
-    val minHeight = if (compact) 38.dp else RestoDimensions.buttonHeight
+    val minHeight = if (compact) 36.dp else RestoDimensions.buttonHeight
     val buttonModifier = modifier
         .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier)
         .defaultMinSize(minHeight = minHeight)
 
     val resolvedPadding = contentPadding ?: when {
-        compact -> PaddingValues(horizontal = RestoSpacing.sm, vertical = RestoSpacing.xxs)
-        variant == RestoButtonVariant.Text -> PaddingValues(horizontal = RestoSpacing.sm, vertical = RestoSpacing.xs)
-        else -> PaddingValues(horizontal = RestoSpacing.md, vertical = RestoSpacing.xs)
+        compact -> PaddingValues(horizontal = RestoSpacing.xs, vertical = RestoSpacing.xxs)
+        variant == RestoButtonVariant.Text -> PaddingValues(horizontal = RestoSpacing.xs, vertical = RestoSpacing.xxs)
+        else -> PaddingValues(horizontal = RestoSpacing.sm, vertical = RestoSpacing.xs)
     }
 
     when (variant) {
@@ -76,7 +79,7 @@ fun RestoButton(
                 contentPadding = resolvedPadding,
                 modifier = buttonModifier
             ) {
-                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onPrimary, compact, singleLine)
+                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onPrimary, compact, singleLine, useMarquee)
             }
         }
         RestoButtonVariant.Secondary -> {
@@ -91,7 +94,7 @@ fun RestoButton(
                 contentPadding = resolvedPadding,
                 modifier = buttonModifier
             ) {
-                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onSurface, compact, singleLine)
+                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onSurface, compact, singleLine, useMarquee)
             }
         }
         RestoButtonVariant.Outlined -> {
@@ -106,7 +109,7 @@ fun RestoButton(
                 contentPadding = resolvedPadding,
                 modifier = buttonModifier
             ) {
-                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.primary, compact, singleLine)
+                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.primary, compact, singleLine, useMarquee)
             }
         }
         RestoButtonVariant.Destructive -> {
@@ -121,7 +124,7 @@ fun RestoButton(
                 contentPadding = resolvedPadding,
                 modifier = buttonModifier
             ) {
-                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onError, compact, singleLine)
+                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.onError, compact, singleLine, useMarquee)
             }
         }
         RestoButtonVariant.Text -> {
@@ -132,7 +135,7 @@ fun RestoButton(
                 contentPadding = resolvedPadding,
                 modifier = buttonModifier
             ) {
-                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.primary, compact, singleLine)
+                ButtonContent(text, isLoading, leadingIcon, trailingIcon, MaterialTheme.colorScheme.primary, compact, singleLine, useMarquee)
             }
         }
     }
@@ -146,7 +149,8 @@ private fun ButtonContent(
     trailingIcon: ImageVector?,
     contentColor: Color,
     compact: Boolean = false,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    useMarquee: Boolean = false
 ) {
     if (isLoading) {
         CircularProgressIndicator(
@@ -171,7 +175,9 @@ private fun ButtonContent(
                 style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = if (singleLine) 1 else 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                softWrap = !singleLine,
+                modifier = if (useMarquee) Modifier.basicMarquee() else Modifier
             )
             trailingIcon?.let {
                 Spacer(modifier = Modifier.width(if (compact) RestoSpacing.xxs else RestoSpacing.xs))

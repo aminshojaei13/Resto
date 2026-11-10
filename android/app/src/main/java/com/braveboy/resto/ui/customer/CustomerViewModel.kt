@@ -121,9 +121,10 @@ class CustomerViewModel(
                     _snackbarMessage.value = "مشتری دیگری با شماره '$cleanPhone' قبلاً ثبت شده است"
                     return@launch
                 }
+                val finalName = name.trim().ifBlank { "(بی نام)" }
                 val customer = Customer(
                     orgId = state.activeOrgId,
-                    name = name.trim(),
+                    name = finalName,
                     email = email.trim(),
                     phone = cleanPhone,
                     address = address.trim()
@@ -154,8 +155,10 @@ class CustomerViewModel(
                     _snackbarMessage.value = "شماره موبایل '$cleanPhone' متعلق به مشتری دیگری است"
                     return@launch
                 }
-                customerRepository.updateCustomer(customer.copy(phone = cleanPhone, name = customer.name.trim()))
-                _snackbarMessage.value = "اطلاعات '${customer.name}' به روز شد"
+                val updatedName = customer.name.trim().ifBlank { "(بی نام)" }
+                val updatedCustomer = customer.copy(phone = cleanPhone, name = updatedName)
+                customerRepository.updateCustomer(updatedCustomer)
+                _snackbarMessage.value = "اطلاعات '${updatedCustomer.name}' به روز شد"
                 _selectedCustomerForEdit.value = null
                 _selectedCustomerForDetail.value = null
             } catch (e: Exception) {

@@ -60,64 +60,64 @@ val Typography = Typography(
     titleLarge = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = 15.sp,
+        lineHeight = 22.sp,
         letterSpacing = 0.15.sp
     ),
     titleSmall = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.5.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.1.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = 15.sp,
+        lineHeight = 22.sp,
         letterSpacing = 0.5.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.5.sp,
+        lineHeight = 19.sp,
         letterSpacing = 0.25.sp
     ),
     bodySmall = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
+        fontSize = 11.5.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     ),
     labelLarge = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
+        fontSize = 11.5.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
         fontFamily = ShabnamFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
+        fontSize = 10.5.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.5.sp
     )
 )

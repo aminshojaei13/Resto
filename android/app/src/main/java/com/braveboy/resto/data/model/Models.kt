@@ -16,13 +16,13 @@ enum class SalesChannel(
     val defaultCustomerNameFa: String,
     val defaultCustomerNameEn: String
 ) {
-    WALK_IN("POS", "مشتری حضوری", "Walk-in (POS)", "مشتری حضوری", "Walk-in Customer"),
-    PHONE("PHONE", "مشتری تلفنی", "Phone Order", "مشتری تلفنی", "Phone Customer"),
-    ONLINE("ONLINE", "مشتری اینترنتی", "Online Order", "مشتری اینترنتی", "Online Customer"),
-    INSTAGRAM("INSTAGRAM", "مشتری اینستاگرام", "Instagram", "مشتری اینستاگرام", "Instagram Customer"),
-    WHATSAPP("WHATSAPP", "مشتری واتساپ", "WhatsApp", "مشتری واتساپ", "WhatsApp Customer"),
-    TELEGRAM("TELEGRAM", "مشتری تلگرام", "Telegram", "مشتری تلگرام", "Telegram Customer"),
-    OTHER("OTHER", "مشتری متفرقه", "Other", "مشتری متفرقه", "Other Customer");
+    WALK_IN("POS", "مشتری حضوری", "Walk-in (POS)", "(بی نام)", "Unnamed Customer"),
+    PHONE("PHONE", "مشتری تلفنی", "Phone Order", "(بی نام)", "Unnamed Customer"),
+    ONLINE("ONLINE", "مشتری اینترنتی", "Online Order", "(بی نام)", "Unnamed Customer"),
+    INSTAGRAM("INSTAGRAM", "مشتری اینستاگرام", "Instagram", "(بی نام)", "Unnamed Customer"),
+    WHATSAPP("WHATSAPP", "مشتری واتساپ", "WhatsApp", "(بی نام)", "Unnamed Customer"),
+    TELEGRAM("TELEGRAM", "مشتری تلگرام", "Telegram", "(بی نام)", "Unnamed Customer"),
+    OTHER("OTHER", "مشتری متفرقه", "Other", "(بی نام)", "Unnamed Customer");
 
     companion object {
         fun fromCode(code: String?): SalesChannel {
@@ -150,7 +150,8 @@ data class CartItem(
     val quantity: Int = 1,
     val discountPercent: Double = 0.0,
     val taxRate: Double = 0.0, // Dynamic from business settings
-    val imageUrl: String = ""
+    val imageUrl: String = "",
+    val createdAt: Long = System.currentTimeMillis()
 ) {
     val subtotal: Double get() = Math.round(price * quantity * 100.0) / 100.0
     val discountAmount: Double get() = Math.round(subtotal * (discountPercent / 100.0) * 100.0) / 100.0
@@ -274,7 +275,10 @@ data class MetricsSummary(
     val netProfit: Double = 0.0,
     val totalInventoryItems: Int = 0,
     val totalInventoryValue: Double = 0.0,
-    val lowStockCount: Int = 0
+    val lowStockCount: Int = 0,
+    val ordersTrendPercent: Double = 0.0,
+    val netProfitTrendPercent: Double = 0.0,
+    val revenueTrendPercent: Double = 0.0
 )
 
 data class MessageTemplate(

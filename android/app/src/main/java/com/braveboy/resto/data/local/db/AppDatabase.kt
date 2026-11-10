@@ -40,7 +40,7 @@ import com.braveboy.resto.data.local.db.entity.WarehouseEntity
         LedgerEntryEntity::class,
         CartItemEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

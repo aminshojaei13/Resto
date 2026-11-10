@@ -23,8 +23,8 @@ android {
         applicationId = "com.braveboy.resto"
         minSdk = 24
         targetSdk = 36
-        versionCode = 100010
-        versionName = "1.0.2"
+        versionCode = 100050
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -52,6 +52,8 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_launcher_round"
         }
         release {
             isMinifyEnabled = true
@@ -61,6 +63,17 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_launcher_round"
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            res.srcDir("src/main/res")
+        }
+        getByName("debug") {
+            res.srcDir("src/debug/res")
         }
     }
 

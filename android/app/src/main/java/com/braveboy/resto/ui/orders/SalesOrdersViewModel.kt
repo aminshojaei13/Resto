@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.firstOrNull
 
 class SalesOrdersViewModel(
-    private val tenantRepository: TenantRepository,
+    tenantRepository: TenantRepository,
     private val salesOrderRepository: SalesOrderRepository
 ) : ViewModel() {
 

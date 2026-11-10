@@ -121,7 +121,10 @@ class AuthRepositoryImpl(
             sessionStore.updateCachedToken(offlineToken)
 
             val cleanStoreName = storeName.trim().ifBlank { "فروشگاه من" }
-            val cleanOwnerName = ownerName.trim().ifBlank { "ایران علوی" }
+            val cleanOwnerName = ownerName.trim()
+            if (cleanOwnerName.isBlank()) {
+                return AuthResult.Error("لطفاً نام و نام خانوادگی مدیر را وارد کنید.")
+            }
 
             val timestamp = System.currentTimeMillis().toString().takeLast(6)
             val orgId = "org_local_$timestamp"

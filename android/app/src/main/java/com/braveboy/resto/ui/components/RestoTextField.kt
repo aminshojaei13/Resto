@@ -61,7 +61,7 @@ fun RestoTextField(
                 {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

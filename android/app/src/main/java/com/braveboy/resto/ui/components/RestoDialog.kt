@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.DialogProperties
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
+import androidx.compose.foundation.layout.imePadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +31,7 @@ fun RestoDialog(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     confirmText: String = "تایید",
+    confirmVariant: RestoButtonVariant = RestoButtonVariant.Primary,
     onConfirm: (() -> Unit)? = null,
     confirmEnabled: Boolean = true,
     confirmLoading: Boolean = false,
@@ -39,8 +41,13 @@ fun RestoDialog(
 ) {
     BasicAlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = modifier.padding(horizontal = RestoSpacing.md, vertical = RestoSpacing.lg),
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        modifier = modifier
+            .padding(horizontal = RestoSpacing.md, vertical = RestoSpacing.lg)
+            .imePadding(),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
         Card(
             shape = RestoShapes.extraLarge,
@@ -81,7 +88,7 @@ fun RestoDialog(
                                 onClick = onConfirm,
                                 enabled = confirmEnabled,
                                 isLoading = confirmLoading,
-                                variant = RestoButtonVariant.Primary,
+                                variant = confirmVariant,
                                 fullWidth = true
                             )
                         }
@@ -111,7 +118,7 @@ fun RestoDialog(
                                 onClick = onConfirm,
                                 enabled = confirmEnabled,
                                 isLoading = confirmLoading,
-                                variant = RestoButtonVariant.Primary,
+                                variant = confirmVariant,
                                 modifier = Modifier.weight(1f)
                             )
                         }

@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class PosViewModel(
-    private val tenantRepository: TenantRepository,
+    tenantRepository: TenantRepository,
     private val productRepository: ProductRepository,
     private val cartRepository: CartRepository,
     private val salesOrderRepository: SalesOrderRepository,
@@ -195,16 +195,13 @@ class PosViewModel(
 
     fun createQuickCustomer(name: String, phone: String, address: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            if (name.isBlank()) {
-                _snackbarMessage.value = "لطفاً نام مشتری را وارد کنید"
-                return@launch
-            }
             val state = tenantState.value
+            val finalName = name.trim().ifBlank { "(بی نام)" }
             val newCustomer = Customer(
                 orgId = state.activeOrgId,
-                name = name,
-                phone = phone,
-                address = address
+                name = finalName,
+                phone = phone.trim(),
+                address = address.trim()
             )
             customerRepository.addCustomer(newCustomer)
             _selectedCustomer.value = newCustomer
@@ -318,7 +315,7 @@ class PosViewModel(
 
                 val effectiveCustomer = selectedCustomer.value ?: run {
                     val customName = customGuestName.value.trim()
-                    val guestName = if (customName.isNotBlank()) customName else channel.defaultCustomerNameFa
+                    val guestName = customName.ifBlank { channel.defaultCustomerNameFa }
                     Customer(orgId = state.activeOrgId, name = guestName)
                 }
 

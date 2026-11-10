@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -93,8 +95,11 @@ fun CustomerScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -103,15 +108,17 @@ fun CustomerScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.openAddCustomerDialog() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PersonAdd,
-                    contentDescription = stringResource(R.string.add_new_customer)
-                )
+            if (customers.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = { viewModel.openAddCustomerDialog() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PersonAdd,
+                        contentDescription = stringResource(R.string.add_new_customer)
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -350,7 +357,6 @@ fun CustomerFormDialog(
         }
     }
 
-    val isNameValid = name.trim().isNotBlank()
     val isPhoneValid = phone.trim().isNotBlank()
 
     RestoDialog(
@@ -358,8 +364,9 @@ fun CustomerFormDialog(
         confirmText = stringResource(R.string.save_info),
         confirmLoading = confirmLoading,
         onConfirm = {
-            if (isNameValid && isPhoneValid) {
-                onSubmit(name.trim(), email.trim(), phone.trim(), address.trim())
+            if (isPhoneValid) {
+                val finalName = name.trim().ifBlank { "(بی نام)" }
+                onSubmit(finalName, email.trim(), phone.trim(), address.trim())
             } else {
                 showErrors = true
             }
@@ -403,8 +410,7 @@ fun CustomerFormDialog(
             RestoTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = stringResource(R.string.full_name_label),
-                errorText = if (showErrors && !isNameValid) "نام مشتری نمی‌تواند خالی باشد" else null
+                label = stringResource(R.string.full_name_label) + " (اختیاری - در صورت خالی بودن (بی نام) قرار می‌گیرد)"
             )
 
             RestoTextField(

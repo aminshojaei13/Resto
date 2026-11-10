@@ -1123,7 +1123,7 @@ class ImportExecutionService
                 });
             }
 
-            $customerName = $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: 'مشتری حضوری');
+            $customerName = $resolvedCustomer ? $resolvedCustomer->name : ($customerRaw ?: '(بی نام)');
             $customerId = $resolvedCustomer?->id;
 
             // Payment and Status

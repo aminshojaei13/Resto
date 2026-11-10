@@ -1,5 +1,6 @@
 package com.braveboy.resto.ui
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -51,16 +53,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
-import com.braveboy.resto.R
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.braveboy.resto.R
 import com.braveboy.resto.data.model.TenantState
 import com.braveboy.resto.di.AppContainer
 import com.braveboy.resto.ui.components.RestoBottomNav
@@ -82,12 +84,17 @@ import com.braveboy.resto.ui.purchases.PurchasesScreen
 import com.braveboy.resto.ui.purchases.PurchasesViewModel
 import com.braveboy.resto.ui.reports.ReportsScreen
 import com.braveboy.resto.ui.reports.ReportsViewModel
+import com.braveboy.resto.ui.components.RestoButtonVariant
+import com.braveboy.resto.ui.components.RestoDialog
 import com.braveboy.resto.ui.settings.SettingsScreen
 import com.braveboy.resto.ui.supplier.SupplierScreen
 import com.braveboy.resto.ui.supplier.SupplierViewModel
 import com.braveboy.resto.ui.tenant.TenantSwitcherModal
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
+import com.braveboy.resto.util.LocalBackupManager
+import com.braveboy.resto.util.PersianFormatter.toPersianDigits
+import kotlinx.coroutines.launch
 
 enum class MainDestination(
     val title: String,
@@ -110,8 +117,8 @@ enum class MainDestination(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(
-    appContainer: AppContainer,
     modifier: Modifier = Modifier,
+    appContainer: AppContainer,
     initialSharedText: String? = null
 ) {
     // Navigation stack state (defaults to Dashboard)
@@ -120,6 +127,8 @@ fun MainAppScreen(
 
     var isTenantSwitcherOpen by remember { mutableStateOf(false) }
     var isMoreMenuOpen by remember { mutableStateOf(false) }
+    var showUnsyncedLogoutWarningDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
 
     fun navigateTo(destination: MainDestination) {
         navigationStack = if (destination == MainDestination.ACCOUNTING) {
@@ -253,7 +262,9 @@ fun MainAppScreen(
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Scaffold(
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier
+                .fillMaxSize()
+                .imePadding(),
             bottomBar = {
                 RestoBottomNav(
                     currentDestination = currentDestination,
@@ -264,8 +275,9 @@ fun MainAppScreen(
         ) { innerPadding ->
             Box(
                 modifier = Modifier
-                    .padding(innerPadding)
+                    .padding(bottom = innerPadding.calculateBottomPadding())
                     .fillMaxSize()
+                    .imePadding()
             ) {
                 AnimatedContent(
                     targetState = currentDestination,
@@ -356,21 +368,65 @@ fun MainAppScreen(
                         }
 
                         MainDestination.SETTINGS -> {
+                            var isBackupInProgress by remember { mutableStateOf(false) }
+                            val context = LocalContext.current
+
                             SettingsScreen(
                                 tenantState = tenantState,
                                 syncStatus = syncStatus,
                                 unsyncedCount = unsyncedCount,
                                 isDarkMode = isDarkMode,
+                                isBackupInProgress = isBackupInProgress,
                                 onToggleTheme = {
                                     coroutineScope.launch {
                                         appContainer.tenantPreferences.setDarkMode(!isDarkMode)
                                     }
                                 },
+                                onExportBackupToUri = { uri ->
+                                    coroutineScope.launch {
+                                        isBackupInProgress = true
+                                        val success = LocalBackupManager.writeBackupToUri(
+                                            context = context,
+                                            uri = uri,
+                                            database = appContainer.database,
+                                            tenantPreferences = appContainer.tenantPreferences
+                                        )
+                                        isBackupInProgress = false
+                                        if (success) {
+                                            Toast.makeText(context, "فایل پشتیبان با موفقیت ذخیره شد.", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            Toast.makeText(context, "خطا در ایجاد و ذخیره فایل پشتیبان.", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                onRestoreBackupFromUri = { uri ->
+                                    coroutineScope.launch {
+                                        isBackupInProgress = true
+                                        val result = LocalBackupManager.restoreBackupFromUri(
+                                            context = context,
+                                            uri = uri,
+                                            database = appContainer.database
+                                        )
+                                        isBackupInProgress = false
+                                        result.fold(
+                                            onSuccess = { summary ->
+                                                val msg = "بازگردانی اطلاعات با موفقیت انجام شد:\n" +
+                                                        "کالاها: ${summary.productsCount} | سفارش‌ها: ${summary.salesOrdersCount} | مشتریان: ${summary.customersCount} | تأمین‌کنندگان: ${summary.suppliersCount} | خریدها: ${summary.purchasesCount} | هزینه‌ها: ${summary.expensesCount}"
+                                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                            },
+                                            onFailure = { error ->
+                                                Toast.makeText(context, error.localizedMessage ?: "خطا در بازگردانی فایل پشتیبان", Toast.LENGTH_LONG).show()
+                                            }
+                                        )
+                                    }
+                                },
                                 onOpenTenantSwitcher = { isTenantSwitcherOpen = true },
                                 onBackClick = { navigateBack() },
                                 onLogout = {
-                                    coroutineScope.launch {
-                                        appContainer.authRepository.logout()
+                                    if (unsyncedCount > 0) {
+                                        showUnsyncedLogoutWarningDialog = true
+                                    } else {
+                                        showLogoutConfirmDialog = true
                                     }
                                 },
                                 onTriggerSync = {
@@ -504,6 +560,59 @@ fun MainAppScreen(
                 tenantRepository = appContainer.tenantRepository,
                 onDismiss = { isTenantSwitcherOpen = false }
             )
+        }
+
+        // Dialog 1: Unsynced Local Data Warning Dialog
+        if (showUnsyncedLogoutWarningDialog) {
+            RestoDialog(
+                title = "هشدار داده‌های همگام‌سازی‌نشده",
+                confirmText = "تأیید و ادامه به خروج",
+                confirmVariant = RestoButtonVariant.Destructive,
+                dismissText = "انصراف",
+                onConfirm = {
+                    showUnsyncedLogoutWarningDialog = false
+                    showLogoutConfirmDialog = true
+                },
+                onDismissRequest = { showUnsyncedLogoutWarningDialog = false }
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(RestoSpacing.xs)) {
+                    Text(
+                        text = "تعداد ${toPersianDigits(unsyncedCount)} مورد سفارش/فاکتور همگام‌سازی‌نشده در این دستگاه ثبت شده است.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(RestoSpacing.xxs))
+                    Text(
+                        text = "در صورت خروج از حساب کاربری، اطلاعات ذخیره‌نشده و همگام‌سازی‌نشده پاک خواهند شد. آیا از خروج اطمینان دارید؟",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Dialog 2: Final Logout Confirmation Dialog
+        if (showLogoutConfirmDialog) {
+            RestoDialog(
+                title = "خروج از حساب کاربری",
+                confirmText = "خروج از حساب",
+                confirmVariant = RestoButtonVariant.Destructive,
+                dismissText = "انصراف",
+                onConfirm = {
+                    showLogoutConfirmDialog = false
+                    coroutineScope.launch {
+                        appContainer.authRepository.logout()
+                    }
+                },
+                onDismissRequest = { showLogoutConfirmDialog = false }
+            ) {
+                Text(
+                    text = "آیا از خروج از حساب کاربری مطمئن هستید؟",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }

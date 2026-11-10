@@ -30,6 +30,9 @@ import com.braveboy.resto.ui.theme.RestoSpacing
 import com.braveboy.resto.util.PersianFormatter.formatTomans
 import com.braveboy.resto.util.PersianFormatter.toPersianDigits
 
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun RestoProductCard(
     product: Product,
@@ -89,7 +92,10 @@ fun RestoProductCard(
                     text = product.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -108,7 +114,10 @@ fun RestoProductCard(
                     text = formattedPrice,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
 
                 if (onAddToCart != null) {

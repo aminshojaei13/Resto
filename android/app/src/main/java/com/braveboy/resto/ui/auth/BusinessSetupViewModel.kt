@@ -43,11 +43,16 @@ class BusinessSetupViewModel(
             return
         }
 
+        if (ownerName.isBlank()) {
+            _uiState.value = state.copy(errorMessage = "لطفاً نام و نام خانوادگی مدیر را وارد کنید.")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, errorMessage = null)
             val result = authRepository.setupLocalBusiness(
                 storeName = storeName,
-                ownerName = ownerName.ifBlank { "مدیر سیستم" }
+                ownerName = ownerName
             )
             when (result) {
                 is AuthResult.Success -> {

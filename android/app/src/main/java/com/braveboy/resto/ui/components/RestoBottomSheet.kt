@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
+import androidx.compose.foundation.layout.imePadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,7 @@ fun RestoBottomSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = contentWindowInsets,
-        modifier = modifier
+        modifier = modifier.imePadding()
     ) {
         Column(
             modifier = Modifier

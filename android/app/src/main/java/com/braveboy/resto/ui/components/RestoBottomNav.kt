@@ -1,6 +1,7 @@
 package com.braveboy.resto.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -159,7 +161,9 @@ private fun RestoNavItem(
             fontSize = 10.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = if (isSelected) activeColor else inactiveColor,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee()
         )
     }
 }

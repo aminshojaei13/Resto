@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.braveboy.resto.ui.theme.RestoShapes
 import com.braveboy.resto.ui.theme.RestoSpacing
 
+import androidx.compose.foundation.basicMarquee
+
 @Composable
 fun RestoStatCard(
     title: String,
@@ -78,7 +80,8 @@ fun RestoStatCard(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
                     )
                 }
 
@@ -96,7 +99,8 @@ fun RestoStatCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee()
             )
 
             if (subtitle != null) {
@@ -106,7 +110,8 @@ fun RestoStatCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }

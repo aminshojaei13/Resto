@@ -12,16 +12,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddAPhoto
@@ -77,9 +81,9 @@ import com.braveboy.resto.util.ProductErrorMapper
 
 @Composable
 fun InventoryScreen(
+    modifier: Modifier = Modifier,
     viewModel: InventoryViewModel,
-    onBackClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onBackClick: () -> Unit = {}
 ) {
     val tenantState by viewModel.tenantState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -156,6 +160,7 @@ fun InventoryScreen(
 
 @Composable
 fun InventoryScreenContent(
+    modifier: Modifier = Modifier,
     tenantState: TenantState,
     searchQuery: String,
     selectedCategory: String?,
@@ -203,8 +208,7 @@ fun InventoryScreenContent(
     ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
     onSubmitStockAdjustment: (productId: String, warehouseId: String, delta: Int, reason: String) -> Unit = { _, _, _, _ -> },
     onUpdateProduct: (Product) -> Unit = {},
-    onDeleteProduct: (Product) -> Unit = {},
-    modifier: Modifier = Modifier
+    onDeleteProduct: (Product) -> Unit = {}
 ) {
     val currencyUnit = stringResource(R.string.currency_unit)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -226,8 +230,11 @@ fun InventoryScreenContent(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RestoTopBar(
@@ -236,25 +243,27 @@ fun InventoryScreenContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onOpenAddProductDialog,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = RestoSpacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+            if (products.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = onOpenAddProductDialog,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.add_product_title)
-                    )
-                    Text(
-                        text = stringResource(R.string.add_product_title),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = RestoSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(RestoSpacing.xs)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.add_product_title)
+                        )
+                        Text(
+                            text = stringResource(R.string.add_product_title),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -264,6 +273,7 @@ fun InventoryScreenContent(
                 .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
                 .padding(horizontal = RestoSpacing.md)
+                .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(RestoSpacing.sm))
 
@@ -795,7 +805,6 @@ fun EditProductDialog(
                     addNewLabel = "+ افزودن دسته‌بندی جدید",
                     onAddNewOption = { isAddNewCategoryPromptOpen = true },
                     onDeleteOption = onDeleteCategory,
-                    protectedOptions = defaultCategories,
                     modifier = Modifier.weight(1f)
                 )
                 RestoDropdownField(
@@ -807,7 +816,6 @@ fun EditProductDialog(
                     addNewLabel = "+ افزودن واحد جدید",
                     onAddNewOption = { isAddNewUnitPromptOpen = true },
                     onDeleteOption = onDeleteUnit,
-                    protectedOptions = defaultUnits,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -945,8 +953,7 @@ fun AddProductDialog(
 
     val selectedWarehouseId = remember {
         mutableStateOf(
-            if (activeWarehouseId.isNotBlank()) activeWarehouseId
-            else warehouses.firstOrNull()?.id ?: ""
+            activeWarehouseId.ifBlank { warehouses.firstOrNull()?.id ?: "" }
         )
     }
 
@@ -1095,7 +1102,6 @@ fun AddProductDialog(
                     addNewLabel = "+ افزودن واحد جدید",
                     onAddNewOption = { isAddNewUnitPromptOpen = true },
                     onDeleteOption = onDeleteUnit,
-                    protectedOptions = defaultUnits,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -1108,8 +1114,7 @@ fun AddProductDialog(
                 errorText = if (showErrors) errors.categoryError else null,
                 addNewLabel = "+ افزودن دسته‌بندی جدید",
                 onAddNewOption = { isAddNewCategoryPromptOpen = true },
-                onDeleteOption = onDeleteCategory,
-                protectedOptions = defaultCategories
+                onDeleteOption = onDeleteCategory
             )
 
             RestoTextField(

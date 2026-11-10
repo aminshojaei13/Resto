@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.braveboy.resto.ui.theme.RestoTheme
 
+import androidx.compose.foundation.basicMarquee
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RestoTopBar(
@@ -48,12 +50,13 @@ fun RestoTopBar(
             title = {
                 Text(
                     text = title,
-                    fontSize = 19.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.basicMarquee()
                 )
             },
             navigationIcon = {
